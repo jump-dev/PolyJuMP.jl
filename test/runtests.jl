@@ -1,5 +1,8 @@
+using MultivariatePolynomials
+using JuMP
 using PolyJuMP
-using Base.Test
+using FactCheck
 
-# write your own tests here
-@test 1 == 2
+include("sumofsquares.jl")
+
+FactCheck.exitstatus()

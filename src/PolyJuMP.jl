@@ -1,5 +1,9 @@
 module PolyJuMP
 
-# package code goes here
+using MultivariatePolynomials
+using SumOfSquares
+using JuMP
+
+include("macros.jl")
 
 end # module

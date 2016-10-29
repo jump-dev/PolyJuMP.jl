@@ -63,7 +63,6 @@ macro polyvariable(args...)
   kwargs = filter(ex->isexpr(ex,:kw), extra)
   extra = filter(ex->!isexpr(ex,:kw), extra)
 
-  variable = gensym()
   quotvarname = quot(getname(var))
   escvarname  = esc(getname(var))
 
@@ -109,19 +108,17 @@ macro polyvariable(args...)
     error("Monomials not given")
   end
 
+  create_fun = nonnegative ? :createnonnegativepoly : :createpoly
+
   # This is ugly I know
   monotypeid = monotype == :Default ? 1 : (monotype == :Classic ? 2 : 3)
+  monotype = gensym()
 
   if isa(var,Symbol)
     # Easy case - a single variable
     return JuMP.assert_validmodel(m, quote
-        monotype = [:Default, :Classic, :Gram][$monotypeid]
-        if $nonnegative
-            $variable = createnonnegativepoly($m, $m.ext[:poly], monotype, $x)
-        else
-            $variable = createpoly($m, $m.ext[:poly], monotype, $x)
-        end
-        $escvarname = $variable
+        $monotype = [:Default, :Classic, :Gram][$monotypeid]
+        $escvarname = getdefaultpolymodule($m).$create_fun($m, $monotype, $x)
     end)
   else
     JuMP.variable_error(args, "Invalid syntax for variable name: $(string(var))")
@@ -160,13 +157,10 @@ macro polyconstraint(m, x)
     error("Invalid sense $sense in polynomial constraint")
   end
   newaff, parsecode = JuMP.parseExprToplevel(lhs, :q)
+  nonnegative = !(sense == :(==))
   JuMP.assert_validmodel(m, quote
     q = zero(AffExpr)
     $parsecode
-    if $sense == :(==)
-      addpolyeqzeroconstraint($m, $m.ext[:poly], $newaff)
-    else
-      addpolynonnegativeconstraint($m, $m.ext[:poly], $newaff)
-    end
+    addconstraint($m, PolyConstraint($newaff, $nonnegative, getdefaultpolymodule($m)))
   end)
 end

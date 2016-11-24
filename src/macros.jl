@@ -125,7 +125,29 @@ macro polyvariable(args...)
   end
 end
 
-macro polyconstraint(m, x)
+function appendconstraints!(domain::Vector, x::Expr)
+    if isexpr(x, :call)
+        sense, vectorized = JuMP._canonicalize_sense(x.args[1])
+        @assert !vectorized
+        if sense == :(>=)
+            push!(domain, :($(x.args[2]) - $(x.args[3])))
+        elseif sense == :(<=)
+            push!(domain, :($(x.args[3]) - $(x.args[2])))
+        elseif sense == :(==) # for equality constraint, do x >= 0 and x <= 0
+            push!(domain, :($(x.args[2]) - $(x.args[3])))
+            push!(domain, :($(x.args[3]) - $(x.args[2])))
+        else
+            error("in @polyconstraint: Unrecognized sense $(string(sense)) in domain specification")
+        end
+    elseif isexpr(x, :&&)
+        map!(t -> appendconstraints!(domain, t), x.args)
+    else
+        error("in @polyconstraint: Invalid domain constraint specification $(string(x))")
+    end
+    nothing
+end
+
+macro polyconstraint(m, x, args...)
   m = esc(m)
 
   if isa(x, Symbol)
@@ -139,6 +161,23 @@ macro polyconstraint(m, x)
   end
   isexpr(x,:call) && length(x.args) == 3 || error("in @polyconstraint ($(string(x))): constraints must be in one of the following forms:\n" *
   "       expr1 <= expr2\n" * "       expr1 >= expr2")
+
+  domain = Any[]
+  hasdomain = false
+  for arg in args
+    if !isexpr(arg, :kw)
+      error("in @polyconstraint: Unrecognized extra argument $(string(arg))")
+    end
+    if arg.args[1] == :domain
+      @assert length(arg.args) == 2
+      hasdomain && error("in @polyconstraint: Multiple domain keyword arguments")
+      hasdomain = true
+      appendconstraints!(domain, arg.args[2])
+    else
+      error("in @polyconstraint: Unrecognized keyword argument $(string(arg))")
+    end
+  end
+
   # Build the constraint
   # Simple comparison - move everything to the LHS
   sense = x.args[1]
@@ -156,11 +195,25 @@ macro polyconstraint(m, x)
   else
     error("Invalid sense $sense in polynomial constraint")
   end
-  newaff, parsecode = JuMP.parseExprToplevel(lhs, :q)
+  newaff,  parsecode  = JuMP.parseExprToplevel(lhs, :q)
   nonnegative = !(sense == :(==))
-  JuMP.assert_validmodel(m, quote
+  code = quote
     q = zero(AffExpr)
     $parsecode
-    addconstraint($m, PolyConstraint($newaff, $nonnegative, getdefaultpolymodule($m)))
+  end
+  domainaffs = Any[]
+  for dom in domain
+    affname = gensym()
+    newaffdomain, parsecodedomain = JuMP.parseExprToplevel(dom, affname)
+    push!(domainaffs, esc(newaffdomain))
+    code = quote
+      $code
+      $affname = zero(AffExpr)
+      $parsecodedomain
+    end
+  end
+  JuMP.assert_validmodel(m, quote
+    $code
+    addconstraint($m, PolyConstraint($newaff, $nonnegative, getdefaultpolymodule($m), $domainaffs))
   end)
 end

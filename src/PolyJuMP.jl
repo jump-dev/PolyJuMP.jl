@@ -13,11 +13,13 @@ type PolyConstraint <: JuMP.AbstractConstraint
     p # typically either be a polynomial or a Matrix of polynomials
     nonnegative::Bool
     polymodule::Module
+    domain::Vector
     delegate::Nullable
-    function PolyConstraint(p, nonnegative::Bool, polymodule::Module)
-        new(p, nonnegative, polymodule)
+    function PolyConstraint(p, nonnegative::Bool, polymodule::Module, domain::Vector)
+        new(p, nonnegative, polymodule, domain)
     end
 end
+PolyConstraint(p, nonnegative::Bool, polymodule::Module) = PolyConstraint(p, nonnegative, polymodule, Any[])
 
 typealias PolyConstraintRef ConstraintRef{Model, PolyConstraint}
 

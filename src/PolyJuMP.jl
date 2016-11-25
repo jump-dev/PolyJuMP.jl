@@ -13,9 +13,9 @@ type PolyConstraint <: JuMP.AbstractConstraint
     p # typically either be a polynomial or a Matrix of polynomials
     nonnegative::Bool
     polymodule::Module
-    domain::Vector
+    domain::AbstractSemialgebraicSet
     delegate::Nullable
-    function PolyConstraint(p, nonnegative::Bool, polymodule::Module, domain::Vector)
+    function PolyConstraint(p, nonnegative::Bool, polymodule::Module, domain::AbstractSemialgebraicSet)
         new(p, nonnegative, polymodule, domain)
     end
 end

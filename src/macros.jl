@@ -125,17 +125,16 @@ macro polyvariable(args...)
   end
 end
 
-function appendconstraints!(domain::Vector, x::Expr)
+function appendconstraints!(domain::BasicSemialgebraicSet, x::Expr)
     if isexpr(x, :call)
         sense, vectorized = JuMP._canonicalize_sense(x.args[1])
         @assert !vectorized
         if sense == :(>=)
-            push!(domain, :($(x.args[2]) - $(x.args[3])))
+            addinequality!(domain, :($(x.args[2]) - $(x.args[3])))
         elseif sense == :(<=)
-            push!(domain, :($(x.args[3]) - $(x.args[2])))
+            addinequality!(domain, :($(x.args[3]) - $(x.args[2])))
         elseif sense == :(==) # for equality constraint, do x >= 0 and x <= 0
-            push!(domain, :($(x.args[2]) - $(x.args[3])))
-            push!(domain, :($(x.args[3]) - $(x.args[2])))
+            addequality!(domain, :($(x.args[2]) - $(x.args[3])))
         else
             error("in @polyconstraint: Unrecognized sense $(string(sense)) in domain specification")
         end
@@ -162,7 +161,7 @@ macro polyconstraint(m, x, args...)
   isexpr(x,:call) && length(x.args) == 3 || error("in @polyconstraint ($(string(x))): constraints must be in one of the following forms:\n" *
   "       expr1 <= expr2\n" * "       expr1 >= expr2")
 
-  domain = Any[]
+  domain = BasicSemialgebraicSet()
   hasdomain = false
   for arg in args
     if !isexpr(arg, :kw)

@@ -139,7 +139,7 @@ function appendconstraints!(domain::BasicSemialgebraicSet, x::Expr)
             error("in @polyconstraint: Unrecognized sense $(string(sense)) in domain specification")
         end
     elseif isexpr(x, :&&)
-        map!(t -> appendconstraints!(domain, t), x.args)
+        map(t -> appendconstraints!(domain, t), x.args)
     else
         error("in @polyconstraint: Invalid domain constraint specification $(string(x))")
     end

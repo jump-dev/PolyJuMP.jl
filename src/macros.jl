@@ -133,7 +133,7 @@ function appendconstraints!(domain::BasicSemialgebraicSet, x::Expr)
             addinequality!(domain, :($(x.args[2]) - $(x.args[3])))
         elseif sense == :(<=)
             addinequality!(domain, :($(x.args[3]) - $(x.args[2])))
-        elseif sense == :(==) # for equality constraint, do x >= 0 and x <= 0
+        elseif sense == :(==)
             addequality!(domain, :($(x.args[2]) - $(x.args[3])))
         else
             error("in @polyconstraint: Unrecognized sense $(string(sense)) in domain specification")

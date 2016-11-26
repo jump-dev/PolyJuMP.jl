@@ -194,7 +194,7 @@ macro polyconstraint(m, x, args...)
   else
     error("Invalid sense $sense in polynomial constraint")
   end
-  newaff,  parsecode  = JuMP.parseExprToplevel(lhs, :q)
+  newaff, parsecode = JuMP.parseExprToplevel(lhs, :q)
   nonnegative = !(sense == :(==))
   code = quote
     q = zero(AffExpr)

@@ -125,21 +125,21 @@ macro polyvariable(args...)
   end
 end
 
-function appendconstraints!(domain::BasicSemialgebraicSet, x::Expr)
+function appendconstraints!(domaineqs, domainineqs, x::Expr)
     if isexpr(x, :call)
         sense, vectorized = JuMP._canonicalize_sense(x.args[1])
         @assert !vectorized
         if sense == :(>=)
-            addinequality!(domain, :($(x.args[2]) - $(x.args[3])))
+            push!(domainineqs, :($(x.args[2]) - $(x.args[3])))
         elseif sense == :(<=)
-            addinequality!(domain, :($(x.args[3]) - $(x.args[2])))
+            push!(domainineqs, :($(x.args[3]) - $(x.args[2])))
         elseif sense == :(==)
-            addequality!(domain, :($(x.args[2]) - $(x.args[3])))
+            push!(domaineqs, :($(x.args[2]) - $(x.args[3])))
         else
             error("in @polyconstraint: Unrecognized sense $(string(sense)) in domain specification")
         end
     elseif isexpr(x, :&&)
-        map(t -> appendconstraints!(domain, t), x.args)
+        map(t -> appendconstraints!(domaineqs, domainineqs, t), x.args)
     else
         error("in @polyconstraint: Invalid domain constraint specification $(string(x))")
     end
@@ -161,7 +161,8 @@ macro polyconstraint(m, x, args...)
   isexpr(x,:call) && length(x.args) == 3 || error("in @polyconstraint ($(string(x))): constraints must be in one of the following forms:\n" *
   "       expr1 <= expr2\n" * "       expr1 >= expr2")
 
-  domain = BasicSemialgebraicSet()
+  domaineqs = []
+  domainineqs = []
   hasdomain = false
   for arg in args
     if !isexpr(arg, :kw)
@@ -171,7 +172,7 @@ macro polyconstraint(m, x, args...)
       @assert length(arg.args) == 2
       hasdomain && error("in @polyconstraint: Multiple domain keyword arguments")
       hasdomain = true
-      appendconstraints!(domain, arg.args[2])
+      appendconstraints!(domaineqs, domainineqs, arg.args[2])
     else
       error("in @polyconstraint: Unrecognized keyword argument $(string(arg))")
     end
@@ -200,15 +201,29 @@ macro polyconstraint(m, x, args...)
     q = zero(AffExpr)
     $parsecode
   end
-  domainaffs = Any[]
-  for dom in domain
+  domainaffs = gensym()
+  code = quote
+      $code
+      $domainaffs = BasicSemialgebraicSet()
+  end
+  for dom in domaineqs
     affname = gensym()
     newaffdomain, parsecodedomain = JuMP.parseExprToplevel(dom, affname)
-    push!(domainaffs, esc(newaffdomain))
     code = quote
       $code
-      $affname = zero(AffExpr)
+      $affname = zero(VecPolynomial{Int})
       $parsecodedomain
+      addequality!($domainaffs, $newaffdomain)
+    end
+  end
+  for dom in domainineqs
+    affname = gensym()
+    newaffdomain, parsecodedomain = JuMP.parseExprToplevel(dom, affname)
+    code = quote
+      $code
+      $affname = zero(VecPolynomial{Int})
+      $parsecodedomain
+      addinequality!($domainaffs, $newaffdomain)
     end
   end
   JuMP.assert_validmodel(m, quote

@@ -4,10 +4,10 @@ using Base.Meta
 
 export @polyvariable, @polyconstraint
 
-function getvalue(p::VecPolynomial{JuMP.Variable})
-  VecPolynomial(map(getvalue, p.a), p.x)
+function getvalue{C}(p::Polynomial{C, JuMP.Variable})
+  Polynomial(map(getvalue, p.a), p.x)
 end
-function getvalue(p::MatPolynomial{JuMP.Variable})
+function getvalue{C}(p::MatPolynomial{C, JuMP.Variable})
   MatPolynomial(map(getvalue, p.Q), p.x)
 end
 
@@ -211,7 +211,7 @@ macro polyconstraint(m, x, args...)
     newaffdomain, parsecodedomain = JuMP.parseExprToplevel(dom, affname)
     code = quote
       $code
-      $affname = zero(VecPolynomial{Int})
+      $affname = zero(Polynomial{true, Int})
       $parsecodedomain
       addequality!($domainaffs, $newaffdomain)
     end
@@ -221,7 +221,7 @@ macro polyconstraint(m, x, args...)
     newaffdomain, parsecodedomain = JuMP.parseExprToplevel(dom, affname)
     code = quote
       $code
-      $affname = zero(VecPolynomial{Int})
+      $affname = zero(Polynomial{true, Int})
       $parsecodedomain
       addinequality!($domainaffs, $newaffdomain)
     end

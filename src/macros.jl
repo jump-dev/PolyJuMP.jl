@@ -60,7 +60,7 @@ macro polyvariable(args...)
   end
 
   # separate out keyword arguments
-  if VERSION < v"0.6-"
+  if VERSION < v"0.6.0-dev.1934"
     kwargs = filter(ex-> isexpr(ex,:kw), extra)
     extra  = filter(ex->!isexpr(ex,:kw), extra)
   else
@@ -170,7 +170,7 @@ macro polyconstraint(m, x, args...)
   domainineqs = []
   hasdomain = false
   for arg in args
-    if ((VERSION < v"0.6-") && !isexpr(arg, :kw)) || (VERSION >= v"0.6-" && !isexpr(arg, :(=)))
+    if ((VERSION < v"0.6.0-dev.1934") && !isexpr(arg, :kw)) || (VERSION >= v"0.6.0-dev.1934" && !isexpr(arg, :(=)))
       error("in @polyconstraint: Unrecognized extra argument $(string(arg))")
     end
     if arg.args[1] == :domain

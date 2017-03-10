@@ -1,8 +1,8 @@
 using MultivariatePolynomials
 using JuMP
 using PolyJuMP
-using FactCheck
+using Base.Test
 
-include("sumofsquares.jl")
-
-FactCheck.exitstatus()
+if isdir(Pkg.dir("SumOfSquares"))
+    include("sumofsquares.jl")
+end

@@ -97,7 +97,9 @@ macro polyvariable(args...)
   # Determine variable type (if present).
   # Types: default is continuous (reals)
   if isempty(extra)
-    JuMP.variable_error(args, "Missing monomial vector")
+    if monotype == :None
+      JuMP.variable_error(args, "Missing monomial vector")
+    end
   elseif length(extra) > 1
     JuMP.variable_error(args, "Too many extra argument: only expected monomial vector")
   else

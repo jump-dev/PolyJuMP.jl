@@ -123,7 +123,7 @@ macro polyvariable(args...)
     # Easy case - a single variable
     return JuMP.assert_validmodel(m, quote
         $monotype = [:Default, :Classic, :Gram][$monotypeid]
-        $escvarname = getdefaultpolymodule($m).$create_fun($m, $monotype, $x)
+        $escvarname = getpolymodule($m).$create_fun($m, $monotype, $x)
     end)
   else
     JuMP.variable_error(args, "Invalid syntax for variable name: $(string(var))")
@@ -233,6 +233,6 @@ macro polyconstraint(m, x, args...)
   end
   JuMP.assert_validmodel(m, quote
     $code
-    addconstraint($m, PolyConstraint($newaff, $nonnegative, getdefaultpolymodule($m), $domainaffs))
+    addconstraint($m, PolyConstraint($newaff, $nonnegative, getpolymodule($m), $domainaffs))
   end)
 end

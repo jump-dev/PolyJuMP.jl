@@ -111,9 +111,7 @@ macro polyvariable(args...)
   end
   Z = gensym()
 
-  if monotype == :None
-    error("Monomials not given")
-  end
+  @assert monotype != :None
 
   create_fun = nonnegative ? :createnonnegativepoly : :createpoly
 
@@ -162,9 +160,6 @@ macro polyconstraint(m, x, args...)
 
   (x.head == :block) &&
   error("Code block passed as constraint.")
-  if VERSION < v"0.5.0-dev+3231"
-    x = comparison_to_call(x)
-  end
   isexpr(x,:call) && length(x.args) == 3 || error("in @polyconstraint ($(string(x))): constraints must be in one of the following forms:\n" *
   "       expr1 <= expr2\n" * "       expr1 >= expr2")
 

@@ -5,7 +5,7 @@ module PolyJuMP
 using MultivariatePolynomials
 using JuMP
 import JuMP: getdual, addconstraint
-export getslack, setpolymodule
+export getslack, setpolymodule!
 
 # Polynomial Constraint
 
@@ -67,13 +67,13 @@ function getpolyconstr(m::JuMP.Model)
     getpolydata(m).polyconstr
 end
 
-setpolymodule(m::JuMP.Model, pm::Module) = setpolymodule(getpolydata(m), pm)
-setpolymodule(data::PolyData, pm::Module) = data.polymodule = pm
+setpolymodule!(m::JuMP.Model, pm::Module) = setpolymodule!(getpolydata(m), pm)
+setpolymodule!(data::PolyData, pm::Module) = data.polymodule = pm
 
 getpolymodule(m::JuMP.Model) = getpolymodule(getpolydata(m))
 function getpolymodule(data::PolyData)
     if isnull(data.polymodule)
-        error("PolyJuMP is just a JuMP extension for modelling Polynomial Optimization but it does not implements any reformulation. You might want to run \`Pkg.add(\"SumOfSquares\")\` to install the Sum of Squares reformulation. If it is installed you can do \`using SumOfSquares\` and then \`setpolymodule(SumOfSquares)\` to use it or use \`SOSModel\` instead of \`Model\`.")
+        error("PolyJuMP is just a JuMP extension for modelling Polynomial Optimization but it does not implements any reformulation. You might want to run \`Pkg.add(\"SumOfSquares\")\` to install the Sum of Squares reformulation. If it is installed you can do \`using SumOfSquares\` and then \`setpolymodule!(SumOfSquares)\` to use it or use \`SOSModel\` instead of \`Model\`.")
     end
     get(data.polymodule)
 end

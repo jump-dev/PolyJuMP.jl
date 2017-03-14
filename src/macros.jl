@@ -24,9 +24,6 @@ macro polyvariable(args...)
   hasub = false
   # Identify the variable bounds. Five (legal) possibilities are "x >= lb",
   # "x <= ub", "lb <= x <= ub", "x == val", or just plain "x"
-  if VERSION < v"0.5.0-dev+3231"
-    x = comparison_to_call(x)
-  end
   explicit_comparison = false
   if isexpr(x,:comparison) # two-sided
     JuMP.variable_error(args, "Polynomial variable declaration does not support the form lb <= ... <= ub. Use ... >= 0 and separate constraints instead.")

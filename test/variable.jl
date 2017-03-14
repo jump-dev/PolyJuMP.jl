@@ -1,8 +1,8 @@
 @testset "@polyvariable macro" begin
     m = Model()
+    setpolymodule!(m, TestPolyModule)
     @polyvar x y
     X = [x^2, y^2]
-    setpolymodule!(m, TestPolyModule)
 
     @test macroexpand(:(@polyvariable p >= 0 X)).head == :error
     @test macroexpand(:(@polyvariable m 0 <= p <= 1 X)).head == :error
@@ -36,4 +36,18 @@
     testvar(p5, true, :Classic, X)
     @polyvariable(m, p6 >= 0, grammonomials=X)
     testvar(p6, true, :Gram, X)
+end
+
+@testset "getvalue function" begin
+    m = Model()
+    @variable m α
+    @variable m β
+    @polyvar x y
+    p = α * x*y + β * x^2
+    q = MatPolynomial([α β; β α], [x, y])
+    JuMP.fix(α, 2)
+    JuMP.fix(β, 3)
+    @test getvalue(p) == 2x*y + 3x^2
+    # Explicit polynomial conversion is needed only is MultivariatePolynomials < v0.0.2
+    @test Polynomial(getvalue(q)) == 2x^2 + 2y^2 + 6x*y
 end

@@ -15,15 +15,25 @@
     @test macroexpand(:(@polyconstraint(m, p + 0, domain = x >= -1 && x <= 1, domain = y >= -1 && y <= 1))).head == :error
 
     function testcon(m, cref, nonnegative, p, ineqs, eqs)
+        @test isa(cref, ConstraintRef{Model, PolyJuMP.PolyConstraint})
         c = PolyJuMP.getpolyconstr(m)[cref.idx]
-        @test isa(c, TestPolyModule.TestCon)
         @test c.nonnegative == nonnegative
-        @test c.p == p
-        @show typeof(c.domain)
+        # == between JuMP affine expression is not accurate, e.g. β + α != α + β
+        # == 0 is not defined either
+        function affexpr_iszero(affexpr)
+            affexpr.constant == 0 || return false
+            tmp = JuMP.IndexedVector(Float64, m.numCols)
+            JuMP.collect_expr!(m, tmp, affexpr)
+            tmp.nnz == 0
+        end
+        @test all(affexpr_iszero, (c.p - p).a)
+        @test isa(c.domain, BasicSemialgebraicSet)
+        @test c.domain.p == ineqs
+        @test c.domain.V.p == eqs
     end
 
-    #testcon(m, @polyconstraint(m, p ⪰ q + 1, domain = y >= 1 && x^2 + y^2 == 1 && x^3 + x*y^2 + y >= 1), true, p - q - 1, [], [])
-    @polyconstraint(m, p ⪯ q)
-    @polyconstraint(m, p + q >= 0, domain = x == y^3)
-    @polyconstraint(m, p == q, domain = x == 1 && x + y == 2)
+    testcon(m, @polyconstraint(m, p ⪰ q + 1, domain = y >= 1 && x^2 + y^2 == 1 && x^3 + x*y^2 + y >= 1), true, p - q - 1, [y-1, x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
+    testcon(m, @polyconstraint(m, p ⪯ q), true, q - p, [], [])
+    testcon(m, @polyconstraint(m, p + q >= 0, domain = x == y^3), true, p + q, [], [x - y^3])
+    testcon(m, @polyconstraint(m, p == q, domain = x == 1 && x + y == 2), false, p - q, [], [x - 1, x + y - 2])
 end

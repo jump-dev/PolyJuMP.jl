@@ -12,7 +12,7 @@
     @test macroexpand(:(@polyconstraint(m, p >= 0, 1))).head == :error
     @test macroexpand(:(@polyconstraint(m, p >= 0, unknown_kw=1))).head == :error
     @test macroexpand(:(@polyconstraint(m, p >= 0, domain = x >= -1 && x <= 1, domain = y >= -1 && y <= 1))).head == :error
-    @test macroexpand(:(@polyconstraint(m, p + 0, domain = x >= -1 && x <= 1, domain = y >= -1 && y <= 1))).head == :error
+    @test macroexpand(:(@polyconstraint(m, p + 0, domain = x >= -1 && x <= 1))).head == :error
 
     function testcon(m, cref, nonnegative, p, ineqs, eqs)
         @test isa(cref, ConstraintRef{Model, PolyJuMP.PolyConstraint})

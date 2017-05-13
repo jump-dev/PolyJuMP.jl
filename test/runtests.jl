@@ -10,14 +10,15 @@ type TestPoly
     nonnegative::Bool
     monotype::Symbol
     x
+    category::Symbol
 end
 type TestCon
     nonnegative::Bool
     p::Polynomial
     domain
 end
-createpoly(m::JuMP.Model, monotype::Symbol, x) = TestPoly(false, monotype, x)
-createnonnegativepoly(m::JuMP.Model, monotype::Symbol, x) = TestPoly(true, monotype, x)
+createpoly(m::JuMP.Model, monotype::Symbol, x, category::Symbol) = TestPoly(false, monotype, x, category)
+createnonnegativepoly(m::JuMP.Model, monotype::Symbol, x, category::Symbol) = TestPoly(true, monotype, x, category)
 #addpolyeqzeroconstraint(m::JuMP.Model, p, domain::AlgebraicSet) = TestCon(false, p, domain)
 #addpolynonnegativeconstraint(m::JuMP.Model, p, domain::BasicSemialgebraicSet) = TestCon(true, p, domain)
 end

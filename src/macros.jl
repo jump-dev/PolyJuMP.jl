@@ -20,7 +20,6 @@ macro polyvariable(args...)
     x = args[2]
     extra = vcat(args[3:end]...)
 
-    t = :Cont
     gottype = false
     haslb = false
     hasub = false
@@ -73,6 +72,7 @@ macro polyvariable(args...)
     monotype = :None
 
     # process keyword arguments
+    t = quot(:Cont)
     gram = false
     for ex in kwargs
         kwarg = ex.args[1]
@@ -88,6 +88,8 @@ macro polyvariable(args...)
             end
             monotype = :Classic
             x = esc(ex.args[2])
+        elseif kwarg == :category
+            t = JuMP.esc_nonconstant(ex.args[2])
         else
             polyvariable_error(args, "Unrecognized keyword argument $kwarg")
         end
@@ -122,7 +124,7 @@ macro polyvariable(args...)
         # Easy case - a single variable
         return JuMP.assert_validmodel(m, quote
             $monotype = [:Default, :Classic, :Gram][$monotypeid]
-            $escvarname = getpolymodule($m).$create_fun($m, $monotype, $x)
+            $escvarname = getpolymodule($m).$create_fun($m, $monotype, $x, $t)
         end)
     else
         polyvariable_error(args, "Invalid syntax for variable name: $(string(var))")

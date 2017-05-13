@@ -17,17 +17,18 @@
     @test macroexpand(:(@polyvariable(m, p, X, monomials=X))).head == :error
     @test macroexpand(:(@polyvariable(m, p, X, X))).head == :error
 
-    function testvar(p, nonnegative, monotype, x)
+    function testvar(p, nonnegative, monotype, x, category=:Cont)
         @test isa(p, TestPolyModule.TestPoly)
         @test p.nonnegative == nonnegative
         @test p.monotype == monotype
         @test p.x == x
+        @test p.category == category
     end
 
     @polyvariable m p1 X
     testvar(p1, false, :Default, X)
-    @polyvariable(m, p2, monomials=X)
-    testvar(p2, false, :Classic, X)
+    @polyvariable(m, p2, monomials=X, category=:Int)
+    testvar(p2, false, :Classic, X, :Int)
     @polyvariable(m, p3, grammonomials=X)
     testvar(p3, false, :Gram, X)
     @polyvariable m p4 >= 0 X
@@ -36,6 +37,8 @@
     testvar(p5, true, :Classic, X)
     @polyvariable(m, p6 >= 0, grammonomials=X)
     testvar(p6, true, :Gram, X)
+    @polyvariable(m, p7 >= 0, X, category=:Bin)
+    testvar(p7, true, :Default, X, :Bin)
 end
 
 @testset "getvalue function" begin

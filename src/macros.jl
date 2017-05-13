@@ -205,7 +205,7 @@ macro polyconstraint(m, x, args...)
     domainaffs = gensym()
     code = quote
         $code
-        $domainaffs = BasicSemialgebraicSet()
+        $domainaffs = isempty($domainineqs) ? AlgebraicSet() : BasicSemialgebraicSet()
     end
     for dom in domaineqs
         affname = gensym()

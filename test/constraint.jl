@@ -27,9 +27,14 @@
             tmp.nnz == 0
         end
         @test all(affexpr_iszero, (c.p - p).a)
-        @test isa(c.domain, BasicSemialgebraicSet)
-        @test c.domain.p == ineqs
-        @test c.domain.V.p == eqs
+        if isempty(ineqs)
+            @test isa(c.domain, AlgebraicSet)
+            @test c.domain.p == eqs
+        else
+            @test isa(c.domain, BasicSemialgebraicSet)
+            @test c.domain.p == ineqs
+            @test c.domain.V.p == eqs
+        end
     end
 
     testcon(m, @polyconstraint(m, p ⪰ q + 1, domain = y >= 1 && x^2 + y^2 == 1 && x^3 + x*y^2 + y >= 1), true, p - q - 1, [y-1, x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])

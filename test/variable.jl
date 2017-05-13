@@ -48,6 +48,6 @@ end
     JuMP.fix(α, 2)
     JuMP.fix(β, 3)
     @test getvalue(p) == 2x*y + 3x^2
-    # Explicit polynomial conversion is needed only is MultivariatePolynomials < v0.0.2
+    # Explicit polynomial conversion is needed only if MultivariatePolynomials < v0.0.2
     @test Polynomial(getvalue(q)) == 2x^2 + 2y^2 + 6x*y
 end

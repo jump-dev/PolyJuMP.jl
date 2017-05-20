@@ -2,7 +2,7 @@ using JuMP
 import JuMP: getvalue, validmodel, addtoexpr_reorder
 using Base.Meta
 
-export @set, @polyvariable
+export Poly, @set
 
 function getvalue{C}(p::Polynomial{C, JuMP.Variable})
     Polynomial(map(getvalue, p.a), p.x)
@@ -11,124 +11,51 @@ function getvalue{C}(p::MatPolynomial{C, JuMP.Variable})
     MatPolynomial(map(getvalue, p.Q), p.x)
 end
 
-polyvariable_error(args, str) = error("In @polyvariable($(join(args, ","))): ", str)
+# X is a vector of monomials to be used to construct a polynomial variable
+# if MT is Gram, X represents the monomials of the form X^T Q X
+# if MT is Classic, it represents the monomials of the form a^T X
+# if MT is Default, it depends on whether the polynomials is constructed as nonnegative or not:
+# For a nonnegative polynomial, it corresponds to Gram, otherwise it corresponds to Classic.
+immutable Poly{P, MT, MV}
+    x::MV
+end
+(::Type{Poly{P, MT}}){P, MT, MV}(x::MV) = Poly{P, MT, MV}(x)
+(::Type{Poly{P}}){P}(x) = Poly{P, :Default}(x)
+(::Type{Poly})(x) = Poly{false}(x)
 
-macro polyvariable(args...)
-    length(args) <= 1 &&
-    polyvariable_error(args, "Expected model as first argument, then variable information.")
-    m = esc(args[1])
-    x = args[2]
-    extra = vcat(args[3:end]...)
-
-    gottype = false
-    haslb = false
-    hasub = false
-    # Identify the variable bounds. Five (legal) possibilities are "x >= lb",
-    # "x <= ub", "lb <= x <= ub", "x == val", or just plain "x"
-    explicit_comparison = false
-    if isexpr(x,:comparison) # two-sided
-        polyvariable_error(args, "Polynomial variable declaration does not support the form lb <= ... <= ub. Use ... >= 0 and separate constraints instead.")
-    elseif isexpr(x,:call)
-        explicit_comparison = true
-        if x.args[1] == :>= || x.args[1] == :≥
-            # x >= lb
-            var = x.args[2]
-            @assert length(x.args) == 3
-            lb = JuMP.esc_nonconstant(x.args[3])
-            if lb != 0
-                polyvariable_error(args, "Polynomial variable declaration does not support the form ... >= lb with nonzero lb.")
-            end
-            nonnegative = true
-        elseif x.args[1] == :<= || x.args[1] == :≤
-            # x <= ub
-            # NB: May also be lb <= x, which we do not support
-            #     We handle this later in the macro
-            polyvariable_error(args, "Polynomial variable declaration does not support the form ... <= ub.")
-        elseif x.args[1] == :(==)
-            polyvariable_error(args, "Polynomial variable declaration does not support the form ... == value.")
-        else
-            # Its a comparsion, but not using <= ... <=
-            polyvariable_error(args, "Unexpected syntax $(string(x)).")
-        end
-    else
-        # No bounds provided - free variable
-        # If it isn't, e.g. something odd like f(x), we'll handle later
-        var = x
-        nonnegative = false
+function JuMP.variabletype(m::Model, p::Poly{true})
+    getpolymodule(m).nonnegativepolytype(m, p)
+end
+function JuMP.variabletype(m::Model, p::Poly{false})
+    getpolymodule(m).polytype(m, p)
+end
+function cvarchecks(_error::Function, lowerbound::Number, upperbound::Number, start::Number; extra_kwargs...)
+    for (kwarg, _) in extra_kwargs
+        _error("Unrecognized keyword argument $kwarg")
     end
-
-    # separate out keyword arguments
-    if VERSION < v"0.6.0-dev.1934"
-        kwargs = filter(ex-> isexpr(ex,:kw), extra)
-        extra  = filter(ex->!isexpr(ex,:kw), extra)
-    else
-        kwargs = filter(ex-> isexpr(ex,:(=)), extra)
-        extra  = filter(ex->!isexpr(ex,:(=)), extra)
+    if !isnan(start)
+        _error("Polynomial variable declaration does not support the form ... == value.")
     end
-
-    quotvarname = quot(getname(var))
-    escvarname  = esc(getname(var))
-
-    monotype = :None
-
-    # process keyword arguments
-    t = quot(:Cont)
-    gram = false
-    for ex in kwargs
-        kwarg = ex.args[1]
-        if kwarg == :grammonomials
-            if monotype != :None
-                polyvariable_error("Monomials given twice")
-            end
-            monotype = :Gram
-            x = esc(ex.args[2])
-        elseif kwarg == :monomials
-            if monotype != :None
-                polyvariable_error("Monomials given twice")
-            end
-            monotype = :Classic
-            x = esc(ex.args[2])
-        elseif kwarg == :category
-            t = JuMP.esc_nonconstant(ex.args[2])
-        else
-            polyvariable_error(args, "Unrecognized keyword argument $kwarg")
-        end
+    if lowerbound != -Inf && upperbound != Inf
+        _error("Polynomial variable declaration does not support the form lb <= ... <= ub. Use ... >= 0 and separate constraints instead.")
     end
-
-    # Determine variable type (if present).
-    # Types: default is continuous (reals)
-    if isempty(extra)
-        if monotype == :None
-            polyvariable_error(args, "Missing monomial vector")
-        end
-    elseif length(extra) > 1
-        polyvariable_error(args, "Too many extra argument: only expected monomial vector")
-    else
-        if monotype != :None
-            polyvariable_error(args, "Monomials given twice")
-        end
-        monotype = :Default
-        x = esc(extra[1])
+    if lowerbound != -Inf && lowerbound != 0
+        _error("Polynomial variable declaration does not support the form ... >= lb with nonzero lb.")
     end
-    Z = gensym()
-
-    @assert monotype != :None
-
-    create_fun = nonnegative ? :createnonnegativepoly : :createpoly
-
-    # This is ugly I know
-    monotypeid = monotype == :Default ? 1 : (monotype == :Classic ? 2 : 3)
-    monotype = gensym()
-
-    if isa(var,Symbol)
-        # Easy case - a single variable
-        return JuMP.assert_validmodel(m, quote
-            $monotype = [:Default, :Classic, :Gram][$monotypeid]
-            $escvarname = getpolymodule($m).$create_fun($m, $monotype, $x, $t)
-        end)
-    else
-        polyvariable_error(args, "Invalid syntax for variable name: $(string(var))")
+    if upperbound != Inf
+        _error("Polynomial variable declaration does not support the form ... <= ub.")
     end
+end
+function JuMP.constructvariable!(m::Model, p::Poly{true}, _error::Function, lowerbound::Number, upperbound::Number, category::Symbol, basename::AbstractString, start::Number; extra_kwargs...)
+    cvarchecks(_error, lowerbound, upperbound, start; extra_kwargs...)
+    getpolymodule(m).createnonnegativepoly(m, p, category == :Default ? :Cont : category)
+end
+function JuMP.constructvariable!(m::Model, p::Poly{false}, _error::Function, lowerbound::Number, upperbound::Number, category::Symbol, basename::AbstractString, start::Number; extra_kwargs...)
+    cvarchecks(_error, lowerbound, upperbound, start; extra_kwargs...)
+    if lowerbound != -Inf
+        _error("Free polynomial variable declaration does not support the form ... >= 0, use SOSPoly(x) instead of Poly(x) to create Sum of Squares polynomials. Note that SOSPoly(x) creates the polynomial x^T Q x with Q symmetric positive semidefinite while Poly(x) creates the polynomial a^T x so the meaning of the vector of monomial x changes from Poly to SOSPoly.")
+    end
+    getpolymodule(m).createpoly(m, p, category == :Default ? :Cont : category)
 end
 
 function JuMP.constructconstraint!(p::Polynomial, sense::Symbol)

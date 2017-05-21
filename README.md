@@ -5,7 +5,7 @@
 | [![][pkg-0.5-img]][pkg-0.5-url] | [![Build Status][build-img]][build-url] [![Build Status][winbuild-img]][winbuild-url] |
 | [![][pkg-0.6-img]][pkg-0.6-url] | [![Coveralls branch][coveralls-img]][coveralls-url] [![Codecov branch][codecov-img]][codecov-url] |
 
-PolyJuMP is an extension to [JuMP](https://github.com/JuliaOpt/JuMP.jl) for formulating and solving polynomial optimization problems. Those problems can then be solved using [Sum of Squares Programming](https://github.com/JuliaOpt/SumOfSquares.jl).
+PolyJuMP is an extension to [JuMP](https://github.com/JuliaOpt/JuMP.jl) for formulating and solving polynomial optimization problems. These problems can then be solved using [Sum of Squares Programming](https://github.com/JuliaOpt/SumOfSquares.jl).
 
 [pkg-0.5-img]: http://pkg.julialang.org/badges/PolyJuMP_0.5.svg
 [pkg-0.5-url]: http://pkg.julialang.org/?pkg=PolyJuMP

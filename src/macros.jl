@@ -2,7 +2,7 @@ using JuMP
 import JuMP: getvalue, validmodel, addtoexpr_reorder
 using Base.Meta
 
-export @polyvariable, @polyconstraint
+export Poly, @set, @polyvariable
 
 function getvalue{C}(p::Polynomial{C, JuMP.Variable})
     Polynomial(map(getvalue, p.a), p.x)
@@ -131,9 +131,11 @@ macro polyvariable(args...)
     end
 end
 
-polyconstraint_error(m, x, args, str) = error("In @polyconstraint($m, $x$(isempty(args) ? "" : ", " * join(args, ","))): ", str)
+function JuMP.constructconstraint!(p::Polynomial, sense::Symbol)
+    PolyConstraint(sense == :(<=) ? -p : p, sense != :(==))
+end
 
-function appendconstraints!(m, x, args, domaineqs, domainineqs, expr::Expr)
+function appendconstraints!(domaineqs, domainineqs, expr::Expr, _error)
     if isexpr(expr, :call)
         sense, vectorized = JuMP._canonicalize_sense(expr.args[1])
         @assert !vectorized
@@ -144,71 +146,19 @@ function appendconstraints!(m, x, args, domaineqs, domainineqs, expr::Expr)
         elseif sense == :(==)
             push!(domaineqs, :($(expr.args[2]) - $(expr.args[3])))
         else
-            polyconstraint_error(m, x, args, "Unrecognized sense $(string(sense)) in domain specification")
+            polyconstraint_error("Unrecognized sense $(string(sense)) in domain specification")
         end
     elseif isexpr(expr, :&&)
-        map(t -> appendconstraints!(m, x, args, domaineqs, domainineqs, t), expr.args)
+        map(t -> appendconstraints!(domaineqs, domainineqs, t, _error), expr.args)
     else
-        polyconstraint_error(m, x, args, "Invalid domain constraint specification $(string(expr))")
+        polyconstraint_error("Invalid domain constraint specification $(string(expr))")
     end
     nothing
 end
 
-macro polyconstraint(m, x, args...)
-    if isa(x, Symbol)
-        polyconstraint_error(m, x, args, "Incomplete constraint specification $x. Are you missing a comparison (<= or >=)?")
-    end
-
-    (x.head == :block) &&
-    polyconstraint_error(m, x, args, "Code block passed as constraint.")
-    isexpr(x,:call) && length(x.args) == 3 || polyconstraint_error(m, x, args, "constraints must be in one of the following forms:\n" *
-                                                                   "       expr1 <= expr2\n" * "       expr1 >= expr2")
-
-    domaineqs = []
-    domainineqs = []
-    hasdomain = false
-    for arg in args
-        if ((VERSION < v"0.6.0-dev.1934") && !isexpr(arg, :kw)) || (VERSION >= v"0.6.0-dev.1934" && !isexpr(arg, :(=)))
-            polyconstraint_error(m, x, args, "Unrecognized extra argument $(string(arg))")
-        end
-        if arg.args[1] == :domain
-            @assert length(arg.args) == 2
-            hasdomain && polyconstraint_error(m, x, args, "Multiple domain keyword arguments")
-            hasdomain = true
-            appendconstraints!(m, x, args, domaineqs, domainineqs, arg.args[2])
-        else
-            polyconstraint_error(m, x, args, "Unrecognized keyword argument $(string(arg))")
-        end
-    end
-
-    # Build the constraint
-    # Simple comparison - move everything to the LHS
-    sense = x.args[1]
-    if sense == :⪰
-        sense = :(>=)
-    elseif sense == :⪯
-        sense = :(<=)
-    end
-    sense,_ = JuMP._canonicalize_sense(sense)
-    lhs = :()
-    if sense == :(>=) || sense == :(==)
-        lhs = :($(x.args[2]) - $(x.args[3]))
-    elseif sense == :(<=)
-        lhs = :($(x.args[3]) - $(x.args[2]))
-    else
-        polyconstraint_error(m, x, args, "Invalid sense $sense")
-    end
-    newaff, parsecode = JuMP.parseExprToplevel(lhs, :q)
-    nonnegative = !(sense == :(==))
-    code = quote
-        q = zero(AffExpr)
-        $parsecode
-    end
+function builddomain(domaineqs, domainineqs)
     domainaffs = gensym()
-    code = quote
-        $code
-        $domainaffs = isempty($domainineqs) ? AlgebraicSet() : BasicSemialgebraicSet()
-    end
+    code = :( $domainaffs = isempty($domainineqs) ? (isempty($domaineqs) ? FullSpace() : AlgebraicSet()) : BasicSemialgebraicSet() )
     for dom in domaineqs
         affname = gensym()
         newaffdomain, parsecodedomain = JuMP.parseExprToplevel(dom, affname)
@@ -229,10 +179,16 @@ macro polyconstraint(m, x, args...)
             addinequality!($domainaffs, $newaffdomain)
         end
     end
-    # I escape m here so that is is not escaped in the error messages of polyconstraint_error
-    m = esc(m)
-    JuMP.assert_validmodel(m, quote
-        $code
-        addconstraint($m, PolyConstraint($newaff, $nonnegative, getpolymodule($m), $domainaffs))
-    end)
+    domainaffs, code
+end
+
+macro set(expr)
+    domaineqs = []
+    domainineqs = []
+    appendconstraints!(domaineqs, domainineqs, expr, msg -> error("In @set($expr: ", msg))
+    domainvar, domaincode = builddomain(domaineqs, domainineqs)
+    quote
+        $domaincode
+        $domainvar
+    end
 end

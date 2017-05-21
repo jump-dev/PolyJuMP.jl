@@ -12,18 +12,19 @@ export getslack, setpolymodule!
 type PolyConstraint <: JuMP.AbstractConstraint
     p # typically either be a polynomial or a Matrix of polynomials
     nonnegative::Bool
-    polymodule::Module
+    polymodule::Nullable{Module}
     domain::AbstractSemialgebraicSet
     delegate::Nullable
-    function PolyConstraint(p, nonnegative::Bool, polymodule::Module, domain::AbstractSemialgebraicSet)
-        new(p, nonnegative, polymodule, domain)
+    function PolyConstraint(p, nonnegative::Bool)
+        new(p, nonnegative, nothing, FullSpace(), nothing)
     end
 end
-PolyConstraint(p, nonnegative::Bool, polymodule::Module) = PolyConstraint(p, nonnegative, polymodule, Any[])
 
 typealias PolyConstraintRef ConstraintRef{Model, PolyConstraint}
 
-function addconstraint(m::Model, c::PolyConstraint)
+function addconstraint(m::Model, c::PolyConstraint; domain::AbstractSemialgebraicSet=FullSpace())
+    c.polymodule = getpolymodule(m)
+    c.domain = domain
     polyconstr = getpolyconstr(m)
     push!(polyconstr, c)
     m.internalModelLoaded = false
@@ -80,5 +81,7 @@ end
 
 include("macros.jl")
 include("solve.jl")
+
+include("deprecated.jl")
 
 end # module

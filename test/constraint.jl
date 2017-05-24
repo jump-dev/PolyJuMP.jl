@@ -11,7 +11,7 @@
     @test macroexpand(:(@constraint(m, +(p, p, p)))).head == :error
     @test macroexpand(:(@constraint(m, p >= 0, 1))).head == :error
     @test_throws MethodError @constraint(m, p >= 0, unknown_kw=1)
-    @test macroexpand(:(@constraint(m, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1)))).head == :error
+    #@test macroexpand(:(@constraint(m, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1)))).head == :error
     @test macroexpand(:(@constraint(m, p + 0, domain = (@set x >= -1 && x <= 1)))).head == :error
 
     function testcon(m, cref, nonnegative, p, ineqs, eqs)
@@ -41,10 +41,12 @@
         end
     end
 
-    testcon(m, @constraint(m, p >= q + 1, domain = @set y >= 1 && x^2 + y^2 == 1 && x^3 + x*y^2 + y >= 1), true, p - q - 1, [y-1, x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
+    f(x, y) = @set x + y == 2
+    dom = @set x^2 + y^2 == 1 && x^3 + x*y^2 + y >= 1
+    testcon(m, @constraint(m, p >= q + 1, domain = @set y >= 1 && dom), true, p - q - 1, [y-1, x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
     testcon(m, @constraint(m, p <= q), true, q - p, [], [])
     testcon(m, @constraint(m, p + q >= 0, domain = @set x == y^3), true, p + q, [], [x - y^3])
-    testcon(m, @constraint(m, p == q, domain = @set x == 1 && x + y == 2), false, p - q, [], [x - 1, x + y - 2])
+    testcon(m, @constraint(m, p == q, domain = @set x == 1 && f(x, y)), false, p - q, [], [x - 1, x + y - 2])
 end
 
 @testset "@polyconstraint macro" begin
@@ -90,8 +92,10 @@ end
         end
     end
 
-    testcon(m, @polyconstraint(m, p ⪰ q + 1, domain = y >= 1 && x^2 + y^2 == 1 && x^3 + x*y^2 + y >= 1), true, p - q - 1, [y-1, x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
+    f(x, y) = @set x + y == 2
+    dom = @set x^2 + y^2 == 1 && x^3 + x*y^2 + y >= 1
+    testcon(m, @polyconstraint(m, p ⪰ q + 1, domain = y >= 1 && dom), true, p - q - 1, [y-1, x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
     testcon(m, @polyconstraint(m, p ⪯ q), true, q - p, [], [])
     testcon(m, @polyconstraint(m, p + q >= 0, domain = x == y^3), true, p + q, [], [x - y^3])
-    testcon(m, @polyconstraint(m, p == q, domain = x == 1 && x + y == 2), false, p - q, [], [x - 1, x + y - 2])
+    testcon(m, @polyconstraint(m, p == q, domain = x == 1 && f(x, y)), false, p - q, [], [x - 1, x + y - 2])
 end

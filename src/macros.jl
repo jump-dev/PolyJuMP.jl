@@ -2,7 +2,7 @@ using JuMP
 import JuMP: getvalue, validmodel, addtoexpr_reorder
 using Base.Meta
 
-export Poly, @set, @polyvariable
+export @set, @polyvariable
 
 function getvalue{C}(p::Polynomial{C, JuMP.Variable})
     Polynomial(map(getvalue, p.a), p.x)

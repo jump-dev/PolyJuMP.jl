@@ -13,6 +13,7 @@ macro polyconstraint(m, x, args...)
     isexpr(x,:call) && length(x.args) == 3 || polyconstraint_error(m, x, args, "constraints must be in one of the following forms:\n" *
                                                                    "       expr1 <= expr2\n" * "       expr1 >= expr2")
 
+    domains = []
     domaineqs = []
     domainineqs = []
     hasdomain = false
@@ -24,7 +25,7 @@ macro polyconstraint(m, x, args...)
             @assert length(arg.args) == 2
             hasdomain && polyconstraint_error(m, x, args, "Multiple domain keyword arguments")
             hasdomain = true
-            appendconstraints!(domaineqs, domainineqs, arg.args[2], msg -> polyconstraint_error(m, x, args, msg))
+            appendconstraints!(domains, domaineqs, domainineqs, arg.args[2], msg -> polyconstraint_error(m, x, args, msg))
         else
             polyconstraint_error(m, x, args, "Unrecognized keyword argument $(string(arg))")
         end
@@ -48,7 +49,7 @@ macro polyconstraint(m, x, args...)
         polyconstraint_error(m, x, args, "Invalid sense $sense")
     end
     newaff, parsecode = JuMP.parseExprToplevel(lhs, :q)
-    domainaffs, domaincode = builddomain(domaineqs, domainineqs)
+    domainaffs, domaincode = builddomain(domains, domaineqs, domainineqs)
     code = quote
         q = zero(AffExpr)
         $parsecode

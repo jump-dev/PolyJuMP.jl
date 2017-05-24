@@ -135,28 +135,32 @@ function JuMP.constructconstraint!(p::Polynomial, sense::Symbol)
     PolyConstraint(sense == :(<=) ? -p : p, sense != :(==))
 end
 
-function appendconstraints!(domaineqs, domainineqs, expr::Expr, _error)
+function appendconstraints!(domains, domaineqs, domainineqs, expr, _error)
     if isexpr(expr, :call)
-        sense, vectorized = JuMP._canonicalize_sense(expr.args[1])
-        @assert !vectorized
-        if sense == :(>=)
-            push!(domainineqs, :($(expr.args[2]) - $(expr.args[3])))
-        elseif sense == :(<=)
-            push!(domainineqs, :($(expr.args[3]) - $(expr.args[2])))
-        elseif sense == :(==)
-            push!(domaineqs, :($(expr.args[2]) - $(expr.args[3])))
-        else
-            polyconstraint_error("Unrecognized sense $(string(sense)) in domain specification")
+        try
+            sense, vectorized = JuMP._canonicalize_sense(expr.args[1])
+            @assert !vectorized
+            if sense == :(>=)
+                push!(domainineqs, :($(expr.args[2]) - $(expr.args[3])))
+            elseif sense == :(<=)
+                push!(domainineqs, :($(expr.args[3]) - $(expr.args[2])))
+            elseif sense == :(==)
+                push!(domaineqs, :($(expr.args[2]) - $(expr.args[3])))
+            else
+                polyconstraint_error("Unrecognized sense $(string(sense)) in domain specification")
+            end
+        catch
+            push!(domains, esc(expr))
         end
     elseif isexpr(expr, :&&)
-        map(t -> appendconstraints!(domaineqs, domainineqs, t, _error), expr.args)
+        map(t -> appendconstraints!(domains, domaineqs, domainineqs, t, _error), expr.args)
     else
-        polyconstraint_error("Invalid domain constraint specification $(string(expr))")
+        push!(domains, esc(expr))
     end
     nothing
 end
 
-function builddomain(domaineqs, domainineqs)
+function builddomain(domains, domaineqs, domainineqs)
     domainaffs = gensym()
     code = :( $domainaffs = isempty($domainineqs) ? (isempty($domaineqs) ? FullSpace() : AlgebraicSet()) : BasicSemialgebraicSet() )
     for dom in domaineqs
@@ -179,14 +183,21 @@ function builddomain(domaineqs, domainineqs)
             addinequality!($domainaffs, $newaffdomain)
         end
     end
+    for dom in domains
+        code = quote
+            $code
+            $domainaffs = $domainaffs ∩ $dom
+        end
+    end
     domainaffs, code
 end
 
 macro set(expr)
+    domains = []
     domaineqs = []
     domainineqs = []
-    appendconstraints!(domaineqs, domainineqs, expr, msg -> error("In @set($expr: ", msg))
-    domainvar, domaincode = builddomain(domaineqs, domainineqs)
+    appendconstraints!(domains, domaineqs, domainineqs, expr, msg -> error("In @set($expr: ", msg))
+    domainvar, domaincode = builddomain(domains, domaineqs, domainineqs)
     quote
         $domaincode
         $domainvar

@@ -19,11 +19,15 @@ type PolyConstraint <: JuMP.AbstractConstraint
         new(p, nonnegative, nothing, FullSpace(), nothing)
     end
 end
+function setpolymodule!(c::PolyConstraint, pm::Module)
+    c.polymodule = pm
+end
+getpolymodule(c::PolyConstraint) = get(c.polymodule)
 
 typealias PolyConstraintRef ConstraintRef{Model, PolyConstraint}
 
 function addconstraint(m::Model, c::PolyConstraint; domain::AbstractSemialgebraicSet=FullSpace())
-    c.polymodule = getpolymodule(m)
+    setpolymodule!(c, getpolymodule(m))
     c.domain = domain
     polyconstr = getpolyconstr(m)
     push!(polyconstr, c)

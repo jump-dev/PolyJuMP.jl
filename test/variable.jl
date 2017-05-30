@@ -4,6 +4,8 @@
     @polyvar x y
     X = [x^2, y^2]
 
+    @test_throws ErrorException @variable m p Poly(X) unknown_kw=1
+    @test_throws ErrorException @variable m p == 1 Poly(X)
     @test_throws ErrorException @variable m 0 <= p <= 1 Poly(X)
     @test_throws ErrorException @variable m 0 >= p >= 1 Poly(X)
     @test_throws ErrorException @variable m p <= 0 Poly(X)
@@ -63,6 +65,7 @@ end
     @test macroexpand(:(@polyvariable m p >= 1 X)).head == :error
     @test macroexpand(:(@polyvariable m p == 1 X)).head == :error
     @test macroexpand(:(@polyvariable m p)).head == :error
+    @test macroexpand(:(@polyvariable m p[1:2] X)).head == :error
     @test macroexpand(:(@polyvariable(m, p, gramonomials=X))).head == :error
     @test macroexpand(:(@polyvariable(m, p, grammonomials=X, monomials=X))).head == :error
     @test macroexpand(:(@polyvariable(m, p, monomials=X, grammonomials=X))).head == :error

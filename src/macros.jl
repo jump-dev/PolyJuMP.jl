@@ -11,9 +11,9 @@ function getvalue{C}(p::MatPolynomial{C, JuMP.Variable})
     MatPolynomial(map(getvalue, p.Q), p.x)
 end
 
-# X is a vector of monomials to be used to construct a polynomial variable
-# if MT is Gram, X represents the monomials of the form X^T Q X
-# if MT is Classic, it represents the monomials of the form a^T X
+# x is a vector of monomials to be used to construct a polynomial variable
+# if MT is Gram, x represents the monomials of the form x^T Q x
+# if MT is Classic, it represents the monomials of the form a^T x
 # if MT is Default, it depends on whether the polynomials is constructed as nonnegative or not:
 # For a nonnegative polynomial, it corresponds to Gram, otherwise it corresponds to Classic.
 immutable Poly{P, MT, MV}

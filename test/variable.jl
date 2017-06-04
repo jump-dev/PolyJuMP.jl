@@ -32,7 +32,7 @@
     @variable(m, p5 >= 0, Poly{true, :Classic}(X))
     testvar(p5, true, :Classic, X)
     @variable(m, p6[2:3] >= 0, Poly{true, :Gram}(X))
-    @test isa(p6, JuMP.JuMPArray{TestPolyModule.TestPoly{true},1,Tuple{UnitRange{Int64}}})
+    @test isa(p6, JuMP.JuMPArray{TestPolyModule.TestPoly{true},1,Tuple{UnitRange{Int}}})
     testvar(p6[2], true, :Gram, X)
     @variable(m, p7[i=2:3,j=i:4], Poly{true}(X), category=:Bin)
     testvar(p7[2,3], true, :Default, X, :Bin)

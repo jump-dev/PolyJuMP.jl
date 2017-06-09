@@ -24,7 +24,7 @@ function setpolymodule!(c::PolyConstraint, pm::Module)
 end
 getpolymodule(c::PolyConstraint) = get(c.polymodule)
 
-typealias PolyConstraintRef ConstraintRef{Model, PolyConstraint}
+const PolyConstraintRef = ConstraintRef{Model, PolyConstraint}
 
 function addconstraint(m::Model, c::PolyConstraint; domain::AbstractSemialgebraicSet=FullSpace())
     setpolymodule!(c, getpolymodule(m))

@@ -62,6 +62,10 @@ function JuMP.constructconstraint!(p::Polynomial, sense::Symbol)
     PolyConstraint(sense == :(<=) ? -p : p, sense != :(==))
 end
 
+function JuMP.constructconstraint!{PolyT<:MultivariatePolynomials.PolyType}(p::AbstractMatrix{PolyT}, ::PSDCone)
+    PolyConstraint(p, true)
+end
+
 function appendconstraints!(domains, domaineqs, domainineqs, expr, _error)
     if isexpr(expr, :call)
         try

@@ -20,3 +20,8 @@ PolyJuMP is an extension to [JuMP](https://github.com/JuliaOpt/JuMP.jl) for form
 [coveralls-url]: https://coveralls.io/github/JuliaOpt/PolyJuMP.jl?branch=master
 [codecov-img]: http://codecov.io/github/JuliaOpt/PolyJuMP.jl/coverage.svg?branch=master
 [codecov-url]: http://codecov.io/github/JuliaOpt/PolyJuMP.jl?branch=master
+
+Some presentations on, or using, PolyJuMP:
+  * [Benoit Legat at the JuMP Meetup 2017](http://www.juliaopt.org/developersmeetup/legat.pdf)
+  * [Joey Huchette at SIAM Opt 2017](https://docs.google.com/presentation/d/1ASfjB1TdLJmYxT0b6rnyGh9eLbMc-66bTOt3_3yvc90/edit?usp=sharing)
+  

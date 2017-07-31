@@ -9,14 +9,19 @@ export getslack, setpolymodule!
 
 # Polynomial Constraint
 
-type PolyConstraint <: JuMP.AbstractConstraint
+export ZeroPoly, NonNegPoly
+
+struct ZeroPoly end
+struct NonNegPoly end
+
+mutable struct PolyConstraint <: JuMP.AbstractConstraint
     p # typically either be a polynomial or a Matrix of polynomials
-    nonnegative::Bool
+    set
     polymodule::Nullable{Module}
     domain::AbstractSemialgebraicSet
     delegate::Nullable
-    function PolyConstraint(p, nonnegative::Bool)
-        new(p, nonnegative, nothing, FullSpace(), nothing)
+    function PolyConstraint(p, s)
+        new(p, s, nothing, FullSpace(), nothing)
     end
 end
 function setpolymodule!(c::PolyConstraint, pm::Module)

@@ -59,11 +59,15 @@ function JuMP.constructvariable!(m::Model, p::Poly{false}, _error::Function, low
 end
 
 function JuMP.constructconstraint!(p::Polynomial, sense::Symbol)
-    PolyConstraint(sense == :(<=) ? -p : p, sense != :(==))
+    PolyConstraint(sense == :(<=) ? -p : p, sense == :(==) ? ZeroPoly() : NonNegPoly())
 end
 
-function JuMP.constructconstraint!{PolyT<:MultivariatePolynomials.PolyType}(p::AbstractMatrix{PolyT}, ::PSDCone)
-    PolyConstraint(p, true)
+function JuMP.constructconstraint!{PolyT<:MultivariatePolynomials.PolyType}(p::Union{PolyT, AbstractMatrix{PolyT}}, s)
+    PolyConstraint(p, s)
+end
+# there is already a method for AbstractMatrix in PSDCone in JuMP so we need a more specific here to avoid ambiguity
+function JuMP.constructconstraint!{PolyT<:MultivariatePolynomials.PolyType}(p::AbstractMatrix{PolyT}, s::PSDCone)
+    PolyConstraint(p, s)
 end
 
 function appendconstraints!(domains, domaineqs, domainineqs, expr, _error)

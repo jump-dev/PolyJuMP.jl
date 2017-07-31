@@ -176,11 +176,11 @@ macro polyconstraint(m, x, args...)
         $parsecode
         $domaincode
     end
-    nonnegative = !(sense == :(==))
+    set = sense == :(==) ? ZeroPoly : NonNegPoly
     # I escape m here so that is is not escaped in the error messages of polyconstraint_error
     m = esc(m)
     JuMP.assert_validmodel(m, quote
         $code
-        addconstraint($m, PolyConstraint($newaff, $nonnegative), domain = $domainaffs)
+        addconstraint($m, PolyConstraint($newaff, $set()), domain = $domainaffs)
     end)
 end

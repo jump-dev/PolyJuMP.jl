@@ -104,8 +104,6 @@ macro polyvariable(args...)
 
     @assert monotype != :None
 
-    create_fun = nonnegative ? :createnonnegativepoly : :createpoly
-
     # This is ugly I know
     monotypeid = monotype == :Default ? 1 : (monotype == :Classic ? 2 : 3)
     monotype = gensym()
@@ -114,7 +112,7 @@ macro polyvariable(args...)
         # Easy case - a single variable
         return JuMP.assert_validmodel(m, quote
             $monotype = [:Default, :Classic, :Gram][$monotypeid]
-            $escvarname = getpolymodule($m).$create_fun($m, Poly{$nonnegative, $monotype}($x), $t)
+            $escvarname = getpolymodule($m).createpoly($m, Poly{$nonnegative, $monotype}($x), $t)
         end)
     else
         polyvariable_error(args, "Invalid syntax for variable name: $(string(var))")

@@ -11,10 +11,10 @@ export getslack, setpolymodule!
 
 export ZeroPoly, NonNegPoly
 
-type ZeroPoly end
-type NonNegPoly end
+struct ZeroPoly end
+struct NonNegPoly end
 
-type PolyConstraint <: JuMP.AbstractConstraint
+mutable struct PolyConstraint <: JuMP.AbstractConstraint
     p # typically either be a polynomial or a Matrix of polynomials
     set
     polymodule::Nullable{Module}

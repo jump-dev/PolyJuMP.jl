@@ -7,7 +7,7 @@ module TestPolyModule
 using MultivariatePolynomials
 using JuMP
 using PolyJuMP
-type TestPoly{P}
+struct TestPoly{P}
     monotype::Symbol
     x
     category::Symbol

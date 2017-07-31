@@ -12,10 +12,8 @@ struct TestPoly{P}
     x
     category::Symbol
 end
-polytype{MT}(m::JuMP.Model, p::Poly{false, MT}) = TestPoly{false}
-nonnegativepolytype{MT}(m::JuMP.Model, p::Poly{true, MT}) = TestPoly{true}
-createpoly{MT}(m::JuMP.Model, p::Poly{false, MT}, category::Symbol) = TestPoly{false}(MT, p.x, category)
-createnonnegativepoly{MT}(m::JuMP.Model, p::Poly{true, MT}, category::Symbol) = TestPoly{true}(MT, p.x, category)
+polytype{P, MT}(m::JuMP.Model, p::Poly{P, MT}) = TestPoly{P}
+createpoly{P, MT}(m::JuMP.Model, p::Poly{P, MT}, category::Symbol) = TestPoly{P}(MT, p.x, category)
 end
 
 include("polymodule.jl")

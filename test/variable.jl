@@ -44,12 +44,9 @@ end
     @variable m β
     @polyvar x y
     p = α * x*y + β * x^2
-    q = MatPolynomial([α β; β α], [x, y])
     JuMP.fix(α, 2)
     JuMP.fix(β, 3)
     @test getvalue(p) == 2x*y + 3x^2
-    # Explicit polynomial conversion is needed only if MultivariatePolynomials < v0.0.2
-    @test Polynomial(getvalue(q)) == 2x^2 + 2y^2 + 6x*y
 end
 
 @testset "@polyvariable macro" begin

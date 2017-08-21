@@ -1,10 +1,11 @@
-using MultivariatePolynomials
+using DynamicPolynomials
 using JuMP
 using PolyJuMP
 using Base.Test
 
+using SemialgebraicSets
+
 module TestPolyModule
-using MultivariatePolynomials
 using JuMP
 using PolyJuMP
 struct TestPoly{P}

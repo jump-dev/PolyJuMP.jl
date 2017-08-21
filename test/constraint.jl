@@ -14,7 +14,8 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
     @variable m β
     @polyvar x y
     p = α * x*y + β * x^2
-    q = MatPolynomial([α β; β α], [x])
+    #q = MatPolynomial([α β; β α], [x])
+    q = α*x^2 + β*x*y + α*y^2
     @test macroexpand(:(@constraint(m, p))).head == :error
     @test macroexpand(:(@constraint(m, begin p >= 0 end))).head == :error
     @test macroexpand(:(@constraint(m, +(p, p, p)))).head == :error
@@ -37,12 +38,12 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
                 @test isa(c.domain, FullSpace)
             else
                 @test isa(c.domain, AlgebraicSet)
-                @test c.domain.p == eqs
+                @test equalities(c.domain) == eqs
             end
         else
             @test isa(c.domain, BasicSemialgebraicSet)
-            @test c.domain.p == ineqs
-            @test c.domain.V.p == eqs
+            @test inequalities(c.domain) == ineqs
+            @test equalities(c.domain) == eqs
         end
     end
 
@@ -62,7 +63,8 @@ end
     @variable m β
     @polyvar x y
     p = α * x*y + β * x^2
-    q = MatPolynomial([α β; β α], [x])
+    #q = MatPolynomial([α β; β α], [x])
+    q = α*x^2 + β*x*y + α*y^2
     @test macroexpand(:(@polyconstraint(m, p))).head == :error
     @test macroexpand(:(@polyconstraint(m, begin p >= 0 end))).head == :error
     @test macroexpand(:(@polyconstraint(m, +(p, p, p)))).head == :error
@@ -83,12 +85,12 @@ end
                 @test isa(c.domain, FullSpace)
             else
                 @test isa(c.domain, AlgebraicSet)
-                @test c.domain.p == eqs
+                @test equalities(c.domain) == eqs
             end
         else
             @test isa(c.domain, BasicSemialgebraicSet)
-            @test c.domain.p == ineqs
-            @test c.domain.V.p == eqs
+            @test inequalities(c.domain) == ineqs
+            @test equalities(c.domain) == eqs
         end
     end
 

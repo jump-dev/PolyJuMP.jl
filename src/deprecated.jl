@@ -144,7 +144,7 @@ macro polyconstraint(m, x, args...)
             @assert length(arg.args) == 2
             hasdomain && polyconstraint_error(m, x, args, "Multiple domain keyword arguments")
             hasdomain = true
-            appendconstraints!(domains, domaineqs, domainineqs, arg.args[2], msg -> polyconstraint_error(m, x, args, msg))
+            SemialgebraicSets.appendconstraints!(domains, domaineqs, domainineqs, arg.args[2], msg -> polyconstraint_error(m, x, args, msg))
         else
             polyconstraint_error(m, x, args, "Unrecognized keyword argument $(string(arg))")
         end
@@ -168,7 +168,7 @@ macro polyconstraint(m, x, args...)
         polyconstraint_error(m, x, args, "Invalid sense $sense")
     end
     newaff, parsecode = JuMP.parseExprToplevel(lhs, :q)
-    domainaffs, domaincode = builddomain(domains, domaineqs, domainineqs)
+    domainaffs, domaincode = SemialgebraicSets.builddomain(domains, domaineqs, domainineqs)
     code = quote
         q = zero(AffExpr)
         $parsecode

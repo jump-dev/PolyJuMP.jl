@@ -3,6 +3,7 @@ __precompile__()
 module PolyJuMP
 
 using MultivariatePolynomials
+using SemialgebraicSets
 using JuMP
 import JuMP: getdual, addconstraint
 export getslack, setpolymodule!

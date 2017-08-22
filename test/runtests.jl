@@ -1,9 +1,12 @@
-using DynamicPolynomials
 using JuMP
 using PolyJuMP
 using Base.Test
 
 using SemialgebraicSets
+
+using MultivariatePolynomials
+using DynamicPolynomials
+#using TypedPolynomials
 
 module TestPolyModule
 using JuMP

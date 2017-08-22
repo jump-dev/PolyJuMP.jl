@@ -4,7 +4,7 @@ function affexpr_iszero(m, affexpr)
     JuMP.collect_expr!(m, tmp, affexpr)
     tmp.nnz == 0
 end
-_iszero(m, p) = all(ae -> affexpr_iszero(m, ae), p.a)
+_iszero(m, p) = all(ae -> affexpr_iszero(m, ae), coefficients(p))
 _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
 
 @testset "@constraint macro with polynomials" begin

@@ -28,6 +28,8 @@ build_script:
   - IF EXIST .git\shallow (git fetch --unshallow)
   - C:\projects\julia\bin\julia -e "versioninfo();
       Pkg.clone(\"https://github.com/blegat/MultivariatePolynomials.jl\");
+      Pkg.clone(\"git://github.com/blegat/SemialgebraicSets.jl.git\");
+      Pkg.clone(\"git://github.com/blegat/DynamicPolynomials.jl.git\");
       Pkg.clone(pwd(), \"PolyJuMP\"); Pkg.build(\"PolyJuMP\")"
 
 test_script:

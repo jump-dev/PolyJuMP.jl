@@ -1,13 +1,13 @@
 using JuMP
-import JuMP: getvalue, validmodel, addtoexpr_reorder
+import JuMP: validmodel, addtoexpr_reorder
 using Base.Meta
 
 export Poly, @set
 
-function getvalue(t::AbstractTerm{JuMP.Variable})
+function JuMP.getvalue(t::AbstractTerm{<:JuMP.AbstractJuMPScalar})
     getvalue(coefficient(t)) * monomial(t)
 end
-function getvalue(p::AbstractPolynomialLike{JuMP.Variable})
+function JuMP.getvalue(p::AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
     polynomial(getvalue.(terms(p)), MultivariatePolynomials.SortedUniqState())
 end
 

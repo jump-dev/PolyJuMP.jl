@@ -4,11 +4,11 @@ using Base.Meta
 
 export Poly, @set
 
-function JuMP.getvalue(t::AbstractTerm{<:JuMP.AbstractJuMPScalar})
-    getvalue(coefficient(t)) * monomial(t)
+function JuMP.resultvalue(t::AbstractTerm{<:JuMP.AbstractJuMPScalar})
+    JuMP.resultvalue(coefficient(t)) * monomial(t)
 end
-function JuMP.getvalue(p::AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
-    polynomial(getvalue.(terms(p)), MultivariatePolynomials.SortedUniqState())
+function JuMP.resultvalue(p::AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
+    polynomial(JuMP.resultvalue.(terms(p)), MultivariatePolynomials.SortedUniqState())
 end
 
 abstract type AbstractPoly end
@@ -62,8 +62,17 @@ function JuMP.constructvariable!(m::Model, p::AbstractPoly, _error::Function,
     getpolymodule(m).createpoly(m, p, binary, integer)
 end
 
-function JuMP.constructconstraint!(p::AbstractPolynomialLike, sense::Symbol)
-    PolyConstraint(sense == :(<=) ? -p : p, sense == :(==) ? ZeroPoly() : NonNegPoly())
+using MathOptInterface
+const MOI = MathOptInterface
+
+function JuMP.constructconstraint!(p, s::MOI.EqualTo)
+    PolyConstraint(p-s.value, ZeroPoly())
+end
+function JuMP.constructconstraint!(p, s::MOI.GreaterThan)
+    PolyConstraint(p-s.lower, NonNegPoly())
+end
+function JuMP.constructconstraint!(p, s::MOI.LessThan)
+    PolyConstraint(s.upper-p, NonNegPoly())
 end
 
 function JuMP.constructconstraint!{PolyT<:AbstractPolynomialLike}(p::Union{PolyT, AbstractMatrix{PolyT}}, s)

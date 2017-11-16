@@ -1,9 +1,14 @@
 # TODO Replace with JuMP.isequal_canonical for JuMP v0.19
 function affexpr_iszero(m, affexpr)
-    affexpr.constant == 0 || return false
-    tmp = JuMP.IndexedVector(Float64, m.numCols)
-    JuMP.collect_expr!(m, tmp, affexpr)
-    tmp.nnz == 0
+    iszero(affexpr.constant) || return false
+    expr = Dict{Variable, Float64}()
+    JuMP.fill_expr!(m, expr, affexpr)
+    for (var, coeff) in expr
+        if !iszero(coeff)
+            return false
+        end
+    end
+    return true
 end
 _iszero(m, p) = all(ae -> affexpr_iszero(m, ae), coefficients(p))
 _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
@@ -26,7 +31,12 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
 
     function testcon(m, cref, set::ZeroPoly, p, ineqs, eqs, basis=PolyJuMP.MonomialBasis, kwargs=[])
         @test isa(cref, ConstraintRef{Model, PolyJuMP.PolyConstraint})
-        c = PolyJuMP.getdelegate(cref)
+        c = cref.index
+        @test c.set == set
+        # == between JuMP affine expression is not accurate, e.g. β + α != α + β
+        # == 0 is not defined either
+        # c.p and p can be matrices
+        @test _iszero(m, c.p - p)
         if isempty(ineqs)
             @test c isa PolyJuMP.ZeroConstraint
         else

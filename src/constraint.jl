@@ -19,11 +19,10 @@ function JuMP.addconstraint(m::Model, pc::PolyConstraint; domain::AbstractSemial
     delegates = getdelegates(m)
     delegate = addpolyconstraint!(m, pc.p, pc.set, domain, basis; kwargs...)
     push!(delegates, delegate)
-    m.internalModelLoaded = false
-    PolyConstraintRef(m, length(delegates))
+    PolyConstraintRef(m, delegate)
 end
 
-getdelegate(c::PolyConstraintRef) = getdelegates(c.m)[c.idx]
+getdelegate(c::PolyConstraintRef) = c.index.delegate
 getslack(c::PolyConstraintRef) = getslack(getdelegate(c))
 JuMP.getdual(c::PolyConstraintRef) = getdual(getdelegate(c))
 

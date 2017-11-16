@@ -65,13 +65,13 @@ end
 using MathOptInterface
 const MOI = MathOptInterface
 
-function JuMP.constructconstraint!(p, s::MOI.EqualTo)
+function JuMP.constructconstraint!(p::AbstractPolynomialLike, s::MOI.EqualTo)
     PolyConstraint(p-s.value, ZeroPoly())
 end
-function JuMP.constructconstraint!(p, s::MOI.GreaterThan)
+function JuMP.constructconstraint!(p::AbstractPolynomialLike, s::MOI.GreaterThan)
     PolyConstraint(p-s.lower, NonNegPoly())
 end
-function JuMP.constructconstraint!(p, s::MOI.LessThan)
+function JuMP.constructconstraint!(p::AbstractPolynomialLike, s::MOI.LessThan)
     PolyConstraint(s.upper-p, NonNegPoly())
 end
 

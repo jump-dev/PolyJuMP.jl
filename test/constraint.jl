@@ -1,8 +1,7 @@
-# TODO Replace with JuMP.isequal_canonical for JuMP v0.19
 function affexpr_iszero(m, affexpr)
     iszero(affexpr.constant) || return false
     expr = Dict{Variable, Float64}()
-    JuMP.fill_expr!(m, expr, affexpr)
+    fill_expr!(m, expr, affexpr)
     for (var, coeff) in expr
         if !iszero(coeff)
             return false

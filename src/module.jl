@@ -15,5 +15,5 @@ function createpoly(m::JuMP.Model, p::Union{PolyJuMP.Poly{false, :Default}, Poly
     MultivariatePolynomials.polynomial([JuMP.Variable(m, -Inf, Inf, category)*p.x[i] for i in 1:length(p.x)])
 end
 
-addpolyconstraint!(m::JuMP.Model, args...) = error("PolyJuMP is just a JuMP extension for modelling Polynomial Optimization but it does not implements any reformulation. You might want to run \`Pkg.add(\"SumOfSquares\")\` to install the Sum of Squares reformulation. If it is installed you can do \`using SumOfSquares\` and then \`setpolymodule!(SumOfSquares)\` to use it or use \`SOSModel\` instead of \`Model\`.")
+addpolyconstraint!(m::JuMP.Model, args...) = error("PolyJuMP is just a JuMP extension for modelling Polynomial Optimization: it does not implement any reformulation. To use automatic sums of squares (SOS) reformulations, install the SumOfSquares Julia package and try \`using SumOfSquares\` and \`setpolymodule!(SumOfSquares)\` or use \`SOSModel\` instead of \`Model\`.")
 end

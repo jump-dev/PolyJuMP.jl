@@ -1,24 +1,9 @@
-setpolymodule!(m::JuMP.Model, pm::Module) = setpolymodule!(getpolydata(m), pm)
-setpolymodule!(data::PolyData, pm::Module) = data.polymodule = pm
-
-getpolymodule(m::JuMP.Model) = getpolymodule(getpolydata(m))
-function getpolymodule(data::PolyData)
-    if isnull(data.polymodule)
-        return DefaultModule
-    end
-    get(data.polymodule)
-end
-
-module DefaultModule
-using JuMP, PolyJuMP, MultivariatePolynomials, SemialgebraicSets
-export createpoly, polytype, addpolyconstraint!
-
-polytype(m::JuMP.Model, p) = _polytype(m, p, p.x)
-polytype(m::JuMP.Model, p, X::AbstractVector) = _polytype(m, p, monovec(X))
+polytype(m::JuMP.Model, p::Poly) = getpolymodule(m).polytype(m, p, p.x)
+polytype(m::JuMP.Model, p, X::AbstractVector) = getpolymodule(m).polytype(m, p, monovec(X))
 
 # Free polynomial
 
-_polytype(m::JuMP.Model, ::Poly{false}, x::AbstractVector{MT}) where MT<:AbstractMonomial = polynomialtype(MT, JuMP.Variable)
+polytype(m::JuMP.Model, ::Poly{false}, x::AbstractVector{MT}) where MT<:AbstractMonomial = MultivariatePolynomials.polynomialtype(MT, JuMP.Variable)
 
 # x should be sorted and without duplicates
 function _createpoly(m::JuMP.Model, ::Poly{false}, x::AbstractVector{<:AbstractMonomial}, category::Symbol)
@@ -53,5 +38,3 @@ function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::BasicSemialge
 end
 
 addpolyconstraint!(m::JuMP.Model, args...) = error("PolyJuMP is just a JuMP extension for modelling Polynomial Optimization: it does not implement any reformulation. To use automatic sums of squares (SOS) reformulations, install the SumOfSquares Julia package and try \`using SumOfSquares\` and \`setpolymodule!(SumOfSquares)\` or use \`SOSModel\` instead of \`Model\`.")
-
-end

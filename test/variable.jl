@@ -39,6 +39,25 @@
     testvar(p7[2,3], true, :Default, X, :Bin)
 end
 
+@testset "@variable macro with Poly: Default methods" begin
+    m = Model()
+    @polyvar x y
+    X = [x^2, y^2]
+
+    function testvar(p, nonnegative, monotype, x, category=:Cont)
+        @test isa(p, DynamicPolynomials.Polynomial{true,JuMP.Variable})
+        @test p.x == x
+    end
+
+    @variable m p1[1:3] Poly(X)
+    @test isa(p1, Vector{DynamicPolynomials.Polynomial{true,JuMP.Variable}})
+    testvar(p1[1], false, :Default, X)
+    @variable(m, p2, Poly{false, :Classic}(X), category=:Int)
+    testvar(p2, false, :Classic, X, :Int)
+    @variable(m, p3, Poly{false, :Gram}(X))
+    testvar(p3, false, :Gram, [x^4,x^2*y^2,y^4])
+end
+
 @testset "getvalue function" begin
     m = Model()
     @variable m α

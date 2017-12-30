@@ -81,6 +81,6 @@ end
 
 include("macros.jl")
 include("solve.jl")
-include("module.jl")
+include("default_module.jl")
 
 end # module

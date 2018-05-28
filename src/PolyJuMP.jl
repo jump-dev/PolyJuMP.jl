@@ -5,7 +5,6 @@ module PolyJuMP
 using MultivariatePolynomials
 using SemialgebraicSets
 using JuMP
-import JuMP: getdual, addconstraint
 export getslack, setpolymodule!
 
 # Polynomial Constraint
@@ -18,11 +17,12 @@ struct NonNegPoly end
 mutable struct PolyConstraint <: JuMP.AbstractConstraint
     p # typically either be a polynomial or a Matrix of polynomials
     set
+    kwargs::Vector{Any}
     polymodule::Nullable{Module}
     domain::AbstractSemialgebraicSet
     delegate::Nullable
     function PolyConstraint(p, s)
-        new(p, s, nothing, FullSpace(), nothing)
+        new(p, s, Any[], nothing, FullSpace(), nothing)
     end
 end
 function setpolymodule!(c::PolyConstraint, pm::Module)
@@ -32,9 +32,10 @@ getpolymodule(c::PolyConstraint) = get(c.polymodule)
 
 const PolyConstraintRef = ConstraintRef{Model, PolyConstraint}
 
-function addconstraint(m::Model, c::PolyConstraint; domain::AbstractSemialgebraicSet=FullSpace())
+function JuMP.addconstraint(m::Model, c::PolyConstraint; domain::AbstractSemialgebraicSet=FullSpace(), kwargs...)
     setpolymodule!(c, getpolymodule(m))
     c.domain = domain
+    c.kwargs = kwargs
     polyconstr = getpolyconstr(m)
     push!(polyconstr, c)
     m.internalModelLoaded = false
@@ -52,7 +53,7 @@ end
 function getslack(c::PolyConstraintRef)
     getslack(getdelegate(c, :Slack))
 end
-function getdual(c::PolyConstraintRef)
+function JuMP.getdual(c::PolyConstraintRef)
     getdual(getdelegate(c, :Dual))
 end
 
@@ -91,7 +92,5 @@ end
 
 include("macros.jl")
 include("solve.jl")
-
-include("deprecated.jl")
 
 end # module

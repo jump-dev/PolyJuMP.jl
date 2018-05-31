@@ -4,8 +4,9 @@
     @polyvar x y
     X = [x^2, y^2]
 
-    #@test_throws ErrorException @variable m p Poly(X) unknown_kw=1 # Fails on v0.5 on Travis
+    @test_throws ErrorException @variable m p Poly(X) unknown_kw=1
     @test_throws ErrorException @variable m p == 1 Poly(X)
+    @test_throws ErrorException @variable m p Poly(X) start=1
     @test_throws ErrorException @variable m 0 <= p <= 1 Poly(X)
     @test_throws ErrorException @variable m 0 >= p >= 1 Poly(X)
     @test_throws ErrorException @variable m p <= 0 Poly(X)

@@ -16,6 +16,11 @@ Some presentations on, or using, PolyJuMP:
   * Benoît Legat at the JuMP Meetup 2017 [[Slides](http://www.juliaopt.org/meetings/mit2017/legat.pdf)] [[Video](https://youtu.be/kyo72yWYr54)]
   * [Joey Huchette at SIAM Opt 2017](https://docs.google.com/presentation/d/1ASfjB1TdLJmYxT0b6rnyGh9eLbMc-66bTOt3_3yvc90/edit?usp=sharing)
 
+[docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
+[docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg
+[docs-stable-url]: https://juliaopt.github.io/SumOfSquares.jl/stable
+[docs-latest-url]: https://juliaopt.github.io/SumOfSquares.jl/latest
+
 [pkg-0.5-img]: http://pkg.julialang.org/badges/PolyJuMP_0.5.svg
 [pkg-0.5-url]: http://pkg.julialang.org/?pkg=PolyJuMP
 [pkg-0.6-img]: http://pkg.julialang.org/badges/PolyJuMP_0.6.svg

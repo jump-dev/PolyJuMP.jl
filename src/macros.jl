@@ -33,10 +33,14 @@ function cvarchecks(_error::Function, lowerbound::Number, upperbound::Number, st
         _error("Unrecognized keyword argument $kwarg")
     end
     if !isnan(start)
-        _error("Polynomial variable declaration does not support the form ... == value.")
+        _error("Polynomial variable declaration does not support the start keyword argument.")
     end
     if lowerbound != -Inf && upperbound != Inf
-        _error("Polynomial variable declaration does not support the form lb <= ... <= ub. Use ... >= 0 and separate constraints instead.")
+        if lowerbound == upperbound
+            _error("Polynomial variable declaration does not support the form ... == value.")
+        else
+            _error("Polynomial variable declaration does not support the form lb <= ... <= ub. Use ... >= 0 and separate constraints instead.")
+        end
     end
     if lowerbound != -Inf && lowerbound != 0
         _error("Polynomial variable declaration does not support the form ... >= lb with nonzero lb.")

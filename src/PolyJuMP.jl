@@ -45,7 +45,7 @@ end
 function getdelegate(c::PolyConstraintRef, s::Symbol)
     delegate = getpolyconstr(c.m)[c.idx].delegate
     if isnull(delegate)
-        Base.warn("$(string(s)) value not defined for $(getname(v)). Check that the model was properly solved.")
+        error("$(string(s)) value not defined for constraint with index $c. Check that the model was properly solved.")
     end
     get(delegate)
 end

@@ -7,6 +7,15 @@
 
 PolyJuMP is an extension to [JuMP](https://github.com/JuliaOpt/JuMP.jl) for formulating and solving polynomial optimization problems. These problems can then be solved using [Sum of Squares Programming](https://github.com/JuliaOpt/SumOfSquares.jl).
 
+## Documentation
+
+- [**STABLE**][docs-stable-url] &mdash; **most recently tagged version of [SumOfSquares](https://github.com/JuliaOpt/SumOfSquares.jl)' documentation.**
+- [**LATEST**][docs-latest-url] &mdash; *in-development version of [SumOfSquares](https://github.com/JuliaOpt/SumOfSquares.jl)' documentation.*
+
+Some presentations on, or using, PolyJuMP:
+  * Benoît Legat at the JuMP Meetup 2017 [[Slides](http://www.juliaopt.org/meetings/mit2017/legat.pdf)] [[Video](https://youtu.be/kyo72yWYr54)]
+  * [Joey Huchette at SIAM Opt 2017](https://docs.google.com/presentation/d/1ASfjB1TdLJmYxT0b6rnyGh9eLbMc-66bTOt3_3yvc90/edit?usp=sharing)
+
 [pkg-0.5-img]: http://pkg.julialang.org/badges/PolyJuMP_0.5.svg
 [pkg-0.5-url]: http://pkg.julialang.org/?pkg=PolyJuMP
 [pkg-0.6-img]: http://pkg.julialang.org/badges/PolyJuMP_0.6.svg
@@ -20,8 +29,3 @@ PolyJuMP is an extension to [JuMP](https://github.com/JuliaOpt/JuMP.jl) for form
 [coveralls-url]: https://coveralls.io/github/JuliaOpt/PolyJuMP.jl?branch=master
 [codecov-img]: http://codecov.io/github/JuliaOpt/PolyJuMP.jl/coverage.svg?branch=master
 [codecov-url]: http://codecov.io/github/JuliaOpt/PolyJuMP.jl?branch=master
-
-Some presentations on, or using, PolyJuMP:
-  * [Benoit Legat at the JuMP Meetup 2017](http://www.juliaopt.org/developersmeetup/legat.pdf)
-  * [Joey Huchette at SIAM Opt 2017](https://docs.google.com/presentation/d/1ASfjB1TdLJmYxT0b6rnyGh9eLbMc-66bTOt3_3yvc90/edit?usp=sharing)
-  

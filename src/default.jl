@@ -7,12 +7,10 @@ getdefault(m::JuMP.Model, s) = getdefault(getpolydata(m), s)
 
 # includes Poly{false} but also custom types defined by other modules
 getdefault(data::Data, p) = p
-getdefault(data::Data, p::Poly{true, MS}) where MS = getdefault(data, Poly{true}){MS}(x)
+getdefault(data::Data, p::Poly{true, MS}) where MS = getdefault(data, Poly{true}){MS}(p.x)
 getdefault(data::Data, ::Type{Poly{true}}) = get_default(data.nonnegpolyvardefault)
 
 # includes Poly{false} but also custom types defined by other modules
-getdefault(data::Data, pc::PolyConstraint) = pc
-getdefault(data::Data, pc::PolyConstraint{PT, <:Union{NonNegPoly, NonNegPolyMatrix}}) where PT = PolyConstraint(pc.p, getdefault(data, pc.set))
 getdefault(data::Data, s::Union{NonNegPoly, NonNegPolyMatrix}) = getdefault(data, typeof(s))()
 getdefault(data::Data, ::Type{NonNegPoly}) = get_default(data.nonnegpolydefault)
 getdefault(data::Data, ::Type{NonNegPolyMatrix}) = get_default(data.nonnegpolymatrixdefault)

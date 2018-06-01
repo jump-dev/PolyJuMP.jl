@@ -17,7 +17,7 @@ abstract type AbstractPoly end
 struct Poly{P, MS, MT<:MultivariatePolynomials.AbstractMonomial, MV<:AbstractVector{MT}} <: AbstractPoly
     x::MV
 end
-Poly{P, MS}(x::AbstractVector{MT}) where {P, MS, MT} = Poly{P, MS, MT, typeof(x)}(x)
+Poly{P, MS}(x::AbstractVector{MT}) where {P, MS, MT<:MultivariatePolynomials.AbstractMonomial} = Poly{P, MS, MT, typeof(x)}(x)
 Poly{P, MS}(x) where {P, MS} = Poly{P, MS}(monovec(x))
 Poly{P}(x) where P = Poly{P, :Default}(x)
 Poly(x) = Poly{false}(x)
@@ -66,5 +66,5 @@ function JuMP.constructconstraint!(p::Union{AbstractPolynomialLike, AbstractMatr
 end
 # there is already a method for AbstractMatrix in PSDCone in JuMP so we need a more specific here to avoid ambiguity
 function JuMP.constructconstraint!(p::AbstractMatrix{<:AbstractPolynomialLike}, s::PSDCone)
-    PolyConstraint(p, s)
+    PolyConstraint(p, NonNegPolyMatrix())
 end

@@ -3,13 +3,14 @@ __precompile__()
 module PolyJuMP
 
 using MultivariatePolynomials
+using MultivariateMoments
 using SemialgebraicSets
 using JuMP
 export getslack, setpolymodule!
 
 # Polynomial Constraint
 
-export ZeroPoly, NonNegPoly
+export ZeroPoly, NonNegPoly, NonNegPolyMatrix
 abstract type PolynomialSet end
 struct ZeroPoly <: PolynomialSet end
 struct NonNegPoly <: PolynomialSet end
@@ -26,16 +27,15 @@ abstract type ConstraintDelegate end
 
 function JuMP.addconstraint(m::Model, pc::PolyConstraint; domain::AbstractSemialgebraicSet=FullSpace(), kwargs...)
     delegates = getdelegates(m)
-    c = getdefault(m, pc)
-    delegate = addpolyconstraint!(m, c.p, c.set, domain; kwargs...)
+    delegate = addpolyconstraint!(m, pc.p, pc.set, domain; kwargs...)
     push!(delegates, delegate)
     m.internalModelLoaded = false
     PolyConstraintRef(m, length(delegates))
 end
 
-getdelegate(c::PolyConstraintRef, s::Symbol) = getdelegates(c.m)[c.idx]
-getslack(c::PolyConstraintRef) = getslack(getdelegate(c, :Slack))
-JuMP.getdual(c::PolyConstraintRef) = getdual(getdelegate(c, :Dual))
+getdelegate(c::PolyConstraintRef) = getdelegates(c.m)[c.idx]
+getslack(c::PolyConstraintRef) = getslack(getdelegate(c))
+JuMP.getdual(c::PolyConstraintRef) = getdual(getdelegate(c))
 
 # PolyJuMP Data
 type Data

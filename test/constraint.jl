@@ -27,7 +27,11 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
     function testcon(m, cref, set::ZeroPoly, p, ineqs, eqs, kwargs=[])
         @test isa(cref, ConstraintRef{Model, PolyJuMP.PolyConstraint})
         c = PolyJuMP.getdelegate(cref)
-        @test c isa PolyJuMP.ZeroConstraint
+        if isempty(ineqs)
+            @test c isa PolyJuMP.ZeroConstraint
+        else
+            @test c isa PolyJuMP.ZeroConstraintWithDomain
+        end
     end
     function testcon(m, cref, set, p, ineqs, eqs, kwargs=[])
         @test isa(cref, ConstraintRef{Model, PolyJuMP.PolyConstraint})
@@ -59,6 +63,7 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
     testcon(m, @constraint(m, q - p in NonNegPoly()), TestPolyModule.TestNonNegConstraint(), q - p, [], [])
     testcon(m, @constraint(m, p + q >= 0, domain = @set x == y^3), TestPolyModule.TestNonNegConstraint(), p + q, [], [x - y^3])
     testcon(m, @constraint(m, p == q, domain = @set x == 1 && f(x, y)), ZeroPoly(), p - q, [], [x - 1, x + y - 2])
+    testcon(m, @constraint(m, p == q, domain = dom), ZeroPoly(), p - q, [x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
     testcon(m, @constraint(m, p - q in ZeroPoly(), domain = @set x == 1 && f(x, y)), ZeroPoly(), p - q, [], [x - 1, x + y - 2])
     testcon(m, @SDconstraint(m, [p q; q 0] ⪰ [0 0; 0 p]), TestPolyModule.TestNonNegMatrixConstraint(), [p q; q -p], [], [])
     testcon(m, @constraint(m, p <= q, maxdegree=1), TestPolyModule.TestNonNegConstraint(), q - p, [], [], [(:maxdegree, 1)])

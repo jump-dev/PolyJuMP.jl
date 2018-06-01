@@ -10,88 +10,58 @@ export getslack, setpolymodule!
 # Polynomial Constraint
 
 export ZeroPoly, NonNegPoly
+abstract type PolynomialSet end
+struct ZeroPoly <: PolynomialSet end
+struct NonNegPoly <: PolynomialSet end
+struct NonNegPolyMatrix <: PolynomialSet end
 
-struct ZeroPoly end
-struct NonNegPoly end
-
-mutable struct PolyConstraint <: JuMP.AbstractConstraint
-    p # typically either be a polynomial or a Matrix of polynomials
-    set
-    kwargs::Vector{Any}
-    polymodule::Nullable{Module}
-    domain::AbstractSemialgebraicSet
-    delegate::Nullable
-    function PolyConstraint(p, s)
-        new(p, s, Any[], nothing, FullSpace(), nothing)
-    end
+struct PolyConstraint{PT, ST<:PolynomialSet} <: JuMP.AbstractConstraint
+    p::PT # typically either be a polynomial or a Matrix of polynomials
+    set::ST
 end
-function setpolymodule!(c::PolyConstraint, pm::Module)
-    c.polymodule = pm
-end
-getpolymodule(c::PolyConstraint) = get(c.polymodule)
-
 const PolyConstraintRef = ConstraintRef{Model, PolyConstraint}
 
-function JuMP.addconstraint(m::Model, c::PolyConstraint; domain::AbstractSemialgebraicSet=FullSpace(), kwargs...)
-    setpolymodule!(c, getpolymodule(m))
-    c.domain = domain
-    c.kwargs = kwargs
-    polyconstr = getpolyconstr(m)
-    push!(polyconstr, c)
+# Responsible for getting slack and dual values
+abstract type ConstraintDelegate end
+
+function JuMP.addconstraint(m::Model, pc::PolyConstraint; domain::AbstractSemialgebraicSet=FullSpace(), kwargs...)
+    delegates = getdelegates(m)
+    c = getdefault(m, pc)
+    delegate = addpolyconstraint!(m, c.p, c.set, domain; kwargs...)
+    push!(delegates, delegate)
     m.internalModelLoaded = false
-    PolyConstraintRef(m, length(polyconstr))
+    PolyConstraintRef(m, length(delegates))
 end
 
-function getdelegate(c::PolyConstraintRef, s::Symbol)
-    delegate = getpolyconstr(c.m)[c.idx].delegate
-    if isnull(delegate)
-        error("$(string(s)) value not defined for constraint with index $c. Check that the model was properly solved.")
-    end
-    get(delegate)
-end
-
-function getslack(c::PolyConstraintRef)
-    getslack(getdelegate(c, :Slack))
-end
-function JuMP.getdual(c::PolyConstraintRef)
-    getdual(getdelegate(c, :Dual))
-end
+getdelegate(c::PolyConstraintRef, s::Symbol) = getdelegates(c.m)[c.idx]
+getslack(c::PolyConstraintRef) = getslack(getdelegate(c, :Slack))
+JuMP.getdual(c::PolyConstraintRef) = getdual(getdelegate(c, :Dual))
 
 # PolyJuMP Data
-
-type PolyData
-    polyconstr::Vector{PolyConstraint}
-    polymodule::Nullable{Module}
-    function PolyData()
-        new(PolyConstraint[], nothing)
+type Data
+    # Delegates for polynomial constraints created
+    delegates::Vector{ConstraintDelegate}
+    # Default set for Poly{true}
+    nonnegpolyvardefault::Nullable
+    # Default set for NonNegPoly
+    nonnegpolydefault::Nullable
+    # Default set for NonNegPolyMatrix
+    nonnegpolymatrixdefault::Nullable
+    function Data()
+        new(ConstraintDelegate[], nothing, nothing, nothing)
     end
 end
 
 function getpolydata(m::JuMP.Model)
     if !haskey(m.ext, :Poly)
-        m.solvehook = solvehook
-        m.ext[:Poly] = PolyData()
+        m.ext[:Poly] = Data()
     end
     m.ext[:Poly]
 end
-
-function getpolyconstr(m::JuMP.Model)
-    getpolydata(m).polyconstr
-end
-
-setpolymodule!(m::JuMP.Model, pm::Module) = setpolymodule!(getpolydata(m), pm)
-setpolymodule!(data::PolyData, pm::Module) = data.polymodule = pm
-
-getpolymodule(m::JuMP.Model) = getpolymodule(getpolydata(m))
-function getpolymodule(data::PolyData)
-    if isnull(data.polymodule)
-        return PolyJuMP
-    end
-    get(data.polymodule)
-end
+getdelegates(m::JuMP.Model) = getpolydata(m).delegates
 
 include("macros.jl")
-include("solve.jl")
+include("default.jl")
 include("default_methods.jl")
 
 end # module

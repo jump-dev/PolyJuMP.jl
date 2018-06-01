@@ -11,4 +11,6 @@
     @test PolyJuMP.getdefault(m, Poly{true}) == TestPolyModule.TestPoly
     @test PolyJuMP.getdefault(m, NonNegPoly) == TestPolyModule.TestNonNegConstraint
     @test PolyJuMP.getdefault(m, NonNegPolyMatrix) == TestPolyModule.TestNonNegMatrixConstraint
+    PolyJuMP.setdefault!(m, NonNegPolyMatrix, TestPolyModule.TestNonNegConstraint)
+    @test PolyJuMP.getdefault(m, NonNegPolyMatrix) == TestPolyModule.TestNonNegConstraint
 end

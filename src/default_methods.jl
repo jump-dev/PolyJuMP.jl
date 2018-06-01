@@ -1,6 +1,5 @@
 # Free polynomial
 JuMP.variabletype(m::JuMP.Model, p::Poly{false}) = polytype(m, p, p.x)
-polytype(m::JuMP.Model, p, X::AbstractVector) = polytype(m, p, monovec(X))
 polytype(m::JuMP.Model, ::Poly{false}, x::AbstractVector{MT}) where MT<:AbstractMonomial = MultivariatePolynomials.polynomialtype(MT, JuMP.Variable)
 
 # x should be sorted and without duplicates

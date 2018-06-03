@@ -1,8 +1,4 @@
-using JuMP
-import JuMP: validmodel, addtoexpr_reorder
-using Base.Meta
-
-export Poly, @set
+export Poly
 
 function JuMP.getvalue(t::AbstractTerm{<:JuMP.AbstractJuMPScalar})
     getvalue(coefficient(t)) * monomial(t)
@@ -14,20 +10,20 @@ end
 abstract type AbstractPoly end
 
 # x is a vector of monomials to be used to construct a polynomial variable
-# if MT is Gram, x represents the monomials of the form x^T Q x
-# if MT is Classic, it represents the monomials of the form a^T x
-# if MT is Default, it depends on whether the polynomials is constructed as nonnegative or not:
+# if MS is Gram, x represents the monomials of the form x^T Q x
+# if MS is Classic, it represents the monomials of the form a^T x
+# if MS is Default, it depends on whether the polynomials is constructed as nonnegative or not:
 # For a nonnegative polynomial, it corresponds to Gram, otherwise it corresponds to Classic.
-struct Poly{P, MT, MV} <: AbstractPoly
+struct Poly{P, MS, MT<:MultivariatePolynomials.AbstractMonomial, MV<:AbstractVector{MT}} <: AbstractPoly
     x::MV
 end
-Poly{P, MT}(x::MV) where {P, MT, MV} = Poly{P, MT, MV}(x)
+Poly{P, MS}(x::AbstractVector{MT}) where {P, MS, MT<:MultivariatePolynomials.AbstractMonomial} = Poly{P, MS, MT, typeof(x)}(x)
+Poly{P, MS}(x) where {P, MS} = Poly{P, MS}(monovec(x))
 Poly{P}(x) where P = Poly{P, :Default}(x)
 Poly(x) = Poly{false}(x)
 
-function JuMP.variabletype(m::Model, p::AbstractPoly)
-    getpolymodule(m).polytype(m, p)
-end
+JuMP.variabletype(m::JuMP.Model, p::Poly{true}) = JuMP.variabletype(m, getdefault(m, p))
+
 function cvarchecks(_error::Function, lowerbound::Number, upperbound::Number, start::Number; extra_kwargs...)
     for (kwarg, _) in extra_kwargs
         _error("Unrecognized keyword argument $kwarg")
@@ -58,17 +54,17 @@ end
 function JuMP.constructvariable!(m::Model, p::AbstractPoly, _error::Function, lowerbound::Number, upperbound::Number, category::Symbol, basename::AbstractString, start::Number; extra_kwargs...)
     cvarchecks(_error, lowerbound, upperbound, start; extra_kwargs...)
     _warnbounds(_error, p, lowerbound, upperbound)
-    getpolymodule(m).createpoly(m, p, category == :Default ? :Cont : category)
+    createpoly(m, getdefault(m, p), category == :Default ? :Cont : category)
 end
 
 function JuMP.constructconstraint!(p::AbstractPolynomialLike, sense::Symbol)
-    PolyConstraint(sense == :(<=) ? -p : p, sense == :(==) ? ZeroPoly() : NonNegPoly())
+    JuMP.constructconstraint!(sense == :(<=) ? -p : p, sense == :(==) ? ZeroPoly() : NonNegPoly())
 end
 
-function JuMP.constructconstraint!{PolyT<:AbstractPolynomialLike}(p::Union{PolyT, AbstractMatrix{PolyT}}, s)
+function JuMP.constructconstraint!(p::Union{AbstractPolynomialLike, AbstractMatrix{<:AbstractPolynomialLike}}, s)
     PolyConstraint(p, s)
 end
 # there is already a method for AbstractMatrix in PSDCone in JuMP so we need a more specific here to avoid ambiguity
-function JuMP.constructconstraint!{PolyT<:AbstractPolynomialLike}(p::AbstractMatrix{PolyT}, s::PSDCone)
-    PolyConstraint(p, s)
+function JuMP.constructconstraint!(p::AbstractMatrix{<:AbstractPolynomialLike}, s::PSDCone)
+    PolyConstraint(p, NonNegPolyMatrix())
 end

@@ -24,9 +24,18 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
     #@test macroexpand(:(@constraint(m, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1)))).head == :error
     @test macroexpand(:(@constraint(m, p + 0, domain = (@set x >= -1 && x <= 1)))).head == :error
 
+    function testcon(m, cref, set::ZeroPoly, p, ineqs, eqs, kwargs=[])
+        @test isa(cref, ConstraintRef{Model, PolyJuMP.PolyConstraint})
+        c = PolyJuMP.getdelegate(cref)
+        if isempty(ineqs)
+            @test c isa PolyJuMP.ZeroConstraint
+        else
+            @test c isa PolyJuMP.ZeroConstraintWithDomain
+        end
+    end
     function testcon(m, cref, set, p, ineqs, eqs, kwargs=[])
         @test isa(cref, ConstraintRef{Model, PolyJuMP.PolyConstraint})
-        c = PolyJuMP.getpolyconstr(m)[cref.idx]
+        c = PolyJuMP.getdelegate(cref)
         @test c.set == set
         @test c.kwargs == kwargs
         # == between JuMP affine expression is not accurate, e.g. β + α != α + β
@@ -49,15 +58,13 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
 
     f(x, y) = @set x + y == 2
     dom = @set x^2 + y^2 == 1 && x^3 + x*y^2 + y >= 1
-    testcon(m, @constraint(m, p >= q + 1, domain = @set y >= 1 && dom), NonNegPoly(), p - q - 1, [y-1, x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
-    testcon(m, @constraint(m, p <= q), NonNegPoly(), q - p, [], [])
-    testcon(m, @constraint(m, q - p in NonNegPoly()), NonNegPoly(), q - p, [], [])
-    testcon(m, @constraint(m, p + q >= 0, domain = @set x == y^3), NonNegPoly(), p + q, [], [x - y^3])
+    testcon(m, @constraint(m, p >= q + 1, domain = @set y >= 1 && dom), TestPolyModule.TestNonNegConstraint(), p - q - 1, [y-1, x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
+    testcon(m, @constraint(m, p <= q), TestPolyModule.TestNonNegConstraint(), q - p, [], [])
+    testcon(m, @constraint(m, q - p in NonNegPoly()), TestPolyModule.TestNonNegConstraint(), q - p, [], [])
+    testcon(m, @constraint(m, p + q >= 0, domain = @set x == y^3), TestPolyModule.TestNonNegConstraint(), p + q, [], [x - y^3])
     testcon(m, @constraint(m, p == q, domain = @set x == 1 && f(x, y)), ZeroPoly(), p - q, [], [x - 1, x + y - 2])
+    testcon(m, @constraint(m, p == q, domain = dom), ZeroPoly(), p - q, [x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
     testcon(m, @constraint(m, p - q in ZeroPoly(), domain = @set x == 1 && f(x, y)), ZeroPoly(), p - q, [], [x - 1, x + y - 2])
-    testcon(m, @SDconstraint(m, [p q; q 0] ⪰ [0 0; 0 p]), PSDCone(), [p q; q -p], [], [])
-    testcon(m, @constraint(m, p <= q, maxdegree=1), NonNegPoly(), q - p, [], [], [(:maxdegree, 1)])
-
-    cref = @constraint(m, p >= 0)
-    @test_throws ErrorException PolyJuMP.getdelegate(cref, :Test)
+    testcon(m, @SDconstraint(m, [p q; q 0] ⪰ [0 0; 0 p]), TestPolyModule.TestNonNegMatrixConstraint(), [p q; q -p], [], [])
+    testcon(m, @constraint(m, p <= q, maxdegree=1), TestPolyModule.TestNonNegConstraint(), q - p, [], [], [(:maxdegree, 1)])
 end

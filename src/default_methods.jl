@@ -27,7 +27,7 @@ function ZeroConstraint(zero_constraints::Vector{JuMP.ConstraintRef{JuMP.Model, 
     ZeroConstraint{MT, MVT, JC}(zero_constraints, x)
 end
 
-JuMP.getdual(c::ZeroConstraint) = MultivariateMoments.measure(getdual.(c.zero_constraints), c.x)
+JuMP.getdual(c::ZeroConstraint) = measure(getdual.(c.zero_constraints), c.x)
 
 function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::FullSpace)
     constraints = JuMP.constructconstraint!.(coefficients(p), :(==))

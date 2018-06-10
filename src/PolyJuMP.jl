@@ -41,14 +41,12 @@ JuMP.getdual(c::PolyConstraintRef) = getdual(getdelegate(c))
 type Data
     # Delegates for polynomial constraints created
     delegates::Vector{ConstraintDelegate}
-    # Default set for Poly{true}
-    nonnegpolyvardefault::Nullable
     # Default set for NonNegPoly
     nonnegpolydefault::Nullable
     # Default set for NonNegPolyMatrix
     nonnegpolymatrixdefault::Nullable
     function Data()
-        new(ConstraintDelegate[], nothing, nothing, nothing)
+        new(ConstraintDelegate[], nothing, nothing)
     end
 end
 
@@ -59,6 +57,8 @@ function getpolydata(m::JuMP.Model)
     m.ext[:Poly]
 end
 getdelegates(m::JuMP.Model) = getpolydata(m).delegates
+
+include("basis.jl")
 
 include("macros.jl")
 include("default.jl")

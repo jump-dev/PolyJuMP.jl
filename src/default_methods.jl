@@ -1,18 +1,11 @@
 # Free polynomial
-JuMP.variabletype(m::JuMP.Model, p::Poly{false}) = polytype(m, p, p.x)
-polytype(m::JuMP.Model, ::Poly{false}, x::AbstractVector{MT}) where MT<:AbstractMonomial = MultivariatePolynomials.polynomialtype(MT, JuMP.Variable)
-
-# x should be sorted and without duplicates
-function _createpoly(m::JuMP.Model, ::Poly{false}, x::AbstractVector{<:AbstractMonomial}, category::Symbol)
-    polynomial((i) -> Variable(m, -Inf, Inf, category), x)
+JuMP.variabletype(m::JuMP.Model, p::Poly) = polytype(m, p, p.polynomial_basis)
+function polytype(m::JuMP.Model, ::Poly, pb::AbstractPolynomialBasis)
+    MultivariatePolynomials.polynomialtype(pb, JuMP.Variable)
 end
 
-function createpoly(m::JuMP.Model, p::Poly{false, :Gram}, category::Symbol)
-    _createpoly(m, p, monomials(sum(p.x)^2), category)
-end
-
-function createpoly(m::JuMP.Model, p::Union{Poly{false, :Default}, Poly{false, :Classic}}, category::Symbol)
-    _createpoly(m, p, p.x, category)
+function createpoly(m::JuMP.Model, p::Poly, category::Symbol)
+    polynomial(i -> Variable(m, -Inf, Inf, category), p.polynomial_basis)
 end
 
 # NonNegPoly and NonNegPolyMatrix

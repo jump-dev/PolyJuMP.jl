@@ -9,20 +9,17 @@ end
 
 abstract type AbstractPoly end
 
-# x is a vector of monomials to be used to construct a polynomial variable
-# if MS is Gram, x represents the monomials of the form x^T Q x
-# if MS is Classic, it represents the monomials of the form a^T x
-# if MS is Default, it depends on whether the polynomials is constructed as nonnegative or not:
-# For a nonnegative polynomial, it corresponds to Gram, otherwise it corresponds to Classic.
-struct Poly{P, MS, MT<:MultivariatePolynomials.AbstractMonomial, MV<:AbstractVector{MT}} <: AbstractPoly
-    x::MV
-end
-Poly{P, MS}(x::AbstractVector{MT}) where {P, MS, MT<:MultivariatePolynomials.AbstractMonomial} = Poly{P, MS, MT, typeof(x)}(x)
-Poly{P, MS}(x) where {P, MS} = Poly{P, MS}(monovec(x))
-Poly{P}(x) where P = Poly{P, :Default}(x)
-Poly(x) = Poly{false}(x)
+"""
+    struct Poly{PB<:AbstractPolynomialBasis} <: AbstractPoly
+        polynomial_basis::PB
+    end
 
-JuMP.variabletype(m::JuMP.Model, p::Poly{true}) = JuMP.variabletype(m, getdefault(m, p))
+Polynomial variable ``v^\\top p`` where ``v`` is a vector of new decision variables and ``p`` is a vector of polynomials for the basis `polynomial_basis`.
+"""
+struct Poly{PB<:AbstractPolynomialBasis} <: AbstractPoly
+    polynomial_basis::PB
+end
+Poly(x::AbstractVector{<:MultivariatePolynomials.AbstractPolynomialLike}) = Poly(MonomialBasis(x))
 
 function cvarchecks(_error::Function, lowerbound::Number, upperbound::Number, start::Number; extra_kwargs...)
     for (kwarg, _) in extra_kwargs
@@ -38,15 +35,15 @@ function cvarchecks(_error::Function, lowerbound::Number, upperbound::Number, st
             _error("Polynomial variable declaration does not support the form lb <= ... <= ub. Use ... >= 0 and separate constraints instead.")
         end
     end
-    if lowerbound != -Inf && lowerbound != 0
-        _error("Polynomial variable declaration does not support the form ... >= lb with nonzero lb.")
+    if lowerbound != -Inf
+        _error("Polynomial variable declaration does not support the form ... >= lb.")
     end
     if upperbound != Inf
         _error("Polynomial variable declaration does not support the form ... <= ub.")
     end
 end
 function _warnbounds(_error, p::AbstractPoly, lowerbound, upperbound) end
-function _warnbounds(_error, p::Poly{false}, lowerbound, upperbound)
+function _warnbounds(_error, p::Poly, lowerbound, upperbound)
     if lowerbound != -Inf
         _error("Free polynomial variable declaration does not support the form ... >= 0, use SOSPoly(x) instead of Poly(x) to create Sum of Squares polynomials. Note that SOSPoly(x) creates the polynomial x^T Q x with Q symmetric positive semidefinite while Poly(x) creates the polynomial a^T x so the meaning of the vector of monomial x changes from Poly to SOSPoly.")
     end

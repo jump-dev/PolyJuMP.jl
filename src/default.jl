@@ -1,3 +1,5 @@
+export setpolymodule!
+
 setdefault!(m::JuMP.Model, S::Type, T::Type) = setdefault!(getpolydata(m), S, T)
 setdefault!(data::Data, ::Type{NonNegPoly}, S::Type) = data.nonnegpolydefault = S
 setdefault!(data::Data, ::Type{NonNegPolyMatrix}, S::Type) = data.nonnegpolymatrixdefault = S

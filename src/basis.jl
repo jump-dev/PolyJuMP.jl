@@ -1,3 +1,5 @@
+export FixedPolynomialBasis, MonomialBasis
+
 """
     abstract type AbstractPolynomialBasis end
 
@@ -21,6 +23,7 @@ polynomial basis for cubic polynomials in the variable `x`.
 struct FixedPolynomialBasis{PT<:MultivariatePolynomials.AbstractPolynomial, PV<:AbstractVector{PT}} <: AbstractPolynomialBasis
     p::PV
 end
+FixedPolynomialBasis(p::PV) where {PT<:MultivariatePolynomials.AbstractPolynomial, PV<:AbstractVector{PT}} = FixedPolynomialBasis{PT, PV}(p)
 
 function MultivariatePolynomials.polynomialtype(mb::FixedPolynomialBasis{PT}, T::Type) where PT
     C = MultivariatePolynomials.coefficienttype(PT)
@@ -45,5 +48,4 @@ MonomialBasis(x) = MonomialBasis(monovec(x))
 
 MultivariatePolynomials.polynomialtype(mb::MonomialBasis{MT}, T::Type) where MT = MultivariatePolynomials.polynomialtype(MT, T)
 MultivariatePolynomials.polynomial(f::Function, mb::MonomialBasis) = polynomial(f, mb.x)
-
-abstract type AbstractMeasureBasis end
+MultivariatePolynomials.coefficients(p, ::Type{<:MonomialBasis}) = coefficients(p)

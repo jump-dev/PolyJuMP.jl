@@ -21,6 +21,7 @@ struct Poly{PB<:AbstractPolynomialBasis} <: AbstractPoly
 end
 Poly(x::AbstractVector{<:MultivariatePolynomials.AbstractPolynomialLike}) = Poly(MonomialBasis(x))
 
+# Macro
 function cvarchecks(_error::Function, lowerbound::Number, upperbound::Number, start::Number; extra_kwargs...)
     for (kwarg, _) in extra_kwargs
         _error("Unrecognized keyword argument $kwarg")
@@ -52,16 +53,4 @@ function JuMP.constructvariable!(m::Model, p::AbstractPoly, _error::Function, lo
     cvarchecks(_error, lowerbound, upperbound, start; extra_kwargs...)
     _warnbounds(_error, p, lowerbound, upperbound)
     createpoly(m, getdefault(m, p), category == :Default ? :Cont : category)
-end
-
-function JuMP.constructconstraint!(p::AbstractPolynomialLike, sense::Symbol)
-    JuMP.constructconstraint!(sense == :(<=) ? -p : p, sense == :(==) ? ZeroPoly() : NonNegPoly())
-end
-
-function JuMP.constructconstraint!(p::Union{AbstractPolynomialLike, AbstractMatrix{<:AbstractPolynomialLike}}, s)
-    PolyConstraint(p, s)
-end
-# there is already a method for AbstractMatrix in PSDCone in JuMP so we need a more specific here to avoid ambiguity
-function JuMP.constructconstraint!(p::AbstractMatrix{<:AbstractPolynomialLike}, s::PSDCone)
-    PolyConstraint(p, NonNegPolyMatrix())
 end

@@ -3,8 +3,14 @@ using JuMP
 using PolyJuMP
 using MultivariatePolynomials
 
-struct TestNonNegConstraint end
-struct TestNonNegMatrixConstraint end
+struct TestNonNegConstraint
+    basis
+end
+TestNonNegConstraint() = TestNonNegConstraint(MonomialBasis)
+struct TestNonNegMatrixConstraint
+    basis
+end
+TestNonNegMatrixConstraint() = TestNonNegMatrixConstraint(MonomialBasis)
 struct TestConstraint <: PolyJuMP.ConstraintDelegate
     p
     set

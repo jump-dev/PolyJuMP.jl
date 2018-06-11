@@ -23,7 +23,7 @@ end
 JuMP.getdual(c::ZeroConstraint) = measure(getdual.(c.zero_constraints), c.x)
 
 function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::FullSpace)
-    constraints = JuMP.constructconstraint!.(coefficients(p), :(==))
+    constraints = JuMP.constructconstraint!.(coefficients(p, s.basis), :(==))
     zero_constraints = JuMP.addVectorizedConstraint(m, constraints)
     ZeroConstraint(zero_constraints, monomials(p))
 end
@@ -38,7 +38,7 @@ struct ZeroConstraintWithDomain{DT<:ConstraintDelegate} <: ConstraintDelegate
 end
 
 function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::BasicSemialgebraicSet)
-    lower = addpolyconstraint!(m,  p, NonNegPoly(), domain)
-    upper = addpolyconstraint!(m, -p, NonNegPoly(), domain)
+    lower = addpolyconstraint!(m,  p, NonNegPoly(s.basis), domain)
+    upper = addpolyconstraint!(m, -p, NonNegPoly(s.basis), domain)
     ZeroConstraintWithDomain(lower, upper)
 end

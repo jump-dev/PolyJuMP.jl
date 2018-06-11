@@ -20,15 +20,18 @@ Polynomial basis with the polynomials of the vector `p`.
 For instance, `FixedPolynomialBasis([1, x, 2x^2-1, 4x^3-3x])` is the Chebyshev
 polynomial basis for cubic polynomials in the variable `x`.
 """
-struct FixedPolynomialBasis{PT<:MultivariatePolynomials.AbstractPolynomial, PV<:AbstractVector{PT}} <: AbstractPolynomialBasis
+struct FixedPolynomialBasis{PT<:MultivariatePolynomials.AbstractPolynomialLike, PV<:AbstractVector{PT}} <: AbstractPolynomialBasis
     p::PV
 end
-FixedPolynomialBasis(p::PV) where {PT<:MultivariatePolynomials.AbstractPolynomial, PV<:AbstractVector{PT}} = FixedPolynomialBasis{PT, PV}(p)
+FixedPolynomialBasis(p::PV) where {PT<:MultivariatePolynomials.AbstractPolynomialLike, PV<:AbstractVector{PT}} = FixedPolynomialBasis{PT, PV}(p)
 
 function MultivariatePolynomials.polynomialtype(mb::FixedPolynomialBasis{PT}, T::Type) where PT
     C = MultivariatePolynomials.coefficienttype(PT)
     U = typeof(zero(C) * zero(T) + zero(C) * zero(T))
     MultivariatePolynomials.polynomialtype(PT, U)
+end
+function MultivariatePolynomials.polynomial(f::Function, fpb::FixedPolynomialBasis)
+    sum(ip -> f(ip[1]) * ip[2], enumerate(fpb.p))
 end
 
 """

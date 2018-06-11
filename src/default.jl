@@ -8,9 +8,12 @@ getdefault(m::JuMP.Model, s) = getdefault(getpolydata(m), s)
 
 # includes Poly but also custom types defined by other modules
 getdefault(data::Data, p) = p
-getdefault(data::Data, s::Union{NonNegPoly, NonNegPolyMatrix}) = getdefault(data, typeof(s))()
-getdefault(data::Data, ::Type{NonNegPoly}) = get_default(data.nonnegpolydefault)
-getdefault(data::Data, ::Type{NonNegPolyMatrix}) = get_default(data.nonnegpolymatrixdefault)
+function getdefault(data::Data, s::Union{NonNegPoly, NonNegPolyMatrix})
+    S = getdefault(data, typeof(s))
+    S(s.basis)
+end
+getdefault(data::Data, ::Type{<:NonNegPoly}) = get_default(data.nonnegpolydefault)
+getdefault(data::Data, ::Type{<:NonNegPolyMatrix}) = get_default(data.nonnegpolymatrixdefault)
 
 setpolymodule!(m::JuMP.Model, pm::Module) = setpolymodule!(getpolydata(m), pm)
 setpolymodule!(data::Data, pm::Module) = pm.setdefaults!(data)

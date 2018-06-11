@@ -2,9 +2,18 @@ export ZeroPoly, NonNegPoly, NonNegPolyMatrix
 export getslack
 
 abstract type PolynomialSet end
-struct ZeroPoly{B<:AbstractPolynomialBasis} <: PolynomialSet end
-struct NonNegPoly <: PolynomialSet end
-struct NonNegPolyMatrix <: PolynomialSet end
+struct ZeroPoly{B<:AbstractPolynomialBasis} <: PolynomialSet
+    basis::Type{B}
+end
+ZeroPoly() = ZeroPoly(MonomialBasis)
+struct NonNegPoly{B<:AbstractPolynomialBasis} <: PolynomialSet
+    basis::Type{B}
+end
+NonNegPoly() = NonNegPoly(MonomialBasis)
+struct NonNegPolyMatrix{B<:AbstractPolynomialBasis} <: PolynomialSet
+    basis::Type{B}
+end
+NonNegPolyMatrix() = NonNegPolyMatrix(MonomialBasis)
 
 struct PolyConstraint{PT, ST<:PolynomialSet} <: JuMP.AbstractConstraint
     p::PT # typically either be a polynomial or a Matrix of polynomials

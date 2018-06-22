@@ -2,18 +2,12 @@ export ZeroPoly, NonNegPoly, NonNegPolyMatrix
 export getslack
 
 abstract type PolynomialSet end
-struct ZeroPoly{B<:AbstractPolynomialBasis} <: PolynomialSet
-    basis::Type{B}
-end
-ZeroPoly() = ZeroPoly(MonomialBasis)
-struct NonNegPoly{B<:AbstractPolynomialBasis} <: PolynomialSet
-    basis::Type{B}
-end
-NonNegPoly() = NonNegPoly(MonomialBasis)
-struct NonNegPolyMatrix{B<:AbstractPolynomialBasis} <: PolynomialSet
-    basis::Type{B}
-end
-NonNegPolyMatrix() = NonNegPolyMatrix(MonomialBasis)
+struct ZeroPoly <: PolynomialSet end
+ZeroPoly() = ZeroPoly()
+struct NonNegPoly <: PolynomialSet end
+NonNegPoly() = NonNegPoly()
+struct NonNegPolyMatrix <: PolynomialSet end
+NonNegPolyMatrix() = NonNegPolyMatrix()
 
 struct PolyConstraint{PT, ST<:PolynomialSet} <: JuMP.AbstractConstraint
     p::PT # typically either be a polynomial or a Matrix of polynomials
@@ -24,9 +18,9 @@ const PolyConstraintRef = ConstraintRef{Model, PolyConstraint}
 # Responsible for getting slack and dual values
 abstract type ConstraintDelegate end
 
-function JuMP.addconstraint(m::Model, pc::PolyConstraint; domain::AbstractSemialgebraicSet=FullSpace(), kwargs...)
+function JuMP.addconstraint(m::Model, pc::PolyConstraint; domain::AbstractSemialgebraicSet=FullSpace(), basis=MonomialBasis, kwargs...)
     delegates = getdelegates(m)
-    delegate = addpolyconstraint!(m, pc.p, pc.set, domain; kwargs...)
+    delegate = addpolyconstraint!(m, pc.p, pc.set, domain, basis; kwargs...)
     push!(delegates, delegate)
     m.internalModelLoaded = false
     PolyConstraintRef(m, length(delegates))

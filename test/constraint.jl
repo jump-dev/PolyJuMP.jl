@@ -24,7 +24,7 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
     #@test macroexpand(:(@constraint(m, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1)))).head == :error
     @test macroexpand(:(@constraint(m, p + 0, domain = (@set x >= -1 && x <= 1)))).head == :error
 
-    function testcon(m, cref, set::ZeroPoly, p, ineqs, eqs, kwargs=[])
+    function testcon(m, cref, set::ZeroPoly, p, ineqs, eqs, basis=PolyJuMP.MonomialBasis, kwargs=[])
         @test isa(cref, ConstraintRef{Model, PolyJuMP.PolyConstraint})
         c = PolyJuMP.getdelegate(cref)
         if isempty(ineqs)
@@ -33,9 +33,10 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
             @test c isa PolyJuMP.ZeroConstraintWithDomain
         end
     end
-    function testcon(m, cref, set, p, ineqs, eqs, kwargs=[])
+    function testcon(m, cref, set, p, ineqs, eqs, basis=PolyJuMP.MonomialBasis, kwargs=[])
         @test isa(cref, ConstraintRef{Model, PolyJuMP.PolyConstraint})
         c = PolyJuMP.getdelegate(cref)
+        @test c.basis == basis
         @test c.set == set
         @test c.kwargs == kwargs
         # == between JuMP affine expression is not accurate, e.g. β + α != α + β
@@ -66,5 +67,5 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
     testcon(m, @constraint(m, p == q, domain = dom), ZeroPoly(), p - q, [x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
     testcon(m, @constraint(m, p - q in ZeroPoly(), domain = @set x == 1 && f(x, y)), ZeroPoly(), p - q, [], [x - 1, x + y - 2])
     testcon(m, @SDconstraint(m, [p q; q 0] ⪰ [0 0; 0 p]), TestPolyModule.TestNonNegMatrixConstraint(), [p q; q -p], [], [])
-    testcon(m, @constraint(m, p <= q, maxdegree=1), TestPolyModule.TestNonNegConstraint(), q - p, [], [], [(:maxdegree, 1)])
+    testcon(m, @constraint(m, p <= q, maxdegree=1), TestPolyModule.TestNonNegConstraint(), q - p, [], [], MonomialBasis, [(:maxdegree, 1)])
 end

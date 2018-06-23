@@ -9,7 +9,7 @@ function createpoly(m::JuMP.Model, p::Poly, category::Symbol)
 end
 
 # NonNegPoly and NonNegPolyMatrix
-addpolyconstraint!(m::JuMP.Model, p, s::Union{NonNegPoly, NonNegPolyMatrix}, domain; kwargs...) = addpolyconstraint!(m, p, getdefault(m, s), domain; kwargs...)
+addpolyconstraint!(m::JuMP.Model, p, s::Union{NonNegPoly, NonNegPolyMatrix}, domain, basis; kwargs...) = addpolyconstraint!(m, p, getdefault(m, s), domain, basis; kwargs...)
 
 # ZeroPoly
 struct ZeroConstraint{MT <: AbstractMonomial, MVT <: AbstractVector{MT}, JC <: JuMP.AbstractConstraint} <: ConstraintDelegate

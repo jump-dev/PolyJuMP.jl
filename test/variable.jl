@@ -1,9 +1,8 @@
 @testset "@variable macro with Poly" begin
-    m = Model()
-    setpolymodule!(m, TestPolyModule)
     @polyvar x y
     X = [1, y, x^2, x, y^2]
 
+    m = Model()
     @test_throws ErrorException @variable m p Poly(X) unknown_kw=1
     @test_throws ErrorException @variable m p == 1 Poly(X)
     @test_throws ErrorException @variable m p Poly(X) start=1
@@ -13,56 +12,57 @@
     @test_throws ErrorException @variable m p >= 1 Poly(X)
     @test_throws ErrorException @variable m p == 1 Poly(X)
     @test_throws ErrorException @variable m p >= 0 Poly(X)
+    @test_throws ErrorException @variable(m, p3[2:3] >= 0, Poly(X))
 
-    function testvar(p::MultivariatePolynomials.AbstractPolynomial, nonnegative, monotype, category=:Cont)
-        @test !nonnegative
-    end
-    function testvar(p::TestPolyModule.TestPolyVar{MS}, nonnegative, monotype, category=:Cont) where MS
-        @test MS == monotype
-        @test p.x == monovec(X)
-        @test p.x[1] == x^2
-        @test p.x[2] == y^2
-        @test p.x[3] == x
-        @test p.x[4] == y
-        @test p.x[5] == 1
-        @test p.category == category
-    end
-
-    @variable m p1[1:3] Poly{true}(X)
-    @test isa(p1, Vector{TestPolyModule.TestPolyVar{:Default}})
-    testvar(p1[1], true, :Default)
-    @variable(m, p2, Poly{false, :Classic}(X), category=:Int)
-    testvar(p2, false, :Classic, :Int)
-    @variable(m, p3, Poly{false, :Gram}(X))
-    testvar(p3, false, :Gram)
-    @variable m p4 >= 0 Poly{true}(X)
-    testvar(p4, true, :Default)
-    @variable(m, p5 >= 0, Poly{true, :Classic}(X))
-    testvar(p5, true, :Classic)
-    @variable(m, p6[2:3] >= 0, Poly{true, :Gram}(X))
-    @test isa(p6, JuMP.JuMPArray{TestPolyModule.TestPolyVar{:Gram},1,Tuple{UnitRange{Int}}})
-    testvar(p6[2], true, :Gram)
-    @variable(m, p7[i=2:3,j=i:4], Poly{true}(X), category=:Bin)
-    testvar(p7[2,3], true, :Default, :Bin)
-end
-
-@testset "@variable macro with Poly: Default methods" begin
-    m = Model()
-    @polyvar x y
-    X = [x^2, y^2]
-
-    function testvar(p, nonnegative, monotype, x, category=:Cont)
-        @test isa(p, DynamicPolynomials.Polynomial{true,JuMP.Variable})
+    function testvar(m, p, x, category=:Cont, vars=true)
+        @test isa(p, vars ? DynamicPolynomials.Polynomial{true,JuMP.Variable} : DynamicPolynomials.Polynomial{true,JuMP.AffExpr})
         @test p.x == x
+        if vars
+            @test all(α -> m.colCat[α.col] == category, coefficients(p))
+        else
+            @test all(α -> m.colCat[α.vars[1].col] == category, coefficients(p))
+        end
     end
 
-    @variable m p1[1:3] Poly(X)
-    @test isa(p1, Vector{DynamicPolynomials.Polynomial{true,JuMP.Variable}})
-    testvar(p1[1], false, :Default, X)
-    @variable(m, p2, Poly{false, :Classic}(X), category=:Int)
-    testvar(p2, false, :Classic, X, :Int)
-    @variable(m, p3, Poly{false, :Gram}(X))
-    testvar(p3, false, :Gram, [x^4,x^2*y^2,y^4])
+    @testset "MonomialBasis" begin
+        m = Model()
+        @variable m p1[1:3] Poly(X)
+        @test isa(p1, Vector{DynamicPolynomials.Polynomial{true,JuMP.Variable}})
+        testvar(m, p1[1], X)
+        @variable(m, p2, Poly(X), category=:Int)
+        testvar(m, p2, X, :Int)
+        @variable(m, p3[2:3], Poly(X))
+        @test isa(p3, JuMP.JuMPArray{DynamicPolynomials.Polynomial{true,JuMP.Variable},1,Tuple{UnitRange{Int}}})
+        testvar(m, p3[2], X)
+        @variable(m, p4[i=2:3,j=i:4], Poly(X), category=:Bin)
+        testvar(m, p4[2,3], X, :Bin)
+
+        X = [x^2, y^2]
+        @variable m p5[1:3] Poly(X)
+        @test isa(p5, Vector{DynamicPolynomials.Polynomial{true,JuMP.Variable}})
+        testvar(m, p5[1], X)
+        @variable(m, p6, Poly(X), category=:Int)
+        testvar(m, p6, X, :Int)
+    end
+
+    @testset "FixedPolynomialBasis" begin
+        m = Model()
+        @variable(m, p1, Poly(FixedPolynomialBasis([1 - x^2, x^2 + 2])), category=:Bin)
+        testvar(m, p1, monovec([x^2, 1]), :Bin, false)
+        @variable(m, p2[1:2], Poly(FixedPolynomialBasis([1 - x^2, x^2 + 2])))
+        testvar(m, p2[1], monovec([x^2, 1]), :Cont, false)
+        # Elements of the basis have type monomial
+        @variable(m, p3[2:3], Poly(FixedPolynomialBasis([x, x^2])))
+        testvar(m, p3[2], monovec([x^2, x]), :Cont, false)
+        # Elements of the basis have type term
+        @variable(m, p4[1:2], Poly(FixedPolynomialBasis([1, x, x^2])), category=:Bin)
+        testvar(m, p4[1], monovec([x^2, x, 1]), :Bin, false)
+        # Elements of the basis have type variable
+        @variable(m, p5[-1:1], Poly(FixedPolynomialBasis([x, y])), category=:Int)
+        testvar(m, p5[0], monovec([x, y]), :Int, false)
+        @variable(m, p6[-1:1], Poly(FixedPolynomialBasis([x])), category=:Int)
+        testvar(m, p6[0], monovec([x]), :Int, false)
+    end
 end
 
 @testset "getvalue function" begin

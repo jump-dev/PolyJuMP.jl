@@ -1,22 +1,15 @@
 # Free polynomial
-JuMP.variabletype(m::JuMP.Model, p::Poly{false}) = polytype(m, p, p.x)
-polytype(m::JuMP.Model, ::Poly{false}, x::AbstractVector{MT}) where MT<:AbstractMonomial = MultivariatePolynomials.polynomialtype(MT, JuMP.Variable)
-
-# x should be sorted and without duplicates
-function _createpoly(m::JuMP.Model, ::Poly{false}, x::AbstractVector{<:AbstractMonomial}, category::Symbol)
-    polynomial((i) -> Variable(m, -Inf, Inf, category), x)
+JuMP.variabletype(m::JuMP.Model, p::Poly) = polytype(m, p, p.polynomial_basis)
+function polytype(m::JuMP.Model, ::Poly, pb::AbstractPolynomialBasis)
+    MultivariatePolynomials.polynomialtype(pb, JuMP.Variable)
 end
 
-function createpoly(m::JuMP.Model, p::Poly{false, :Gram}, category::Symbol)
-    _createpoly(m, p, monomials(sum(p.x)^2), category)
-end
-
-function createpoly(m::JuMP.Model, p::Union{Poly{false, :Default}, Poly{false, :Classic}}, category::Symbol)
-    _createpoly(m, p, p.x, category)
+function createpoly(m::JuMP.Model, p::Poly, category::Symbol)
+    polynomial(i -> Variable(m, -Inf, Inf, category), p.polynomial_basis)
 end
 
 # NonNegPoly and NonNegPolyMatrix
-addpolyconstraint!(m::JuMP.Model, p, s::Union{NonNegPoly, NonNegPolyMatrix}, domain; kwargs...) = addpolyconstraint!(m, p, getdefault(m, s), domain; kwargs...)
+addpolyconstraint!(m::JuMP.Model, p, s::Union{NonNegPoly, NonNegPolyMatrix}, domain, basis; kwargs...) = addpolyconstraint!(m, p, getdefault(m, s), domain, basis; kwargs...)
 
 # ZeroPoly
 struct ZeroConstraint{MT <: AbstractMonomial, MVT <: AbstractVector{MT}, JC <: JuMP.AbstractConstraint} <: ConstraintDelegate
@@ -29,14 +22,14 @@ end
 
 JuMP.getdual(c::ZeroConstraint) = measure(getdual.(c.zero_constraints), c.x)
 
-function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::FullSpace)
-    constraints = JuMP.constructconstraint!.(coefficients(p), :(==))
+function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::FullSpace, basis)
+    constraints = JuMP.constructconstraint!.(coefficients(p, basis), :(==))
     zero_constraints = JuMP.addVectorizedConstraint(m, constraints)
     ZeroConstraint(zero_constraints, monomials(p))
 end
 
-function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::AbstractAlgebraicSet)
-    addpolyconstraint!(m, rem(p, ideal(domain)), s, FullSpace())
+function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::AbstractAlgebraicSet, basis)
+    addpolyconstraint!(m, rem(p, ideal(domain)), s, FullSpace(), basis)
 end
 
 struct ZeroConstraintWithDomain{DT<:ConstraintDelegate} <: ConstraintDelegate
@@ -44,8 +37,8 @@ struct ZeroConstraintWithDomain{DT<:ConstraintDelegate} <: ConstraintDelegate
     upper::DT
 end
 
-function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::BasicSemialgebraicSet)
-    lower = addpolyconstraint!(m,  p, NonNegPoly(), domain)
-    upper = addpolyconstraint!(m, -p, NonNegPoly(), domain)
+function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::BasicSemialgebraicSet, basis)
+    lower = addpolyconstraint!(m,  p, NonNegPoly(), domain, basis)
+    upper = addpolyconstraint!(m, -p, NonNegPoly(), domain, basis)
     ZeroConstraintWithDomain(lower, upper)
 end

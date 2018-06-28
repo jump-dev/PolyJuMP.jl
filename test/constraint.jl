@@ -1,16 +1,7 @@
-function affexpr_iszero(m, affexpr)
-    iszero(affexpr.constant) || return false
-    expr = Dict{Variable, Float64}()
-    fill_expr!(m, expr, affexpr)
-    for (var, coeff) in expr
-        if !iszero(coeff)
-            return false
-        end
-    end
-    return true
+_isequal(p, q) = all(JuMP.isequal_canonical.(coefficients(p), coefficients(q)))
+function _isequal(x::AbstractArray, y::AbstractArray)
+    size(x) == size(y) && all(_isequal.(x, y))
 end
-_iszero(m, p) = all(ae -> affexpr_iszero(m, ae), coefficients(p))
-_iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
 
 @testset "@constraint macro with polynomials" begin
     m = Model()
@@ -35,7 +26,7 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
         # == between JuMP affine expression is not accurate, e.g. β + α != α + β
         # == 0 is not defined either
         # c.p and p can be matrices
-        @test _iszero(m, c.p - p)
+        @test _isequal(c.p, p)
         if isempty(ineqs)
             @test c isa PolyJuMP.ZeroConstraint
         else
@@ -51,7 +42,7 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
         # == between JuMP affine expression is not accurate, e.g. β + α != α + β
         # == 0 is not defined either
         # c.p and p can be matrices
-        @test _iszero(m, c.p - p)
+        @test _isequal(c.p, p)
         if isempty(ineqs)
             if isempty(eqs)
                 @test isa(c.domain, FullSpace)

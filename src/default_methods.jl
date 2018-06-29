@@ -1,11 +1,21 @@
 # Free polynomial
 JuMP.variabletype(m::JuMP.Model, p::Poly) = polytype(m, p, p.polynomial_basis)
 function polytype(m::JuMP.Model, ::Poly, pb::AbstractPolynomialBasis)
-    MultivariatePolynomials.polynomialtype(pb, JuMP.Variable)
+    MultivariatePolynomials.polynomialtype(pb, JuMP.VariableRef)
 end
 
-function createpoly(m::JuMP.Model, p::Poly, category::Symbol)
-    polynomial(i -> Variable(m, -Inf, Inf, category), p.polynomial_basis)
+function createpoly(m::JuMP.Model, p::Poly, binary::Bool, integer::Bool)
+    function _newvar(i)
+        v = VariableRef(m)
+        if binary
+            JuMP.setbinary(v)
+        end
+        if integer
+            JuMP.setinteger(v)
+        end
+        v
+    end
+    polynomial(_newvar, p.polynomial_basis)
 end
 
 # NonNegPoly and NonNegPolyMatrix
@@ -20,7 +30,7 @@ function ZeroConstraint(zero_constraints::Vector{JuMP.ConstraintRef{JuMP.Model, 
     ZeroConstraint{MT, MVT, JC}(zero_constraints, x)
 end
 
-JuMP.getdual(c::ZeroConstraint) = measure(getdual.(c.zero_constraints), c.x)
+JuMP.resultdual(c::ZeroConstraint) = measure(JuMP.resultdual.(c.zero_constraints), c.x)
 
 function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::FullSpace, basis)
     constraints = JuMP.constructconstraint!.(coefficients(p, basis), :(==))

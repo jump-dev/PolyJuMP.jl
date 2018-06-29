@@ -7,6 +7,9 @@ using MultivariateMoments
 using SemialgebraicSets
 using JuMP
 
+using MathOptInterface
+const MOI = MathOptInterface
+
 include("basis.jl")
 
 include("variable.jl")

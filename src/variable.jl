@@ -60,5 +60,5 @@ function JuMP.buildvariable(_error::Function, info::JuMP.VariableInfo, p::Abstra
     Variable(p, info.binary, info.integer)
 end
 function JuMP.addvariable(m::JuMP.AbstractModel, v::Variable, name::String)
-    createpoly(m, getdefault(m, p), v.binary, v.integer)
+    createpoly(m, getdefault(m, v.p), v.binary, v.integer)
 end

@@ -19,7 +19,7 @@ function JuMP.addconstraint(m::Model, pc::PolyConstraint, name::String; domain::
     delegates = getdelegates(m)
     delegate = addpolyconstraint!(m, pc.p, pc.set, domain, basis; kwargs...)
     push!(delegates, delegate)
-    PolyConstraintRef(m, delegate)
+    JuMP.ConstraintRef(m, delegate)
 end
 
 getdelegate(c::PolyConstraintRef) = c.index.delegate

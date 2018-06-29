@@ -74,7 +74,7 @@ function JuMP.buildconstraint(_error::Function, p::AbstractPolynomialLike, s::MO
     PolyConstraint(s.upper-p, NonNegPoly())
 end
 
-function JuMP.buildconstraint(_error::Function, np::Union{AbstractPolynomialLike, AbstractMatrix{<:AbstractPolynomialLike}}, s)
+function JuMP.buildconstraint(_error::Function, p::Union{AbstractPolynomialLike, AbstractMatrix{<:AbstractPolynomialLike}}, s)
     PolyConstraint(p, s)
 end
 # there is already a method for AbstractMatrix in PSDCone in JuMP so we need a more specific here to avoid ambiguity

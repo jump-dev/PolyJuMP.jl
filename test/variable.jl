@@ -43,8 +43,14 @@
         @variable m p5[1:3] Poly(X)
         @test isa(p5, Vector{DynamicPolynomials.Polynomial{true,JuMP.VariableRef}})
         testvar(m, p5[1], X)
-        @variable(m, p6, Poly(X), integer=true)
+        @variable(m, p6, Poly(MonomialBasis(X)), integer=true)
         testvar(m, p6, X, false, true)
+    end
+
+    @testset "ScaledMonomialBasis" begin
+        m = Model()
+        @variable(m, p1, Poly(ScaledMonomialBasis([1, x, x^2])), Int)
+        testvar(m, p1, monovec([1, x, x^2]), false, true, false)
     end
 
     @testset "FixedPolynomialBasis" begin

@@ -1,5 +1,5 @@
 # PolyJuMP Data
-type Data
+mutable struct Data
     # Default set for NonNegPoly
     nonnegpolydefault::Nullable
     # Default set for NonNegPolyMatrix

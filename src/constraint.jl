@@ -17,7 +17,7 @@ const PolyConstraintRef{CD<:ConstraintDelegate} = ConstraintRef{Model, CD}
 
 function JuMP.addconstraint(m::Model, pc::PolyConstraint, name::String; domain::AbstractSemialgebraicSet=FullSpace(), basis=MonomialBasis, kwargs...)
     delegate = addpolyconstraint!(m, pc.p, pc.set, domain, basis; kwargs...)
-    JuMP.ConstraintRef(m, delegate)
+    JuMP.ConstraintRef(m, delegate, JuMP.ScalarShape())
 end
 
 getdelegate(c::PolyConstraintRef) = c.index

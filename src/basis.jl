@@ -1,4 +1,4 @@
-export FixedPolynomialBasis, MonomialBasis
+export FixedPolynomialBasis, ScaledMonomialBasis, MonomialBasis
 
 """
     abstract type AbstractPolynomialBasis end

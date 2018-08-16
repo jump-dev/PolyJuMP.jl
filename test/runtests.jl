@@ -1,6 +1,8 @@
 using JuMP
 using PolyJuMP
-using Base.Test
+
+using Compat
+using Compat.Test
 
 using SemialgebraicSets
 

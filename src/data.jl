@@ -1,11 +1,11 @@
 # PolyJuMP Data
-type Data
+mutable struct Data
     # Delegates for polynomial constraints created
     delegates::Vector{ConstraintDelegate}
     # Default set for NonNegPoly
-    nonnegpolydefault::Nullable
+    nonnegpolydefault
     # Default set for NonNegPolyMatrix
-    nonnegpolymatrixdefault::Nullable
+    nonnegpolymatrixdefault
     function Data()
         new(ConstraintDelegate[], nothing, nothing)
     end

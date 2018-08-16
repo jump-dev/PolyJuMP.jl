@@ -23,7 +23,9 @@ polynomial basis for cubic polynomials in the variable `x`.
 struct FixedPolynomialBasis{PT<:MultivariatePolynomials.AbstractPolynomialLike, PV<:AbstractVector{PT}} <: AbstractPolynomialBasis
     polynomials::PV
 end
-FixedPolynomialBasis(polynomials::PV) where {PT<:MultivariatePolynomials.AbstractPolynomialLike, PV<:AbstractVector{PT}} = FixedPolynomialBasis{PT, PV}(polynomials)
+if VERSION < v"0.7-"
+    FixedPolynomialBasis(polynomials::PV) where {PT<:MultivariatePolynomials.AbstractPolynomialLike, PV<:AbstractVector{PT}} = FixedPolynomialBasis{PT, PV}(polynomials)
+end
 
 function MultivariatePolynomials.polynomialtype(mb::FixedPolynomialBasis{PT}, T::Type) where PT
     C = MultivariatePolynomials.coefficienttype(PT)
@@ -46,7 +48,9 @@ for the subspace of quadratic polynomials in the variables `x`, `y`.
 struct MonomialBasis{MT<:MultivariatePolynomials.AbstractMonomial, MV<:AbstractVector{MT}} <: AbstractPolynomialBasis
     monomials::MV
 end
-MonomialBasis(monomials::AbstractVector{MT}) where {MT<:MultivariatePolynomials.AbstractMonomial} = MonomialBasis{MT, typeof(monomials)}(monomials)
+if VERSION < v"0.7-"
+    MonomialBasis(monomials::AbstractVector{MT}) where {MT<:MultivariatePolynomials.AbstractMonomial} = MonomialBasis{MT, typeof(monomials)}(monomials)
+end
 MonomialBasis(monomials) = MonomialBasis(monovec(monomials))
 
 MultivariatePolynomials.polynomialtype(mb::MonomialBasis{MT}, T::Type) where MT = MultivariatePolynomials.polynomialtype(MT, T)
@@ -78,7 +82,9 @@ Society for Industrial and Applied Mathematics, **2012**.
 struct ScaledMonomialBasis{MT<:MultivariatePolynomials.AbstractMonomial, MV<:AbstractVector{MT}} <: AbstractPolynomialBasis
     monomials::MV
 end
-ScaledMonomialBasis(monomials::AbstractVector{MT}) where {MT<:MultivariatePolynomials.AbstractMonomial} = ScaledMonomialBasis{MT, typeof(monomials)}(monomials)
+if VERSION < v"0.7-"
+    ScaledMonomialBasis(monomials::AbstractVector{MT}) where {MT<:MultivariatePolynomials.AbstractMonomial} = ScaledMonomialBasis{MT, typeof(monomials)}(monomials)
+end
 ScaledMonomialBasis(monomials) = ScaledMonomialBasis(monovec(monomials))
 
 MultivariatePolynomials.polynomialtype(mb::ScaledMonomialBasis{MT}, T::Type) where MT = MultivariatePolynomials.polynomialtype(MT, promote_type(T, Float64))

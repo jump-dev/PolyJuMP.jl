@@ -16,8 +16,10 @@ struct ZeroConstraint{MT <: AbstractMonomial, MVT <: AbstractVector{MT}, JC <: J
     zero_constraints::Vector{JuMP.ConstraintRef{JuMP.Model, JC}} # These are typically affine or quadratic equality constraints
     x::MVT
 end
-function ZeroConstraint(zero_constraints::Vector{JuMP.ConstraintRef{JuMP.Model, JC}}, x::MVT) where {MT <: AbstractMonomial, MVT <: AbstractVector{MT}, JC <: JuMP.AbstractConstraint}
-    ZeroConstraint{MT, MVT, JC}(zero_constraints, x)
+if VERSION < v"0.7-"
+    function ZeroConstraint(zero_constraints::Vector{JuMP.ConstraintRef{JuMP.Model, JC}}, x::MVT) where {MT <: AbstractMonomial, MVT <: AbstractVector{MT}, JC <: JuMP.AbstractConstraint}
+        ZeroConstraint{MT, MVT, JC}(zero_constraints, x)
+    end
 end
 
 JuMP.getdual(c::ZeroConstraint) = measure(getdual.(c.zero_constraints), c.x)

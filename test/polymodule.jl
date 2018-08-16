@@ -1,9 +1,9 @@
 @testset "PolyModule" begin
     m = Model()
     # Triggers the creation of polydata
-    @test isnull(PolyJuMP.getpolydata(m).nonnegpolydefault)
+    @test PolyJuMP.getpolydata(m).nonnegpolydefault === nothing
     @test_throws ErrorException PolyJuMP.getdefault(m, NonNegPoly)
-    @test isnull(PolyJuMP.getpolydata(m).nonnegpolymatrixdefault)
+    @test PolyJuMP.getpolydata(m).nonnegpolymatrixdefault === nothing
     @test_throws ErrorException PolyJuMP.getdefault(m, NonNegPolyMatrix)
     setpolymodule!(m, TestPolyModule)
     @test PolyJuMP.getdefault(m, NonNegPoly) == TestPolyModule.TestNonNegConstraint

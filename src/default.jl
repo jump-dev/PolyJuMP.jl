@@ -15,9 +15,7 @@ getdefault(data::Data, ::Type{NonNegPolyMatrix}) = get_default(data.nonnegpolyma
 setpolymodule!(m::JuMP.Model, pm::Module) = setpolymodule!(getpolydata(m), pm)
 setpolymodule!(data::Data, pm::Module) = pm.setdefaults!(data)
 
-function get_default(d::Nullable)
-    if isnull(d)
-        error("PolyJuMP is just a JuMP extension for modelling Polynomial Optimization: it does not implement any reformulation. To use automatic sums of squares (SOS) reformulations, install the SumOfSquares Julia package and try \`using SumOfSquares\` and \`setpolymodule!(SumOfSquares)\` or use \`SOSModel\` instead of \`Model\`.")
-    end
-    get(d)
+get_default(d) = d
+function get_default(d::Nothing)
+    error("PolyJuMP is just a JuMP extension for modelling Polynomial Optimization: it does not implement any reformulation. To use automatic sums of squares (SOS) reformulations, install the SumOfSquares Julia package and try \`using SumOfSquares\` and \`setpolymodule!(SumOfSquares)\` or use \`SOSModel\` instead of \`Model\`.")
 end

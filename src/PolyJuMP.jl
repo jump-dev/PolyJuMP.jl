@@ -1,14 +1,17 @@
-__precompile__()
+VERSION < v"0.7.0-beta2.199" && __precompile__()
 
 module PolyJuMP
+
+using Compat
 
 using MultivariatePolynomials
 using MultivariateMoments
 using SemialgebraicSets
-using JuMP
 
 using MathOptInterface
 const MOI = MathOptInterface
+
+using JuMP
 
 include("basis.jl")
 

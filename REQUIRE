@@ -4,3 +4,4 @@ MultivariateMoments 0.1.0
 SemialgebraicSets 0.0.1
 MathOptInterface
 JuMP 0.17.1
+Compat 1

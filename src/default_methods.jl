@@ -8,10 +8,10 @@ function createpoly(m::JuMP.Model, p::Poly, binary::Bool, integer::Bool)
     function _newvar(i)
         v = VariableRef(m)
         if binary
-            JuMP.setbinary(v)
+            JuMP.set_binary(v)
         end
         if integer
-            JuMP.setinteger(v)
+            JuMP.set_integer(v)
         end
         v
     end
@@ -27,16 +27,18 @@ struct ZeroConstraint{MT <: AbstractMonomial, MVT <: AbstractVector{MT}, F <: MO
     zero_constraints::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex{F,MOI.Zeros}}
     x::MVT
 end
-function ZeroConstraint(zero_constraints::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex{F,MOI.Zeros}}, x::MVT) where {MT <: AbstractMonomial, MVT <: AbstractVector{MT}, F <: MOI.AbstractVectorFunction}
-    ZeroConstraint{MT, MVT, F}(zero_constraints, x)
+if VERSION < v"0.7-"
+    function ZeroConstraint(zero_constraints::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex{F,MOI.Zeros}}, x::MVT) where {MT <: AbstractMonomial, MVT <: AbstractVector{MT}, F <: MOI.AbstractVectorFunction}
+        ZeroConstraint{MT, MVT, F}(zero_constraints, x)
+    end
 end
 
-JuMP.resultdual(c::ZeroConstraint) = measure(JuMP.resultdual.(c.zero_constraints), c.x)
+JuMP.result_dual(c::ZeroConstraint) = measure(JuMP.result_dual.(c.zero_constraints), c.x)
 
 function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::FullSpace, basis)
     coeffs = collect(coefficients(p))
-    c = JuMP.buildconstraint(error, coeffs, MOI.Zeros(length(coeffs)))
-    zero_constraints = JuMP.addconstraint(m, c)
+    c = JuMP.build_constraint(error, coeffs, MOI.Zeros(length(coeffs)))
+    zero_constraints = JuMP.add_constraint(m, c)
     ZeroConstraint(zero_constraints, monomials(p))
 end
 

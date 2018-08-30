@@ -1,9 +1,9 @@
 # PolyJuMP Data
 mutable struct Data
     # Default set for NonNegPoly
-    nonnegpolydefault::Nullable
+    nonnegpolydefault
     # Default set for NonNegPolyMatrix
-    nonnegpolymatrixdefault::Nullable
+    nonnegpolymatrixdefault
     function Data()
         new(nothing, nothing)
     end

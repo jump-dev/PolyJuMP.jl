@@ -1,14 +1,14 @@
-using JuMP
-using PolyJuMP
-
 using Compat
 using Compat.Test
 
+using MultivariatePolynomials
 using SemialgebraicSets
 
-using MultivariatePolynomials
 using DynamicPolynomials
 #using TypedPolynomials
+
+using JuMP
+using PolyJuMP
 
 include("utilities.jl")
 include("testpolymodule.jl")

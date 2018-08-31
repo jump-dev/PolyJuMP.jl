@@ -17,12 +17,12 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
     p = α * x*y + β * x^2
     #q = MatPolynomial([α β; β α], [x])
     q = α*x^2 + β*x*y + α*y^2
-    @test macroexpand(:(@constraint(m, p))).head == :error
-    @test macroexpand(:(@constraint(m, begin p >= 0 end))).head == :error
-    @test macroexpand(:(@constraint(m, +(p, p, p)))).head == :error
-    @test macroexpand(:(@constraint(m, p >= 0, 1))).head == :error
-    #@test macroexpand(:(@constraint(m, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1)))).head == :error
-    @test macroexpand(:(@constraint(m, p + 0, domain = (@set x >= -1 && x <= 1)))).head == :error
+    @test_macro_throws ErrorException @constraint(m, p)
+    @test_macro_throws ErrorException @constraint(m, begin p >= 0 end)
+    @test_macro_throws AssertionError @constraint(m, +(p, p, p))
+    @test_macro_throws ErrorException @constraint(m, p >= 0, 1)
+    #@test_macro_throws ErrorException @constraint(m, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1))
+    @test_macro_throws ErrorException @constraint(m, p + 0, domain = (@set x >= -1 && x <= 1))
 
     function testcon(m, cref, set::ZeroPoly, p, ineqs, eqs, basis=PolyJuMP.MonomialBasis, kwargs=[])
         @test isa(cref, ConstraintRef{Model, PolyJuMP.PolyConstraint})
@@ -38,7 +38,18 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
         c = PolyJuMP.getdelegate(cref)
         @test c.basis == basis
         @test c.set == set
-        @test c.kwargs == kwargs
+        @test length(c.kwargs) == length(kwargs)
+        for (i, kw) in enumerate(c.kwargs)
+            if VERSION < v"0.7-"
+                key = kw[1]
+                val = kw[2]
+            else
+                key = kw.first
+                val = kw.second
+            end
+            @test key == kwargs[i][1]
+            @test val == kwargs[i][2]
+        end
         # == between JuMP affine expression is not accurate, e.g. β + α != α + β
         # == 0 is not defined either
         # c.p and p can be matrices

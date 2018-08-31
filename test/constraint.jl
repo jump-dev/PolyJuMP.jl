@@ -19,7 +19,11 @@ _iszero(m, p::AbstractArray) = all(q -> _iszero(m, q), p)
     q = α*x^2 + β*x*y + α*y^2
     @test_macro_throws ErrorException @constraint(m, p)
     @test_macro_throws ErrorException @constraint(m, begin p >= 0 end)
-    @test_macro_throws AssertionError @constraint(m, +(p, p, p))
+    if VERSION < v"0.7-"
+        @test_macro_throws ErrorException @constraint(m, +(p, p, p))
+    else
+        @test_macro_throws AssertionError @constraint(m, +(p, p, p))
+    end
     @test_macro_throws ErrorException @constraint(m, p >= 0, 1)
     #@test_macro_throws ErrorException @constraint(m, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1))
     @test_macro_throws ErrorException @constraint(m, p + 0, domain = (@set x >= -1 && x <= 1))

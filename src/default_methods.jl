@@ -1,5 +1,5 @@
 # Free polynomial
-JuMP.variabletype(m::JuMP.Model, p::Poly) = polytype(m, p, p.polynomial_basis)
+JuMP.variable_type(m::JuMP.Model, p::Poly) = polytype(m, p, p.polynomial_basis)
 function polytype(m::JuMP.Model, ::Poly, pb::AbstractPolynomialBasis)
     MultivariatePolynomials.polynomialtype(pb, JuMP.VariableRef)
 end

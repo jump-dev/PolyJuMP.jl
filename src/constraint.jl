@@ -15,16 +15,14 @@ end
 abstract type ConstraintDelegate end
 
 const PolyConstraintRef{CD<:ConstraintDelegate} = ConstraintRef{Model, CD}
-# TODO add support for names
-#      It might be automatically added when constraints use bridges
-JuMP.name(::PolyConstraintRef) = ""
+
+Base.show(io::IO, cref::PolyConstraintRef) = print(io, "PolyJuMP constraint")
 
 function JuMP.add_constraint(m::Model, pc::PolyConstraint, name::String;
                              domain::AbstractSemialgebraicSet=FullSpace(),
                              basis=MonomialBasis, kwargs...)
     delegate = addpolyconstraint!(m, pc.p, pc.set, domain, basis; kwargs...)
     JuMP.ConstraintRef(m, delegate, JuMP.ScalarShape())
-    # TODO add support for names
 end
 
 getdelegate(c::PolyConstraintRef) = c.index

@@ -13,7 +13,10 @@ end
 
 # Responsible for getting slack and dual values
 abstract type ConstraintDelegate end
+
 const PolyConstraintRef{CD<:ConstraintDelegate} = ConstraintRef{Model, CD}
+
+Base.show(io::IO, cref::PolyConstraintRef) = print(io, "PolyJuMP constraint")
 
 function JuMP.add_constraint(m::Model, pc::PolyConstraint, name::String;
                              domain::AbstractSemialgebraicSet=FullSpace(),

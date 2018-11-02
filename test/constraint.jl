@@ -20,6 +20,7 @@ end
     @test_macro_throws ErrorException @constraint(m, p + 0, domain = (@set x >= -1 && x <= 1))
 
     function testcon(m, cref, set::ZeroPoly, dom)
+        @test string(cref) == "PolyJuMP constraint"
         @test isa(cref, ConstraintRef{Model, <:Union{PolyJuMP.ZeroConstraint, PolyJuMP.ZeroConstraintWithDomain}})
         delegate = PolyJuMP.getdelegate(cref)
         # TODO test VectorAffineFunction vs VectorQuadraticFunction
@@ -31,6 +32,7 @@ end
         end
     end
     function testcon(m, cref, set, p, ineqs, eqs, basis=PolyJuMP.MonomialBasis, kwargs=[])
+        @test string(cref) == "PolyJuMP constraint"
         @test isa(cref, ConstraintRef{Model, TestPolyModule.TestConstraint})
         c = PolyJuMP.getdelegate(cref)
         @test c.basis == basis

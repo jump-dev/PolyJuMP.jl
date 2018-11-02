@@ -45,7 +45,7 @@ end
 function _warnbounds(_error, p::AbstractPoly, info) end
 function _warnbounds(_error, p::Poly, info)
     if info.has_lb
-        _error("Free polynomial variable declaration does not support the form ... >= 0, use SOSPoly(x) instead of Poly(x) to create Sum of Squares polynomials. Note that SOSPoly(x) creates the polynomial x^T Q x with Q symmetric positive semidefinite while Poly(x) creates the polynomial a^T x so the meaning of the vector of monomial x changes from Poly to SOSPoly.")
+        _error("Free polynomial variable declaration does not support the form ... >= 0.")
     end
 end
 

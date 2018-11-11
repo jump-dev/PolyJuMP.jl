@@ -84,7 +84,7 @@
     end
 end
 
-@testset "result_value function" begin
+@testset "JuMP.value function" begin
     m = Model()
     @variable m α
     @variable m β
@@ -92,5 +92,5 @@ end
     p = α * x*y + β * x^2
     JuMP.fix(α, 2)
     JuMP.fix(β, 3)
-    @test_broken JuMP.result_value(p) == 2x*y + 3x^2
+    @test_broken JuMP.value(p) == 2x*y + 3x^2
 end

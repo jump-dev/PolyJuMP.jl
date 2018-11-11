@@ -27,7 +27,7 @@ end
 
 getdelegate(c::PolyConstraintRef) = c.index
 getslack(c::PolyConstraintRef) = getslack(getdelegate(c))
-JuMP.result_dual(c::PolyConstraintRef) = JuMP.result_dual(getdelegate(c))
+JuMP.dual(c::PolyConstraintRef) = JuMP.dual(getdelegate(c))
 
 # Macro
 function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,

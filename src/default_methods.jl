@@ -33,7 +33,7 @@ if VERSION < v"0.7-"
     end
 end
 
-JuMP.result_dual(c::ZeroConstraint) = measure(JuMP.result_dual.(c.zero_constraints), c.x)
+JuMP.dual(c::ZeroConstraint) = measure(JuMP.dual.(c.zero_constraints), c.x)
 
 function addpolyconstraint!(m::JuMP.Model, p, s::ZeroPoly, domain::FullSpace, basis)
     coeffs = collect(coefficients(p))

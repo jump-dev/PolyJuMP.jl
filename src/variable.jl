@@ -1,10 +1,10 @@
 export Poly
 
-function JuMP.result_value(t::AbstractTerm{<:JuMP.AbstractJuMPScalar})
-    JuMP.result_value(coefficient(t)) * monomial(t)
+function JuMP.value(t::AbstractTerm{<:JuMP.AbstractJuMPScalar})
+    JuMP.value(coefficient(t)) * monomial(t)
 end
-function JuMP.result_value(p::AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
-    polynomial(JuMP.result_value.(terms(p)), MultivariatePolynomials.SortedUniqState())
+function JuMP.value(p::AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
+    polynomial(JuMP.value.(terms(p)), MultivariatePolynomials.SortedUniqState())
 end
 
 abstract type AbstractPoly end

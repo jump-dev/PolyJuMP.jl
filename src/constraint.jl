@@ -18,7 +18,7 @@ const PolyConstraintRef{CD<:ConstraintDelegate} = ConstraintRef{Model, CD}
 
 Base.show(io::IO, cref::PolyConstraintRef) = print(io, "PolyJuMP constraint")
 
-function JuMP.add_constraint(m::Model, pc::PolyConstraint, name::String;
+function JuMP.add_constraint(m::Model, pc::PolyConstraint, name::String="";
                              domain::AbstractSemialgebraicSet=FullSpace(),
                              basis=MonomialBasis, kwargs...)
     delegate = addpolyconstraint!(m, pc.p, pc.set, domain, basis; kwargs...)

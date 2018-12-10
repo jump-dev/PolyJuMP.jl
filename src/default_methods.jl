@@ -27,11 +27,6 @@ struct ZeroConstraint{MT <: AbstractMonomial, MVT <: AbstractVector{MT}, F <: MO
     zero_constraints::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex{F,MOI.Zeros}}
     x::MVT
 end
-if VERSION < v"0.7-"
-    function ZeroConstraint(zero_constraints::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex{F,MOI.Zeros}}, x::MVT) where {MT <: AbstractMonomial, MVT <: AbstractVector{MT}, F <: MOI.AbstractVectorFunction}
-        ZeroConstraint{MT, MVT, F}(zero_constraints, x)
-    end
-end
 
 JuMP.dual(c::ZeroConstraint) = measure(JuMP.dual.(c.zero_constraints), c.x)
 

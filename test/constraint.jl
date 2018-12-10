@@ -39,15 +39,8 @@ end
         @test c.set == set
         @test length(c.kwargs) == length(kwargs)
         for (i, kw) in enumerate(c.kwargs)
-            if VERSION < v"0.7-"
-                key = kw[1]
-                val = kw[2]
-            else
-                key = kw.first
-                val = kw.second
-            end
-            @test key == kwargs[i][1]
-            @test val == kwargs[i][2]
+            @test kw.first == kwargs[i][1]
+            @test kw.second == kwargs[i][2]
         end
         # == between JuMP affine expression is not accurate, e.g. β + α != α + β
         # == 0 is not defined either

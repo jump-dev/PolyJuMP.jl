@@ -21,7 +21,7 @@ end
 
     function testcon(m, cref, set::ZeroPoly, dom)
         @test string(cref) == "PolyJuMP constraint"
-        @test isa(cref, ConstraintRef{Model, <:Union{PolyJuMP.ZeroConstraint, PolyJuMP.ZeroConstraintWithDomain}})
+        @test isa(cref, JuMP.ConstraintRef{Model, <:Union{PolyJuMP.ZeroConstraint, PolyJuMP.ZeroConstraintWithDomain}})
         delegate = PolyJuMP.getdelegate(cref)
         # TODO test VectorAffineFunction vs VectorQuadraticFunction
         #@test delegate.x == x # TODO
@@ -33,7 +33,7 @@ end
     end
     function testcon(m, cref, set, p, ineqs, eqs, basis=PolyJuMP.MonomialBasis, kwargs=[])
         @test string(cref) == "PolyJuMP constraint"
-        @test isa(cref, ConstraintRef{Model, TestPolyModule.TestConstraint})
+        @test isa(cref, JuMP.ConstraintRef{Model, TestPolyModule.TestConstraint})
         c = PolyJuMP.getdelegate(cref)
         @test c.basis == basis
         @test c.set == set

@@ -1,25 +1,33 @@
 # Free polynomial
-JuMP.variable_type(m::JuMP.Model, p::Poly) = polytype(m, p, p.polynomial_basis)
-function polytype(m::JuMP.Model, ::Poly, pb::AbstractPolynomialBasis)
-    MultivariatePolynomials.polynomialtype(pb, JuMP.VariableRef)
+function JuMP.variable_type(model::JuMP.AbstractModel, p::Poly)
+    return polytype(model, p, p.polynomial_basis)
+end
+function polytype(model::JuMP.AbstractModel, ::Poly, pb::AbstractPolynomialBasis)
+    return MultivariatePolynomials.polynomialtype(pb, JuMP.VariableRef)
 end
 
-function createpoly(m::JuMP.Model, p::Poly, binary::Bool, integer::Bool)
+function JuMP.add_variable(model::JuMP.AbstractModel, v::Variable{<:Poly},
+                           name::String="")
     function _newvar(i)
-        v = VariableRef(m)
-        if binary
-            JuMP.set_binary(v)
+        vref = VariableRef(model)
+        if v.binary
+            JuMP.set_binary(vref)
         end
-        if integer
-            JuMP.set_integer(v)
+        if v.integer
+            JuMP.set_integer(vref)
         end
-        v
+        return vref
     end
-    polynomial(_newvar, p.polynomial_basis)
+    return polynomial(_newvar, v.p.polynomial_basis)
 end
 
 # NonNegPoly and NonNegPolyMatrix
-addpolyconstraint!(m::JuMP.Model, p, s::Union{NonNegPoly, NonNegPolyMatrix}, domain, basis; kwargs...) = addpolyconstraint!(m, p, getdefault(m, s), domain, basis; kwargs...)
+function addpolyconstraint!(model::JuMP.Model, p,
+                            s::Union{NonNegPoly, NonNegPolyMatrix},
+                            domain, basis; kwargs...)
+    return addpolyconstraint!(model, p, getdefault(model, s), domain, basis;
+                              kwargs...)
+end
 
 # ZeroPoly
 struct ZeroConstraint{MT <: AbstractMonomial, MVT <: AbstractVector{MT}, F <: MOI.AbstractVectorFunction} <: ConstraintDelegate

@@ -45,7 +45,7 @@
         @variable(m, p2, Poly(X), integer=true)
         testvar(m, p2, X, false, true)
         @variable(m, p3[2:3], Poly(X))
-        @test isa(p3, JuMP.JuMPArray{typeof(var_poly),1,Tuple{UnitRange{Int}}})
+        @test isa(p3, JuMP.Containers.DenseAxisArray{typeof(var_poly),1,Tuple{UnitRange{Int}}})
         testvar(m, p3[2], X)
         @variable(m, p4[i=2:3,j=i:4], Poly(X), binary=true)
         testvar(m, p4[2,3], X, true)

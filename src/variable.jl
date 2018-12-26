@@ -57,8 +57,12 @@ end
 function JuMP.build_variable(_error::Function, info::JuMP.VariableInfo, p::AbstractPoly; extra_kwargs...)
     cvarchecks(_error, info; extra_kwargs...)
     _warnbounds(_error, p, info)
-    Variable(p, info.binary, info.integer)
+    return Variable(p, info.binary, info.integer)
 end
-function JuMP.add_variable(m::JuMP.AbstractModel, v::Variable, name::String)
-    createpoly(m, getdefault(m, v.p), v.binary, v.integer)
-end
+#function JuMP.add_variable(model::JuMP.AbstractModel,
+#                           v::Variable{<:AbstractPoly},
+#                           name::String="")
+#    JuMP.add_variable(model,
+#                      Variable(getdefault(model, v.p), v.binary, v.integer),
+#                      name)
+#end

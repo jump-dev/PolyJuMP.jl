@@ -21,14 +21,6 @@ function JuMP.add_variable(model::JuMP.AbstractModel, v::Variable{<:Poly},
     return polynomial(_newvar, v.p.polynomial_basis)
 end
 
-# NonNegPoly and NonNegPolyMatrix
-function addpolyconstraint!(model::JuMP.Model, p,
-                            s::Union{NonNegPoly, NonNegPolyMatrix},
-                            domain, basis; kwargs...)
-    return addpolyconstraint!(model, p, getdefault(model, s), domain, basis;
-                              kwargs...)
-end
-
 # ZeroPoly
 struct ZeroConstraint{MT <: AbstractMonomial, MVT <: AbstractVector{MT}, F <: MOI.AbstractVectorFunction} <: ConstraintDelegate
     # F is typically VectorAffineFunction or VectorQuadraticFunction

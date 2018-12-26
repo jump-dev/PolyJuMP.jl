@@ -18,6 +18,16 @@ const ConstraintRef{CD<:ConstraintDelegate} = JuMP.ConstraintRef{Model, CD}
 
 Base.show(io::IO, cref::ConstraintRef) = print(io, "PolyJuMP constraint")
 
+# NonNegPoly and NonNegPolyMatrix
+function JuMP.add_constraint(model::JuMP.AbstractModel,
+                             c::Constraint{<:Any,
+                                           <:Union{NonNegPoly,
+                                                   NonNegPolyMatrix}},
+                             name::String=""; kwargs...)
+    set = getdefault(model, c.set)
+    return JuMP.add_constraint(model, Constraint(c.p, set), name; kws...)
+end
+
 function JuMP.add_constraint(m::Model, pc::Constraint, name::String="";
                              domain::AbstractSemialgebraicSet=FullSpace(),
                              basis=MonomialBasis, kwargs...)

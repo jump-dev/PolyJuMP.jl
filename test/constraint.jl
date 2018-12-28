@@ -19,56 +19,80 @@ end
     #@test_macro_throws ErrorException @constraint(m, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1))
     @test_macro_throws ErrorException @constraint(m, p + 0, domain = (@set x >= -1 && x <= 1))
 
-    function testcon(m, cref, set::ZeroPoly, dom)
-        @test string(cref) == "PolyJuMP constraint"
-        @test isa(cref, JuMP.ConstraintRef{Model, <:Union{PolyJuMP.ZeroConstraint, PolyJuMP.ZeroConstraintWithDomain}})
-        delegate = PolyJuMP.getdelegate(cref)
-        # TODO test VectorAffineFunction vs VectorQuadraticFunction
-        #@test delegate.x == x # TODO
-        if dom
-            @test delegate isa PolyJuMP.ZeroConstraintWithDomain
-        else
-            @test delegate isa PolyJuMP.ZeroConstraint
+    function testcon(m, cref, S::Type, p, ineqs, eqs, basis=PolyJuMP.MonomialBasis, kwargs=[])
+        @test cref isa JuMP.ConstraintRef{Model, <:MOI.ConstraintIndex{MOI.VectorAffineFunction{Float64}, <:S}}
+        c = JuMP.constraint_object(cref)
+        set = JuMP.moi_set(c)
+        @test set isa S
+        @test set.basis == basis
+        if !isempty(kwargs)
+            @test length(set.kwargs) == length(kwargs)
+            for (i, kw) in enumerate(set.kwargs)
+                @test kw.first == kwargs[i][1]
+                @test kw.second == kwargs[i][2]
+            end
         end
-    end
-    function testcon(m, cref, set, p, ineqs, eqs, basis=PolyJuMP.MonomialBasis, kwargs=[])
-        @test string(cref) == "PolyJuMP constraint"
-        @test isa(cref, JuMP.ConstraintRef{Model, TestPolyModule.TestConstraint})
-        c = PolyJuMP.getdelegate(cref)
-        @test c.basis == basis
-        @test c.set == set
-        @test length(c.kwargs) == length(kwargs)
-        for (i, kw) in enumerate(c.kwargs)
-            @test kw.first == kwargs[i][1]
-            @test kw.second == kwargs[i][2]
+        if S == TestPolyModule.PosDefMatrix
+            expected_p = set.y' * p * set.y
+        else
+            expected_p = p
         end
         # == between JuMP affine expression is not accurate, e.g. β + α != α + β
         # == 0 is not defined either
         # c.p and p can be matrices
-        @test _isequal(c.p, p)
+        @test _isequal(polynomial(JuMP.jump_function(c), set.monomials),
+                       expected_p)
         if isempty(ineqs)
             if isempty(eqs)
-                @test isa(c.domain, FullSpace)
+                @test isa(set, PolyJuMP.ZeroPolynomialSet) ||
+                      isa(set.domain, FullSpace)
             else
-                @test isa(c.domain, AlgebraicSet)
-                @test equalities(c.domain) == eqs
+                @test isa(set.domain, AlgebraicSet)
+                @test equalities(set.domain) == eqs
             end
         else
-            @test isa(c.domain, BasicSemialgebraicSet)
-            @test inequalities(c.domain) == ineqs
-            @test equalities(c.domain) == eqs
+            @test isa(set.domain, BasicSemialgebraicSet)
+            @test inequalities(set.domain) == ineqs
+            @test equalities(set.domain) == eqs
         end
     end
 
     f(x, y) = @set x + y == 2
     dom = @set x^2 + y^2 == 1 && x^3 + x*y^2 + y >= 1
-    testcon(m, @constraint(m, p >= q + 1, domain = @set y >= 1 && dom), TestPolyModule.TestNonNegConstraint(), p - q - 1, [y-1, x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
-    testcon(m, @constraint(m, p <= q), TestPolyModule.TestNonNegConstraint(), q - p, [], [])
-    testcon(m, @constraint(m, q - p in NonNegPoly()), TestPolyModule.TestNonNegConstraint(), q - p, [], [])
-    testcon(m, @constraint(m, p + q >= 0, domain = @set x == y^3), TestPolyModule.TestNonNegConstraint(), p + q, [], [x - y^3])
-    testcon(m, @constraint(m, p == q, domain = @set x == 1 && f(x, y)), ZeroPoly(), false)
-    testcon(m, @constraint(m, p == q, domain = dom), ZeroPoly(), true)
-    testcon(m, @constraint(m, p - q in ZeroPoly(), domain = @set x == 1 && f(x, y)), ZeroPoly(), false)
-    testcon(m, @SDconstraint(m, [p q; q 0] ⪰ [0 0; 0 p]), TestPolyModule.TestNonNegMatrixConstraint(), [p q; q -p], [], [])
-    testcon(m, @constraint(m, p <= q, maxdegree=1), TestPolyModule.TestNonNegConstraint(), q - p, [], [], MonomialBasis, [(:maxdegree, 1)])
+    @testset "NonNeg" begin
+        S = TestPolyModule.NonNeg
+        testcon(m, @constraint(m, p >= q + 1, domain = @set y >= 1 && dom),
+                S, p - q - 1, [y-1, x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
+        testcon(m, @constraint(m, p <= q),
+                S, q - p, [], [])
+        testcon(m, @constraint(m, q - p in PolyJuMP.NonNegPoly()),
+                S, q - p, [], [])
+        testcon(m, @constraint(m, p + q >= 0, domain = @set x == y^3),
+                S, p + q, [], [x - y^3])
+        @testset "Custom keyword" begin
+            testcon(m, @constraint(m, p <= q, maxdegree=1),
+                    S, q - p, [], [], MonomialBasis, [(:maxdegree, 1)])
+        end
+    end
+    @testset "ZeroPolynomialSet" begin
+        S = PolyJuMP.ZeroPolynomialSet
+        testcon(m, @constraint(m, p == q),
+                S, p - q, [], [])
+        testcon(m, @constraint(m, p - q in PolyJuMP.ZeroPoly()),
+                S, p - q, [], [])
+    end
+    @testset "ZeroPolynomialSetInDomain" begin
+        S = PolyJuMP.ZeroPolynomialSetInDomain
+        testcon(m, @constraint(m, p == q, domain = @set x == 1 && f(x, y)),
+                S, p - q, [], [x - 1, x + y - 2])
+        testcon(m, @constraint(m, p == q, domain = dom),
+                S, p - q, [x^3 + x*y^2 + y - 1],
+                [x^2 + y^2 - 1])
+        testcon(m, @constraint(m, p - q in PolyJuMP.ZeroPoly(), domain = @set x == 1 && f(x, y)),
+                S, p - q, [], [x - 1, x + y - 2])
+    end
+    @testset "PosDefMatrix" begin
+        testcon(m, @SDconstraint(m, [p q; q 0] ⪰ [0 0; 0 p]),
+                TestPolyModule.PosDefMatrix, [p q; q -p], [], [])
+    end
 end

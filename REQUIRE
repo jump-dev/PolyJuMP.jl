@@ -2,5 +2,5 @@ julia 0.7
 MultivariatePolynomials 0.1.0
 MultivariateMoments 0.1.0
 SemialgebraicSets 0.0.1
-MathOptInterface
+MathOptInterface 0.8
 JuMP 0.17.1

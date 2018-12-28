@@ -59,10 +59,26 @@ function JuMP.build_variable(_error::Function, info::JuMP.VariableInfo, p::Abstr
     _warnbounds(_error, p, info)
     return Variable(p, info.binary, info.integer)
 end
-#function JuMP.add_variable(model::JuMP.AbstractModel,
-#                           v::Variable{<:AbstractPoly},
-#                           name::String="")
-#    JuMP.add_variable(model,
-#                      Variable(getdefault(model, v.p), v.binary, v.integer),
-#                      name)
-#end
+
+# Free polynomial
+function JuMP.variable_type(model::JuMP.AbstractModel, p::Poly)
+    return polytype(model, p, p.polynomial_basis)
+end
+function polytype(model::JuMP.AbstractModel, ::Poly, pb::AbstractPolynomialBasis)
+    return MultivariatePolynomials.polynomialtype(pb, JuMP.VariableRef)
+end
+
+function JuMP.add_variable(model::JuMP.AbstractModel, v::Variable{<:Poly},
+                           name::String="")
+    function _newvar(i)
+        vref = VariableRef(model)
+        if v.binary
+            JuMP.set_binary(vref)
+        end
+        if v.integer
+            JuMP.set_integer(vref)
+        end
+        return vref
+    end
+    return polynomial(_newvar, v.p.polynomial_basis)
+end

@@ -19,6 +19,7 @@ include("zero_polynomial.jl")
 const MOIB = MOI.Bridges
 include("zero_polynomial_bridge.jl")
 include("zero_polynomial_in_algebraic_set_bridge.jl")
+include("zero_polynomial_in_semialgebraic_set_bridge.jl")
 
 # JuMP extension
 

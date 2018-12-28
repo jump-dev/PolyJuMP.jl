@@ -7,7 +7,7 @@ end
 
 function ZeroPolynomialBridge{T, F}(model::MOI.ModelLike,
                                     f::MOI.AbstractVectorFunction,
-                                    s::ZeroPolynomialSet{<:MonomialBasis}) where {T, F}
+                                    s::ZeroPolynomialSet{FullSpace, <:MonomialBasis}) where {T, F}
     @assert MOI.output_dimension(f) == s.monomials
     zero_constraint = MOI.add_constraint(model, f,
                                          MOI.Zeros(length(s.monomials)))
@@ -16,7 +16,7 @@ end
 
 function MOI.supports_constraint(::Type{ZeroPolynomialBridge{T}},
                                  ::Type{<:MOI.AbstractVectorFunction},
-                                 ::Type{<:ZeroPolynomialSet}) where T
+                                 ::Type{<:ZeroPolynomialSet{FullSpace}}) where T
     return true
 end
 function added_constraint_types(::Type{<:ZeroPolynomialBridge{T, F}}) where {T, F}
@@ -24,7 +24,7 @@ function added_constraint_types(::Type{<:ZeroPolynomialBridge{T, F}}) where {T, 
 end
 function concrete_bridge_type(::Type{<:ZeroPolynomialBridge{T}},
                               F::Type{<:MOI.AbstractVectorFunction},
-                              ::Type{ZeroPolynomialSet{<:MonomialBasis, MT, MVT}}) where {T, MT, MVT}
+                              ::Type{ZeroPolynomialSet{FullSpace, <:MonomialBasis, MT, MVT}}) where {T, MT, MVT}
     return ZeroPolynomialBridge{T, F, MT, MVT}
 end
 

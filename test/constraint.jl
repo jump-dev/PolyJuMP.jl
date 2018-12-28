@@ -44,8 +44,7 @@ end
                        expected_p)
         if isempty(ineqs)
             if isempty(eqs)
-                @test isa(set, PolyJuMP.ZeroPolynomialSet) ||
-                      isa(set.domain, FullSpace)
+                @test isa(set.domain, FullSpace)
             else
                 @test isa(set.domain, AlgebraicSet)
                 @test equalities(set.domain) == eqs
@@ -75,14 +74,14 @@ end
         end
     end
     @testset "ZeroPolynomialSet" begin
+        @testset "ZeroPolynomialSet{FullSpace}" begin
+            S = PolyJuMP.ZeroPolynomialSet{FullSpace}
+            testcon(m, @constraint(m, p == q),
+                    S, p - q, [], [])
+            testcon(m, @constraint(m, p - q in PolyJuMP.ZeroPoly()),
+                    S, p - q, [], [])
+        end
         S = PolyJuMP.ZeroPolynomialSet
-        testcon(m, @constraint(m, p == q),
-                S, p - q, [], [])
-        testcon(m, @constraint(m, p - q in PolyJuMP.ZeroPoly()),
-                S, p - q, [], [])
-    end
-    @testset "ZeroPolynomialSetInDomain" begin
-        S = PolyJuMP.ZeroPolynomialSetInDomain
         testcon(m, @constraint(m, p == q, domain = @set x == 1 && f(x, y)),
                 S, p - q, [], [x - 1, x + y - 2])
         testcon(m, @constraint(m, p == q, domain = dom),

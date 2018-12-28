@@ -46,11 +46,7 @@ function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
                                s::ZeroPoly;
                                domain::AbstractSemialgebraicSet=FullSpace(),
                                basis=MonomialBasis)
-    if domain isa FullSpace
-        set = ZeroPolynomialSet(basis, monomials(p))
-    else
-        set = ZeroPolynomialSetInDomain(domain, basis, monomials(p))
-    end
+    set = ZeroPolynomialSet(domain, basis, monomials(p))
     return JuMP.VectorConstraint(coefficients(p), set)
 end
 function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,

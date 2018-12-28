@@ -15,6 +15,11 @@ const MOI = MathOptInterface
 
 include("zero_polynomial.jl")
 
+# Bridges
+const MOIB = MOI.Bridges
+include("zero_polynomial_bridge.jl")
+include("zero_polynomial_in_algebraic_set_bridge.jl")
+
 # JuMP extension
 
 using JuMP

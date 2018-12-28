@@ -5,11 +5,11 @@ struct ZeroPolynomialSet{BT <: AbstractPolynomialBasis,
     monomials::MVT
 end
 
-struct ZeroPolynomialSetInDomain{BT <: AbstractPolynomialBasis,
-                                 DT <: AbstractSemialgebraicSet,
+struct ZeroPolynomialSetInDomain{DT <: AbstractSemialgebraicSet,
+                                 BT <: AbstractPolynomialBasis,
                                  MT <: AbstractMonomial,
                                  MVT <: AbstractVector{MT}} <: MOI.AbstractVectorSet
-    basis::Type{BT}
     domain::DT
+    basis::Type{BT}
     monomials::MVT
 end

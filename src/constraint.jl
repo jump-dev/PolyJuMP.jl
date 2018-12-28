@@ -49,7 +49,7 @@ function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
     if domain isa FullSpace
         set = ZeroPolynomialSet(basis, monomials(p))
     else
-        set = ZeroPolynomialSetInDomain(basis, domain, monomials(p))
+        set = ZeroPolynomialSetInDomain(domain, basis, monomials(p))
     end
     return JuMP.VectorConstraint(coefficients(p), set)
 end

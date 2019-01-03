@@ -1,10 +1,10 @@
 module PolyJuMP
 
+# MultivariatePolynomials extension
+
 using MultivariatePolynomials
 using MultivariateMoments
 using SemialgebraicSets
-
-# MultivariatePolynomials extension
 
 include("basis.jl")
 

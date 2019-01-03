@@ -5,16 +5,16 @@ struct ZeroPolynomialBridge{T, F <: MOI.AbstractVectorFunction,
     monomials::MVT
 end
 
-function ZeroPolynomialBridge{T, F}(model::MOI.ModelLike,
-                                    f::MOI.AbstractVectorFunction,
-                                    s::ZeroPolynomialSet{FullSpace, <:MonomialBasis}) where {T, F}
-    @assert MOI.output_dimension(f) == s.monomials
+function ZeroPolynomialBridge{T, F, MT, MVT}(model::MOI.ModelLike,
+                                             f::MOI.AbstractVectorFunction,
+                                             s::ZeroPolynomialSet{FullSpace, <:MonomialBasis}) where {T, F, MT, MVT}
+    @assert MOI.output_dimension(f) == length(s.monomials)
     zero_constraint = MOI.add_constraint(model, f,
                                          MOI.Zeros(length(s.monomials)))
-    return ZeroPolynomialBridge{T, F}(zero_constraint, s.monomials)
+    return ZeroPolynomialBridge{T, F, MT, MVT}(zero_constraint, s.monomials)
 end
 
-function MOI.supports_constraint(::Type{ZeroPolynomialBridge{T}},
+function MOI.supports_constraint(::Type{<:ZeroPolynomialBridge{T}},
                                  ::Type{<:MOI.AbstractVectorFunction},
                                  ::Type{<:ZeroPolynomialSet{FullSpace}}) where T
     return true

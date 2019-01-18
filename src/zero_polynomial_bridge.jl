@@ -19,12 +19,12 @@ function MOI.supports_constraint(::Type{<:ZeroPolynomialBridge{T}},
                                  ::Type{<:ZeroPolynomialSet{FullSpace}}) where T
     return true
 end
-function added_constraint_types(::Type{<:ZeroPolynomialBridge{T, F}}) where {T, F}
+function MOIB.added_constraint_types(::Type{<:ZeroPolynomialBridge{T, F}}) where {T, F}
     return [(F, MOI.Zeros)]
 end
-function concrete_bridge_type(::Type{<:ZeroPolynomialBridge{T}},
-                              F::Type{<:MOI.AbstractVectorFunction},
-                              ::Type{ZeroPolynomialSet{FullSpace, <:MonomialBasis, MT, MVT}}) where {T, MT, MVT}
+function MOIB.concrete_bridge_type(::Type{<:ZeroPolynomialBridge{T}},
+                                   F::Type{<:MOI.AbstractVectorFunction},
+                                   ::Type{<:ZeroPolynomialSet{FullSpace, <:MonomialBasis, MT, MVT}}) where {T, MT, MVT}
     return ZeroPolynomialBridge{T, F, MT, MVT}
 end
 

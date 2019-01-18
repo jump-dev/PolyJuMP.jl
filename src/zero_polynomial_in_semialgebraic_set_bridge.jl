@@ -8,7 +8,7 @@ end
 function ZeroPolynomialInSemialgebraicSetBridge{T, F}(model::MOI.ModelLike,
                                                   f::MOI.AbstractVectorFunction,
                                                   s::ZeroPolynomialSet{<:BasicSemialgebraicSet}) where {T, F}
-    p = polynomial(MOI.Utilities.eachscalar(f), s.monomials)
+    p = polynomial(collect(MOI.Utilities.eachscalar(f)), s.monomials)
     r = rem(p, ideal(s.domain))
     zero_constraint = MOI.add_constraint(model, coefficients(r),
                                          ZeroPolynomialSet(FullSpace(), s.basis,

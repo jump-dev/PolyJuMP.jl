@@ -3,6 +3,12 @@ struct ZeroPoly <: PolynomialSet end
 struct NonNegPoly <: PolynomialSet end
 struct PosDefPolyMatrix <: PolynomialSet end
 
+function JuMP.moi_set(::ZeroPoly, monos::AbstractVector{<:AbstractMonomial};
+                      domain::AbstractSemialgebraicSet=FullSpace(),
+                      basis=MonomialBasis)
+    return ZeroPolynomialSet(domain, basis, monos)
+end
+
 #struct Constraint{PT, ST<:PolynomialSet,
 #                  BT <: AbstractPolynomialBasis,
 #                  DT <: AbstractSemialgebraicSet} <: JuMP.AbstractConstraint
@@ -32,8 +38,11 @@ struct MomentsShape{MT <: AbstractMonomial,
     monomials::MVT
 end
 JuMP.reshape(x::Vector, shape::MomentsShape) = measure(x, shape.monomials)
-dual_shape(shape::PolynomialShape) = MomentsShape(shape.monomials)
-dual_shape(shape::MomentsShape) = PolynomialShape(shape.monomials)
+# The constraint may return a measure directly in case `shape.monomials` is
+# incorrect
+JuMP.reshape(μ::MultivariateMoments.AbstractMeasure, shape::MomentsShape) = μ
+JuMP.dual_shape(shape::PolynomialShape) = MomentsShape(shape.monomials)
+JuMP.dual_shape(shape::MomentsShape) = PolynomialShape(shape.monomials)
 
 #getdelegate(c::ConstraintRef) = c.index
 #getslack(c::ConstraintRef) = getslack(getdelegate(c))
@@ -41,13 +50,34 @@ dual_shape(shape::MomentsShape) = PolynomialShape(shape.monomials)
 
 ### @constraint/@SDconstraint macros ###
 
+non_constant(a::Vector{<:Number}) = convert(Vector{AffExpr}, a)
+non_constant(a::Vector{<:JuMP.AbstractJuMPScalar}) = a
+non_constant_coefficients(p) = non_constant(coefficients(p))
+
 ## ZeroPoly
 function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
                                s::ZeroPoly;
                                domain::AbstractSemialgebraicSet=FullSpace(),
-                               basis=MonomialBasis)
-    set = ZeroPolynomialSet(domain, basis, monomials(p))
-    return JuMP.build_constraint(_error, coefficients(p), set)
+                               kws...)
+    coefs = non_constant_coefficients(p)
+    monos = monomials(p)
+    if domain isa BasicSemialgebraicSet
+        # p(x) = 0 for all x in a basic semialgebraic set. We replace it by
+        # p(x) ≤ 0 and p(x) ≥ 0 for all x in the basic semialgebraic set.
+        # We need to determine the cone two use for `NonNegPoly` which is stored
+        # in the `ext` field of the `model` so we need the `model` hence we need
+        # to go to `JuMP.add_constraint`.
+
+        # We need to recreate the full list of keyword arguments. `kws` is a
+        # `Iterators.Pairs, `kws.data` is a `NamedTuple` and `kws.itr` is a
+        # `Tuple`.
+        all_kws = Iterators.Pairs(merge((domain=domain,), kws.data),
+                                  (:domain, kws.itr...))
+        return Constraint(_error, p, s, all_kws)
+    else
+        set = JuMP.moi_set(s, monos; domain=domain, kws...)
+        return JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
+    end
 end
 function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
                                s::MOI.EqualTo; kws...)
@@ -57,7 +87,7 @@ end
 ## NonNegPoly and PosDefPolyMatrix
 # The `model` is not given in `JuMP.build_constraint` so we create a custom
 # `Constraint` object and transform the `set` in `JuMP.add_constraint`.
-struct Constraint{FT, PT, ST<:PolynomialSet, KWT} <: JuMP.AbstractConstraint
+struct Constraint{FT, PT, ST<:PolynomialSet, KWT<:Iterators.Pairs} <: JuMP.AbstractConstraint
     _error::FT
     polynomial_or_matrix::PT
     set::ST
@@ -67,6 +97,16 @@ function JuMP.build_constraint(_error::Function, polynomial_or_matrix,
                                set::Union{NonNegPoly, PosDefPolyMatrix};
                                kws...)
     return Constraint(_error, polynomial_or_matrix, set, kws)
+end
+function JuMP.add_constraint(model::JuMP.Model,
+                             constraint::Constraint{<:Any, <:Any, ZeroPoly},
+                             name::String = "")
+    cone = getdefault(model, NonNegPoly())
+    coefs = non_constant_coefficients(constraint.polynomial_or_matrix)
+    monos = monomials(constraint.polynomial_or_matrix)
+    set = JuMP.moi_set(cone, monos; constraint.kws...)
+    new_constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
+    return JuMP.add_constraint(model, new_constraint, name)
 end
 function JuMP.add_constraint(model::JuMP.Model, constraint::Constraint,
                              name::String = "")

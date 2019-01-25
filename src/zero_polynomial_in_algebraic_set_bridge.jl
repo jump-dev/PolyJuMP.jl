@@ -5,15 +5,16 @@ struct ZeroPolynomialInAlgebraicSetBridge{T, F <: MOI.AbstractVectorFunction,
     zero_constraint::MOI.ConstraintIndex{F, ZeroPolynomialSet{FullSpace, BT, MT, MVT}}
 end
 
-function ZeroPolynomialInAlgebraicSetBridge{T, F}(model::MOI.ModelLike,
-                                                  f::MOI.AbstractVectorFunction,
-                                                  s::ZeroPolynomialSet{<:AbstractAlgebraicSet}) where {T, F}
+function ZeroPolynomialInAlgebraicSetBridge{T, F, BT, MT, MVT}(model::MOI.ModelLike,
+                                                               f::MOI.AbstractVectorFunction,
+                                                               s::ZeroPolynomialSet{<:AbstractAlgebraicSet}) where {T, F, BT, MT, MVT}
     p = polynomial(collect(MOI.Utilities.eachscalar(f)), s.monomials)
-    r = rem(p, ideal(s.domain))
-    zero_constraint = MOI.add_constraint(model, coefficients(r),
+    # FIXME convert needed because the coefficient type of `r` is `Any` otherwise if `domain` is `AlgebraicSet`
+    r = convert(typeof(p), rem(p, ideal(s.domain)))
+    zero_constraint = MOI.add_constraint(model, MOIU.vectorize(coefficients(r)),
                                          ZeroPolynomialSet(FullSpace(), s.basis,
                                                            monomials(r)))
-    return ZeroPolynomialInAlgebraicSetBridge{T, F}(zero_constraint)
+    return ZeroPolynomialInAlgebraicSetBridge{T, F, BT, MT, MVT}(zero_constraint)
 end
 
 
@@ -22,13 +23,13 @@ function MOI.supports_constraint(::Type{ZeroPolynomialInAlgebraicSetBridge{T}},
                                  ::Type{<:ZeroPolynomialSet{<:AbstractAlgebraicSet}}) where T
     return true
 end
-function added_constraint_types(::Type{<:ZeroPolynomialInAlgebraicSetBridge{T, F, BT, MT, MVT}}) where {T, F, BT, MT, MVT}
+function MOIB.added_constraint_types(::Type{<:ZeroPolynomialInAlgebraicSetBridge{T, F, BT, MT, MVT}}) where {T, F, BT, MT, MVT}
     return [(F, ZeroPolynomialSet{FullSpace, BT, MT, MVT})]
 end
-function concrete_bridge_type(::Type{<:ZeroPolynomialInAlgebraicSetBridge{T}},
-                              F::Type{<:MOI.AbstractVectorFunction},
-                              ::Type{ZeroPolynomialSet{<:AbstractAlgebraicSet,
-                                                       BT, MT, MVT}}) where {T, BT, MT, MVT}
+function MOIB.concrete_bridge_type(::Type{<:ZeroPolynomialInAlgebraicSetBridge{T}},
+                                   F::Type{<:MOI.AbstractVectorFunction},
+                                   ::Type{<:ZeroPolynomialSet{<:AbstractAlgebraicSet,
+                                                              BT, MT, MVT}}) where {T, BT, MT, MVT}
     G = MOI.Utilities.promote_operation(-, T, F, F)
     return ZeroPolynomialInAlgebraicSetBridge{T, G, BT, MT, MVT}
 end

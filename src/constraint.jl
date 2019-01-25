@@ -104,7 +104,7 @@ function JuMP.add_constraint(model::JuMP.Model,
     cone = getdefault(model, NonNegPoly())
     coefs = non_constant_coefficients(constraint.polynomial_or_matrix)
     monos = monomials(constraint.polynomial_or_matrix)
-    set = JuMP.moi_set(cone, monos; constraint.kws...)
+    set = PlusMinusSet(JuMP.moi_set(cone, monos; constraint.kws...))
     new_constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
     return JuMP.add_constraint(model, new_constraint, name)
 end

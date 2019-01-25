@@ -18,10 +18,19 @@ struct NonNeg{BT <: PolyJuMP.AbstractPolynomialBasis,
     kwargs
 end
 struct TestNonNeg <: PolyJuMP.PolynomialSet end
+
+function JuMP.moi_set(cone::TestNonNeg,
+                      monos::AbstractVector{<:AbstractMonomial};
+                      domain::AbstractSemialgebraicSet=FullSpace(),
+                      basis=MonomialBasis, kwargs...)
+    return NonNeg(basis, domain, monos, kwargs)
+end
+
+
 function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
-                               s::TestNonNeg; basis=PolyJuMP.MonomialBasis,
-                               domain=FullSpace(), kwargs...)
-    set = NonNeg(basis, domain, monomials(p), kwargs)
+                               s::TestNonNeg; kwargs...)
+    monos = monomials(p)
+    set = JuMP.moi_set(s, monos; kwargs...)
     return JuMP.build_constraint(_error, coefficients(p), set)
 end
 

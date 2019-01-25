@@ -24,6 +24,9 @@ end
         c = JuMP.constraint_object(cref)
         set = JuMP.moi_set(c)
         @test set isa S
+        if set isa PolyJuMP.PlusMinusSet
+            set = set.set
+        end
         @test set.basis == basis
         if !isempty(kwargs)
             @test length(set.kwargs) == length(kwargs)
@@ -84,11 +87,12 @@ end
         S = PolyJuMP.ZeroPolynomialSet
         testcon(m, @constraint(m, p == q, domain = @set x == 1 && f(x, y)),
                 S, p - q, [], [x - 1, x + y - 2])
+        testcon(m, @constraint(m, p - q in PolyJuMP.ZeroPoly(), domain = @set x == 1 && f(x, y)),
+                S, p - q, [], [x - 1, x + y - 2])
+        S = PolyJuMP.PlusMinusSet
         testcon(m, @constraint(m, p == q, domain = dom),
                 S, p - q, [x^3 + x*y^2 + y - 1],
                 [x^2 + y^2 - 1])
-        testcon(m, @constraint(m, p - q in PolyJuMP.ZeroPoly(), domain = @set x == 1 && f(x, y)),
-                S, p - q, [], [x - 1, x + y - 2])
     end
     @testset "PosDefMatrix" begin
         testcon(m, @SDconstraint(m, [p q; q 0] ⪰ [0 0; 0 p]),

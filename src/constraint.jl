@@ -38,9 +38,6 @@ struct MomentsShape{MT <: AbstractMonomial,
     monomials::MVT
 end
 JuMP.reshape(x::Vector, shape::MomentsShape) = measure(x, shape.monomials)
-# The constraint may return a measure directly in case `shape.monomials` is
-# incorrect
-JuMP.reshape(μ::MultivariateMoments.AbstractMeasure, shape::MomentsShape) = μ
 JuMP.dual_shape(shape::PolynomialShape) = MomentsShape(shape.monomials)
 JuMP.dual_shape(shape::MomentsShape) = PolynomialShape(shape.monomials)
 

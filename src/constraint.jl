@@ -32,12 +32,16 @@ struct PolynomialShape{MT <: AbstractMonomial,
                        MVT <: AbstractVector{MT}} <: JuMP.AbstractShape
     monomials::MVT
 end
-JuMP.reshape(x::Vector, shape::PolynomialShape) = polynomial(x, shape.monomials)
+function JuMP.reshape_result(x::Vector, shape::PolynomialShape)
+    return polynomial(x, shape.monomials)
+end
 struct MomentsShape{MT <: AbstractMonomial,
                     MVT <: AbstractVector{MT}} <: JuMP.AbstractShape
     monomials::MVT
 end
-JuMP.reshape(x::Vector, shape::MomentsShape) = measure(x, shape.monomials)
+function JuMP.reshape_result(x::Vector, shape::MomentsShape)
+    return measure(x, shape.monomials)
+end
 JuMP.dual_shape(shape::PolynomialShape) = MomentsShape(shape.monomials)
 JuMP.dual_shape(shape::MomentsShape) = PolynomialShape(shape.monomials)
 

@@ -6,6 +6,9 @@ using SemialgebraicSets
 using DynamicPolynomials
 #using TypedPolynomials
 
+using MathOptInterface
+const MOI = MathOptInterface
+
 using JuMP
 using PolyJuMP
 
@@ -15,7 +18,3 @@ include("testpolymodule.jl")
 include("polymodule.jl")
 include("variable.jl")
 include("constraint.jl")
-
-#if isdir(Pkg.dir("SumOfSquares"))
-#    #include("sumofsquares.jl")
-#end

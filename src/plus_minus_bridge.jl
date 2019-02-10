@@ -8,8 +8,8 @@ end
 function PlusMinusBridge{T, F, G, ST}(model::MOI.ModelLike,
                                       f::MOI.AbstractVectorFunction,
                                       set::PlusMinusSet{ST}) where {T, F, G, ST}
-    plus = MOI.add_constraint(model, f, set)
-    minus = MOI.add_constraint(model, operate(-, T, f), set)
+    plus = MOI.add_constraint(model, f, set.set)
+    minus = MOI.add_constraint(model, MOIU.operate(-, T, f), set.set)
     return PlusMinusBridge{T, F, G, ST}(plus, minus)
 end
 

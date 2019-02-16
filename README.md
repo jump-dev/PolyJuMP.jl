@@ -13,7 +13,8 @@ PolyJuMP is an extension to [JuMP](https://github.com/JuliaOpt/JuMP.jl) for form
 - [**LATEST**][docs-latest-url] &mdash; *in-development version of [SumOfSquares](https://github.com/JuliaOpt/SumOfSquares.jl)' documentation.*
 
 Some presentations on, or using, PolyJuMP:
-  * Benoît Legat at the JuMP Meetup 2017 [[Slides](http://www.juliaopt.org/meetings/mit2017/legat.pdf)] [[Video](https://youtu.be/kyo72yWYr54)]
+  * Benoît Legat at the [Summer School on Numerical Computing in Algebraic Geometry 2018](https://www.mis.mpg.de/calendar/conferences/2018/nc2018.html) [[Poster](https://drive.google.com/open?id=1pf9rdoVEjAnD164rptLki1AG0AH4i88M)]
+  * Benoît Legat at the [JuMP Meetup 2017](http://www.juliaopt.org/meetings/mit2017/) [[Slides](http://www.juliaopt.org/meetings/mit2017/legat.pdf)] [[Video](https://youtu.be/kyo72yWYr54)]
   * [Joey Huchette at SIAM Opt 2017](https://docs.google.com/presentation/d/1ASfjB1TdLJmYxT0b6rnyGh9eLbMc-66bTOt3_3yvc90/edit?usp=sharing)
 
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg

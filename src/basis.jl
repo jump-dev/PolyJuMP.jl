@@ -49,7 +49,9 @@ MonomialBasis(monomials) = MonomialBasis(monovec(monomials))
 
 MultivariatePolynomials.polynomialtype(mb::MonomialBasis{MT}, T::Type) where MT = MultivariatePolynomials.polynomialtype(MT, T)
 MultivariatePolynomials.polynomial(f::Function, mb::MonomialBasis) = polynomial(f, mb.monomials)
-MultivariatePolynomials.coefficients(p, ::Type{<:MonomialBasis}) = coefficients(p)
+function MultivariatePolynomials.coefficients(p, ::Type{<:MonomialBasis})
+    return coefficients(p)
+end
 
 """
     struct ScaledMonomialBasis{MT<:MultivariatePolynomials.AbstractMonomial, MV<:AbstractVector{MT}} <: AbstractPolynomialBasis
@@ -82,4 +84,6 @@ MultivariatePolynomials.polynomialtype(mb::ScaledMonomialBasis{MT}, T::Type) whe
 scaling(m::MultivariatePolynomials.AbstractMonomial) = √(factorial(degree(m)) / prod(factorial, exponents(m)))
 MultivariatePolynomials.polynomial(f::Function, mb::ScaledMonomialBasis) = polynomial(i -> scaling(mb.monomials[i]) * f(i), mb.monomials)
 unscale_coef(t::MultivariatePolynomials.AbstractTerm) = coefficient(t) / scaling(monomial(t))
-MultivariatePolynomials.coefficients(p, ::Type{<:ScaledMonomialBasis}) = unscale_coef.(terms(p))
+function MultivariatePolynomials.coefficients(p, ::Type{<:ScaledMonomialBasis})
+    return unscale_coef.(terms(p))
+end

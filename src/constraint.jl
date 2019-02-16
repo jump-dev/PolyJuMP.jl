@@ -73,7 +73,14 @@ function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
         return Constraint(_error, p, s, all_kws)
     else
         set = JuMP.moi_set(s, monos; domain=domain, kws...)
-        return JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
+        constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
+        bridgeable = BridgeableConstraint(constraint,
+                                          PolyJuMP.ZeroPolynomialBridge)
+        if !(domain isa FullSpace)
+            bridgeable = BridgeableConstraint(
+                constraint, PolyJuMP.ZeroPolynomialInAlgebraicSetBridge)
+        end
+        return bridgeable
     end
 end
 function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
@@ -107,6 +114,7 @@ function JuMP.add_constraint(model::JuMP.Model,
     monos = monomials(constraint.polynomial_or_matrix)
     set = PlusMinusSet(JuMP.moi_set(cone, monos; constraint.kws...))
     new_constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
+    bridgeable = BridgeableConstraint(new_constraint, PolyJuMP.PlusMinusBridge)
     return JuMP.add_constraint(model, new_constraint, name)
 end
 

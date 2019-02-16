@@ -14,7 +14,8 @@ function JuMP.function_string(::Type{JuMP.REPLMode},
 end
 function JuMP.function_string(::Type{JuMP.IJuliaMode},
                               p::MultivariatePolynomials.APL)
-    return sprint(show, MIME"text/latex"(), p)
+    # `show` prints `$$` around what `_show` prints.
+    return sprint(MultivariatePolynomials._show, MIME"text/latex"(), p)
 end
 
 ### Shapes for polynomial/moments primal-dual pair ###

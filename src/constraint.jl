@@ -1,29 +1,21 @@
 abstract type PolynomialSet end
+
+function JuMP.in_set_string(print_mode, set::PolynomialSet)
+    return string(JuMP._math_symbol(print_mode, :in), ' ', set)
+end
+
 struct ZeroPoly <: PolynomialSet end
 struct NonNegPoly <: PolynomialSet end
 struct PosDefPolyMatrix <: PolynomialSet end
 
-function JuMP.moi_set(::ZeroPoly, monos::AbstractVector{<:AbstractMonomial};
-                      domain::AbstractSemialgebraicSet=FullSpace(),
-                      basis=MonomialBasis)
-    return ZeroPolynomialSet(domain, basis, monos)
+function JuMP.function_string(::Type{JuMP.REPLMode},
+                              p::MultivariatePolynomials.APL)
+    return sprint(show, MIME"text/plain"(), p)
 end
-
-#struct Constraint{PT, ST<:PolynomialSet,
-#                  BT <: AbstractPolynomialBasis,
-#                  DT <: AbstractSemialgebraicSet} <: JuMP.AbstractConstraint
-#    p::PT # typically either be a polynomial or a Matrix of polynomials
-#    set::ST
-#    basis::BT
-#    domain::DT
-#end
-#
-## Responsible for getting slack and dual values
-#abstract type ConstraintDelegate end
-#
-#const ConstraintRef{CD<:ConstraintDelegate} = JuMP.ConstraintRef{Model, CD}
-#
-#Base.show(io::IO, cref::ConstraintRef) = print(io, "PolyJuMP constraint")
+function JuMP.function_string(::Type{JuMP.IJuliaMode},
+                              p::MultivariatePolynomials.APL)
+    return sprint(show, MIME"text/latex"(), p)
+end
 
 ### Shapes for polynomial/moments primal-dual pair ###
 
@@ -45,9 +37,12 @@ end
 JuMP.dual_shape(shape::PolynomialShape) = MomentsShape(shape.monomials)
 JuMP.dual_shape(shape::MomentsShape) = PolynomialShape(shape.monomials)
 
-#getdelegate(c::ConstraintRef) = c.index
-#getslack(c::ConstraintRef) = getslack(getdelegate(c))
-#JuMP.dual(c::ConstraintRef) = JuMP.dual(getdelegate(c))
+JuMP.reshape_set(::ZeroPolynomialSet, ::PolynomialShape) = ZeroPoly()
+function JuMP.moi_set(::ZeroPoly, monos::AbstractVector{<:AbstractMonomial};
+                      domain::AbstractSemialgebraicSet=FullSpace(),
+                      basis=MonomialBasis)
+    return ZeroPolynomialSet(domain, basis, monos)
+end
 
 ### @constraint/@SDconstraint macros ###
 
@@ -99,6 +94,10 @@ function JuMP.build_constraint(_error::Function, polynomial_or_matrix,
                                kws...)
     return Constraint(_error, polynomial_or_matrix, set, kws)
 end
+
+# FIXME the domain will not appear in the printing, it should be a field of
+#       `ZeroPoly` which is `FullSpace` by default
+JuMP.reshape_set(::PlusMinusSet, ::PolynomialShape) = ZeroPoly()
 function JuMP.add_constraint(model::JuMP.Model,
                              constraint::Constraint{<:Any, <:Any, ZeroPoly},
                              name::String = "")
@@ -109,6 +108,7 @@ function JuMP.add_constraint(model::JuMP.Model,
     new_constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
     return JuMP.add_constraint(model, new_constraint, name)
 end
+
 function JuMP.add_constraint(model::JuMP.Model, constraint::Constraint,
                              name::String = "")
     set = getdefault(model, constraint.set)

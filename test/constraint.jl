@@ -19,14 +19,24 @@ end
     #@test_macro_throws ErrorException @constraint(m, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1))
     @test_macro_throws ErrorException @constraint(m, p + 0, domain = (@set x >= -1 && x <= 1))
 
-    function testcon(m, cref, S::Type, p, ineqs, eqs, basis=PolyJuMP.MonomialBasis, kwargs=[])
-        @test cref isa JuMP.ConstraintRef{Model, <:MOI.ConstraintIndex{MOI.VectorAffineFunction{Float64}, <:S}}
+    function testcon(m, cref, S::Type, jump_set::PolyJuMP.PolynomialSet,
+                     p, ineqs, eqs, basis=PolyJuMP.MonomialBasis, kwargs=[])
+        @test cref isa JuMP.ConstraintRef{
+            Model, <:MOI.ConstraintIndex{MOI.VectorAffineFunction{Float64},
+                                         <:S}}
         c = JuMP.constraint_object(cref)
         set = JuMP.moi_set(c)
         @test set isa S
         if set isa PolyJuMP.PlusMinusSet
             set = set.set
         end
+        expected_str = string(JuMP.function_string(REPLMode, p), ' ',
+                              JuMP._math_symbol(REPLMode, :in), ' ', jump_set)
+        @test sprint(show, MIME"text/plain"(), cref) == expected_str
+        expected_str = string("\$ ", JuMP.function_string(IJuliaMode, p), ' ',
+                              JuMP._math_symbol(IJuliaMode, :in), ' ', jump_set,
+                              " \$")
+        @test sprint(show, MIME"text/latex"(), cref) == expected_str
         @test set.basis == basis
         if !isempty(kwargs)
             @test length(set.kwargs) == length(kwargs)
@@ -35,16 +45,11 @@ end
                 @test kw.second == kwargs[i][2]
             end
         end
-        if S == TestPolyModule.PosDefMatrix
-            expected_p = set.y' * p * set.y
-        else
-            expected_p = p
-        end
         # == between JuMP affine expression is not accurate, e.g. β + α != α + β
         # == 0 is not defined either
         # c.p and p can be matrices
-        @test _isequal(polynomial(JuMP.jump_function(c), set.monomials),
-                       expected_p)
+        @test _isequal(JuMP.reshape_vector(JuMP.jump_function(c),
+                                           JuMP.shape(c)), p)
         if isempty(ineqs)
             if isempty(eqs)
                 @test isa(set.domain, FullSpace)
@@ -63,39 +68,44 @@ end
     dom = @set x^2 + y^2 == 1 && x^3 + x*y^2 + y >= 1
     @testset "NonNeg" begin
         S = TestPolyModule.NonNeg
+        jump_set = TestPolyModule.TestNonNeg()
         testcon(m, @constraint(m, p >= q + 1, domain = @set y >= 1 && dom),
-                S, p - q - 1, [y-1, x^3 + x*y^2 + y - 1], [x^2 + y^2 - 1])
+                S, jump_set, p - q - 1, [y - 1, x^3 + x*y^2 + y - 1],
+                [x^2 + y^2 - 1])
         testcon(m, @constraint(m, p <= q),
-                S, q - p, [], [])
+                S, jump_set, -p + q, [], [])
         testcon(m, @constraint(m, q - p in PolyJuMP.NonNegPoly()),
-                S, q - p, [], [])
+                S, jump_set, q - p, [], [])
         testcon(m, @constraint(m, p + q >= 0, domain = @set x == y^3),
-                S, p + q, [], [x - y^3])
+                S, jump_set, p + q, [], [x - y^3])
         @testset "Custom keyword" begin
             testcon(m, @constraint(m, p <= q, maxdegree=1),
-                    S, q - p, [], [], MonomialBasis, [(:maxdegree, 1)])
+                    S, jump_set, -p + q, [], [], MonomialBasis,
+                    [(:maxdegree, 1)])
         end
     end
     @testset "ZeroPolynomialSet" begin
+        jump_set = PolyJuMP.ZeroPoly()
         @testset "ZeroPolynomialSet{FullSpace}" begin
             S = PolyJuMP.ZeroPolynomialSet{FullSpace}
             testcon(m, @constraint(m, p == q),
-                    S, p - q, [], [])
+                    S, jump_set, p - q, [], [])
             testcon(m, @constraint(m, p - q in PolyJuMP.ZeroPoly()),
-                    S, p - q, [], [])
+                    S, jump_set, p - q, [], [])
         end
         S = PolyJuMP.ZeroPolynomialSet
         testcon(m, @constraint(m, p == q, domain = @set x == 1 && f(x, y)),
-                S, p - q, [], [x - 1, x + y - 2])
+                S, jump_set, p - q, [], [x - 1, x + y - 2])
         testcon(m, @constraint(m, p - q in PolyJuMP.ZeroPoly(), domain = @set x == 1 && f(x, y)),
-                S, p - q, [], [x - 1, x + y - 2])
+                S, jump_set, p - q, [], [x - 1, x + y - 2])
         S = PolyJuMP.PlusMinusSet
         testcon(m, @constraint(m, p == q, domain = dom),
-                S, p - q, [x^3 + x*y^2 + y - 1],
+                S, jump_set, p - q, [x^3 + x*y^2 + y - 1],
                 [x^2 + y^2 - 1])
     end
     @testset "PosDefMatrix" begin
+        jump_set = TestPolyModule.TestPosDefMatrix()
         testcon(m, @SDconstraint(m, [p q; q 0] ⪰ [0 0; 0 p]),
-                TestPolyModule.PosDefMatrix, [p q; q -p], [], [])
+                TestPolyModule.PosDefMatrix, jump_set, [p q; q -p], [], [])
     end
 end

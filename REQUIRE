@@ -3,4 +3,4 @@ MultivariatePolynomials 0.2.7
 MultivariateMoments 0.1.0
 SemialgebraicSets 0.1.0
 MathOptInterface 0.8
-JuMP 0.17.1
+JuMP 0.19

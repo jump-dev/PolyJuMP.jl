@@ -13,7 +13,8 @@ include("utilities.jl")
                                    monomialtype(x), monovectype(x)}
     @test MOI.get(mock, MOI.ListOfConstraints()) == [
         (MOI.SingleVariable, MOI.LessThan{Float64}), (F, S)]
-    @test MOI.get(mock, MOI.NumberOfConstraints{F, MOI.Zeros}()) == 0
     ci = first(MOI.get(mock, MOI.ListOfConstraintIndices{F, S}()))
-    test_delete_bridge(mock, ci, 2, ((F, MOI.Zeros, 0),))
+    ST = PolyJuMP.ZeroPolynomialSet{FullSpace,MonomialBasis,Monomial{true},
+                                    MonomialVector{true}}
+    test_delete_bridge(mock, ci, 2, ((F, MOI.Zeros, 0), (F, ST, 0)))
 end

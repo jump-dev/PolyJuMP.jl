@@ -17,6 +17,10 @@ struct NonNeg{BT <: PolyJuMP.AbstractPolynomialBasis,
     monomials::MVT
     kwargs
 end
+function Base.copy(set::NonNeg)
+    return NonNeg(set.basis, set.domain, set.monomials, set.kwargs)
+end
+
 struct TestNonNeg <: PolyJuMP.PolynomialSet end
 
 JuMP.reshape_set(::NonNeg, ::PolyJuMP.PolynomialShape) = TestNonNeg()

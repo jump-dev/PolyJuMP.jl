@@ -39,7 +39,7 @@ function MOI.get(::ZeroPolynomialInAlgebraicSetBridge{T, F, BT, MT, MVT},
                  ::MOI.NumberOfConstraints{F, ZeroPolynomialSet{FullSpace, BT, MT, MVT}}) where {T, F, BT, MT, MVT}
     return 1
 end
-function MOI.get(::ZeroPolynomialInAlgebraicSetBridge{T, F, BT, MT, MVT},
+function MOI.get(b::ZeroPolynomialInAlgebraicSetBridge{T, F, BT, MT, MVT},
                  ::MOI.ListOfConstraintIndices{F, ZeroPolynomialSet{FullSpace, BT, MT, MVT}}) where {T, F, BT, MT, MVT}
     return [b.zero_constraint]
 end
@@ -49,9 +49,5 @@ function MOI.delete(model::MOI.ModelLike, c::ZeroPolynomialInAlgebraicSetBridge)
     MOI.delete(model, c.zero_constraint)
 end
 
-# Attributes, Bridge acting as a constraint
-function MOI.get(model::MOI.ModelLike,
-                 attr::Union{MOI.ConstraintPrimal, MOI.ConstraintDual},
-                 c::ZeroPolynomialInAlgebraicSetBridge)
-    return MOI.get(model, attr, c.zero_constraint)
-end
+# Dual and primal are not defined as the monomial vector may change so the
+# vector returned wouldn't make sense

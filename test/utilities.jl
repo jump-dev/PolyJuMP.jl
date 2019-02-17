@@ -6,8 +6,9 @@ end
 
 using JuMP
 
-function bridged_mock(mock_optimize!::Function)
-    mock = MOI.Utilities.MockOptimizer(JuMP._MOIModel{Float64}())
+function bridged_mock(mock_optimize!::Function;
+                      model = JuMP._MOIModel{Float64}())
+    mock = MOI.Utilities.MockOptimizer(model)
     bridged = MOI.Bridges.full_bridge_optimizer(mock, Float64)
     MOI.Utilities.set_mock_optimize!(mock, mock_optimize!)
     return bridged
@@ -22,7 +23,7 @@ end
 # Test deletion of bridge
 function test_delete_bridge(m::MOI.Bridges.AbstractBridgeOptimizer,
                             ci::MOI.ConstraintIndex{F, S}, nvars::Int,
-                            nocs::Tuple) where {F, S}
+                            nocs::Tuple; last_bridge = true) where {F, S}
     @test MOI.get(m, MOI.NumberOfVariables()) == nvars
     test_noc(m, F, S, 1)
     for noc in nocs
@@ -37,7 +38,9 @@ function test_delete_bridge(m::MOI.Bridges.AbstractBridgeOptimizer,
         @test err.index == ci
     end
     @test !MOI.is_valid(m, ci)
-    @test isempty(m.bridges)
+    if last_bridge
+        @test isempty(m.bridges)
+    end
     test_noc(m, F, S, 0)
     # As the bridge has been removed, if the constraints it has created where not removed, it wouldn't be there to decrease this counter anymore
     @test MOI.get(m, MOI.NumberOfVariables()) == nvars

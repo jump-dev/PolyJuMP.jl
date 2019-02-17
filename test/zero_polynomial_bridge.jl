@@ -12,7 +12,6 @@ include("utilities.jl")
                                    MonomialVector{true}}
     @test MOI.get(mock, MOI.ListOfConstraints()) == [
         (MOI.SingleVariable, MOI.LessThan{Float64}), (F, S)]
-    @test MOI.get(mock, MOI.NumberOfConstraints{F, MOI.Zeros}()) == 0
     ci = first(MOI.get(mock, MOI.ListOfConstraintIndices{F, S}()))
     test_delete_bridge(mock, ci, 2, ((F, MOI.Zeros, 0),))
 end

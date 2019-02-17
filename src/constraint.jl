@@ -45,6 +45,53 @@ function JuMP.moi_set(::ZeroPoly, monos::AbstractVector{<:AbstractMonomial};
     return ZeroPolynomialSet(domain, basis, monos)
 end
 
+"""
+    bridges(F::Type{<:MOI.AbstractFunction}, S::Type{<:MOI.AbstractSet})
+
+Return a list of bridges that may be needed to bridge `F`-in-`S` constraints but
+not the bridges that may be needed by constraints added by the bridges.
+"""
+bridges(::Type{<:MOI.AbstractFunction}, ::Type{<:MOI.AbstractSet}) = []
+
+function bridges(::Type{<:MOI.AbstractVectorFunction},
+                 ::Type{<:ZeroPolynomialSet{FullSpace}})
+    return [ZeroPolynomialBridge]
+end
+
+function bridges(::Type{<:MOI.AbstractVectorFunction},
+                 ::Type{<:ZeroPolynomialSet{<:AbstractAlgebraicSet}})
+    return [ZeroPolynomialInAlgebraicSetBridge]
+end
+
+function bridges(::Type{<:MOI.AbstractVectorFunction},
+                 ::Type{<:PlusMinusSet})
+    return [PlusMinusBridge]
+end
+
+"""
+    bridgeable(c::JuMP.AbstractConstraint, F::Type{<:MOI.AbstractFunction},
+               S::Type{<:MOI.AbstractSet})
+
+Wrap the constraint `c` in `JuMP.BridgeableConstraint`s that may be needed to
+bridge `F`-in-`S` constraints.
+"""
+function bridgeable end
+
+function bridgeable(c::JuMP.AbstractConstraint,
+                    F::Type{<:MOI.AbstractFunction},
+                    S::Type{<:MOI.AbstractSet})
+    bridge_types = bridges(F, S)
+    for bridge_type in bridge_types
+        c = BridgeableConstraint(c, bridge_type)
+        concrete_bridge_type = MOIB.concrete_bridge_type(bridge_type{Float64},
+                                                         F, S)
+        for (FT, ST) in MOIB.added_constraint_types(concrete_bridge_type)
+            c = bridgeable(c, FT, ST)
+        end
+    end
+    return c
+end
+
 ### @constraint/@SDconstraint macros ###
 
 non_constant(a::Vector{<:Number}) = convert(Vector{AffExpr}, a)
@@ -74,13 +121,8 @@ function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
     else
         set = JuMP.moi_set(s, monos; domain=domain, kws...)
         constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
-        bridgeable = BridgeableConstraint(constraint,
-                                          PolyJuMP.ZeroPolynomialBridge)
-        if !(domain isa FullSpace)
-            bridgeable = BridgeableConstraint(
-                bridgeable, PolyJuMP.ZeroPolynomialInAlgebraicSetBridge)
-        end
-        return bridgeable
+        return bridgeable(constraint, JuMP.moi_function_type(typeof(coefs)),
+                          typeof(set))
     end
 end
 function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
@@ -114,8 +156,9 @@ function JuMP.add_constraint(model::JuMP.Model,
     monos = monomials(constraint.polynomial_or_matrix)
     set = PlusMinusSet(JuMP.moi_set(cone, monos; constraint.kws...))
     new_constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
-    bridgeable = BridgeableConstraint(new_constraint, PolyJuMP.PlusMinusBridge)
-    return JuMP.add_constraint(model, new_constraint, name)
+    bridgeable_con = bridgeable(
+        new_constraint, JuMP.moi_function_type(typeof(coefs)), typeof(set))
+    return JuMP.add_constraint(model, bridgeable_con, name)
 end
 
 function JuMP.add_constraint(model::JuMP.Model, constraint::Constraint,

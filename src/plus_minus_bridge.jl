@@ -35,7 +35,7 @@ end
 # Attributes, Bridge acting as an model
 function MOI.get(::PlusMinusBridge{T, F, F, ST},
                  ::MOI.NumberOfConstraints{F, ST}) where {T, F, ST}
-    return 1
+    return 2
 end
 function MOI.get(::PlusMinusBridge{T, F, G, ST},
                  ::MOI.NumberOfConstraints{F, ST}) where {T, F, G, ST}

@@ -78,7 +78,7 @@ function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
                                           PolyJuMP.ZeroPolynomialBridge)
         if !(domain isa FullSpace)
             bridgeable = BridgeableConstraint(
-                constraint, PolyJuMP.ZeroPolynomialInAlgebraicSetBridge)
+                bridgeable, PolyJuMP.ZeroPolynomialInAlgebraicSetBridge)
         end
         return bridgeable
     end

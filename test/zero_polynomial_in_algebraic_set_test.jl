@@ -1,13 +1,14 @@
 using Test
 using JuMP
+using SemialgebraicSets
 # `MultivariateMoments.value` clashes with `JuMP.value`
 import MultivariateMoments
 const MM = MultivariateMoments
 using PolyJuMP
 using DynamicPolynomials
 
-function zero_polynomial_test(optimizer::MOI.AbstractOptimizer,
-                              config::MOI.Test.TestConfig)
+function zero_polynomial_in_algebraic_set_test(optimizer::MOI.AbstractOptimizer,
+                                               config::MOI.Test.TestConfig)
     atol = config.atol
     rtol = config.rtol
 
@@ -18,7 +19,7 @@ function zero_polynomial_test(optimizer::MOI.AbstractOptimizer,
     @variable(model, β ≤ 1)
 
     @polyvar x y
-    cref = @constraint(model, (α - β) * x * y == 0)
+    @constraint(model, α * x - β * y == 0, domain = @set x == y)
 
     @objective(model, Max, α)
     optimize!(model)
@@ -30,14 +31,7 @@ function zero_polynomial_test(optimizer::MOI.AbstractOptimizer,
     @test value(α) ≈ 1.0 atol=atol rtol=rtol
     @test value(β) ≈ 1.0 atol=atol rtol=rtol
     @test value(UpperBoundRef(β)) ≈ 1.0 atol=atol rtol=rtol
-    @test value(cref) isa MultivariatePolynomials.AbstractPolynomial{Float64}
-    @test value(cref) ≈ 0.0 * x * y atol=atol rtol=rtol
 
     @test dual_status(model) == MOI.FEASIBLE_POINT
     @test dual(UpperBoundRef(β)) ≈ -1.0 atol=atol rtol=rtol
-    μ = dual(cref)
-    @test μ isa MM.Measure{Float64}
-    @test length(MM.moments(μ)) == 1
-    @test MM.value(MM.moments(μ)[1]) ≈ -1.0 atol=atol rtol=rtol
-    @test monomial(MM.moments(μ)[1]) == x*y
 end

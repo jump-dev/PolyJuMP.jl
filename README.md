@@ -1,9 +1,9 @@
 # PolyJuMP
 
-| **PackageEvaluator** | **Build Status** |
-|:--------------------:|:----------------:|
-| [![][pkg-0.6-img]][pkg-0.6-url] | [![Build Status][build-img]][build-url] [![Build Status][winbuild-img]][winbuild-url] |
-| [![][pkg-0.7-img]][pkg-0.7-url] | [![Coveralls branch][coveralls-img]][coveralls-url] [![Codecov branch][codecov-img]][codecov-url] |
+| **Build Status** |
+|:----------------:|
+| [![Build Status][build-img]][build-url] [![Build Status][winbuild-img]][winbuild-url] |
+| [![Coveralls branch][coveralls-img]][coveralls-url] [![Codecov branch][codecov-img]][codecov-url] |
 
 PolyJuMP is an extension to [JuMP](https://github.com/JuliaOpt/JuMP.jl) for formulating and solving polynomial optimization problems. These problems can then be solved using [Sum of Squares Programming](https://github.com/JuliaOpt/SumOfSquares.jl).
 
@@ -21,11 +21,6 @@ Some presentations on, or using, PolyJuMP:
 [docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg
 [docs-stable-url]: https://juliaopt.github.io/SumOfSquares.jl/stable
 [docs-latest-url]: https://juliaopt.github.io/SumOfSquares.jl/latest
-
-[pkg-0.6-img]: http://pkg.julialang.org/badges/PolyJuMP_0.6.svg
-[pkg-0.6-url]: http://pkg.julialang.org/?pkg=PolyJuMP
-[pkg-0.7-img]: http://pkg.julialang.org/badges/PolyJuMP_0.7.svg
-[pkg-0.7-url]: http://pkg.julialang.org/?pkg=PolyJuMP
 
 [build-img]: https://travis-ci.org/JuliaOpt/PolyJuMP.jl.svg?branch=master
 [build-url]: https://travis-ci.org/JuliaOpt/PolyJuMP.jl

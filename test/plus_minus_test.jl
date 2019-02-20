@@ -1,9 +1,6 @@
 using Test
 using JuMP
 using SemialgebraicSets
-# `MultivariateMoments.value` clashes with `JuMP.value`
-import MultivariateMoments
-const MM = MultivariateMoments
 using PolyJuMP
 using DynamicPolynomials
 

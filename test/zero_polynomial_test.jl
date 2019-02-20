@@ -1,8 +1,6 @@
 using Test
 using JuMP
-# `MultivariateMoments.value` clashes with `JuMP.value`
-import MultivariateMoments
-const MM = MultivariateMoments
+using MultivariateMoments
 using PolyJuMP
 using DynamicPolynomials
 
@@ -36,8 +34,8 @@ function zero_polynomial_test(optimizer::MOI.AbstractOptimizer,
     @test dual_status(model) == MOI.FEASIBLE_POINT
     @test dual(UpperBoundRef(β)) ≈ -1.0 atol=atol rtol=rtol
     μ = dual(cref)
-    @test μ isa MM.Measure{Float64}
-    @test length(MM.moments(μ)) == 1
-    @test MM.value(MM.moments(μ)[1]) ≈ -1.0 atol=atol rtol=rtol
-    @test monomial(MM.moments(μ)[1]) == x*y
+    @test μ isa AbstractMeasure{Float64}
+    @test length(moments(μ)) == 1
+    @test moment_value(moments(μ)[1]) ≈ -1.0 atol=atol rtol=rtol
+    @test monomial(moments(μ)[1]) == x*y
 end

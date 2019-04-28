@@ -16,6 +16,4 @@ include("polymodule.jl")
 include("variable.jl")
 include("constraint.jl")
 
-include("zero_polynomial_bridge.jl")
-include("zero_polynomial_in_algebraic_set_bridge.jl")
-include("plus_minus_bridge.jl")
+include("Mock/mock_tests.jl")

@@ -4,14 +4,13 @@ using SemialgebraicSets
 using PolyJuMP
 using DynamicPolynomials
 
-function plus_minus_test(optimizer::MOI.AbstractOptimizer,
+function plus_minus_test(optimizer,
                          config::MOI.Test.TestConfig;
                          polymodule = nothing)
     atol = config.atol
     rtol = config.rtol
 
-    MOI.empty!(optimizer)
-    model = JuMP.direct_model(optimizer)
+    model = _model(optimizer)
 
     if polymodule !== nothing
         setpolymodule!(model, polymodule)
@@ -23,10 +22,10 @@ function plus_minus_test(optimizer::MOI.AbstractOptimizer,
     @polyvar x y
     # x^2 ≤ 0 implies that x = 0
     #  VectorAffineFunction
-    @constraint(model, α * (x + y) - β * y == 0, domain = @set x^2 ≤ 0)
+    c1 = @constraint(model, α * (x + y) - β * y == 0, domain = @set x^2 ≤ 0)
     #  VectorOfVariables
-    @constraint(model, α * x in PolyJuMP.ZeroPoly(),
-                domain = @set x^2 ≤ 0)
+    c2 = @constraint(model, α * x in PolyJuMP.ZeroPoly(),
+                     domain = @set x^2 ≤ 0)
 
     @objective(model, Max, α)
     optimize!(model)
@@ -41,4 +40,19 @@ function plus_minus_test(optimizer::MOI.AbstractOptimizer,
 
     @test dual_status(model) == MOI.FEASIBLE_POINT
     @test dual(UpperBoundRef(β)) ≈ -1.0 atol=atol rtol=rtol
+
+    _NonNegType(::ConstraintRef{<:JuMP.AbstractModel, MOI.ConstraintIndex{MOI.VectorOfVariables, PolyJuMP.PlusMinusSet{S}}}) where S = S
+
+    @testset "Delete" begin
+        F = MOI.VectorOfVariables
+        G = MOI.VectorAffineFunction{Float64}
+        NonNeg = _NonNegType(c2)
+        S = PolyJuMP.PlusMinusSet{NonNeg}
+        @test Set(MOI.get(model, MOI.ListOfConstraints())) == Set([
+            (MOI.SingleVariable, MOI.LessThan{Float64}), (G, S), (F, S)])
+        test_delete_bridge(model, c2, 2, ((F, NonNeg, 0), (G, NonNeg, 0)))
+        test_delete_bridge(model, c1, 2, ((F, NonNeg, 0), (G, NonNeg, 0)))
+    end
 end
+
+linear_tests["plus_minus"] = plus_minus_test

@@ -1,4 +1,4 @@
-include("Tests/Tests.jl")
+include("../Tests/Tests.jl")
 
 using Test
 using MathOptInterface

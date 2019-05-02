@@ -1,0 +1,4 @@
+[deps]
+GLPK = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
+MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
+PolyJuMP = "ddf597a6-d67e-5340-b84c-e37d84115374"

@@ -13,6 +13,7 @@ include("basis.jl")
 using MathOptInterface
 const MOI = MathOptInterface
 
+include("attributes.jl")
 include("zero_polynomial.jl")
 
 # Bridges

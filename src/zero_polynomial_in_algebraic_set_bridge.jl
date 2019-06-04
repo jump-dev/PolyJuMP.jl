@@ -57,6 +57,8 @@ function MOI.delete(model::MOI.ModelLike, c::ZeroPolynomialInAlgebraicSetBridge)
     MOI.delete(model, c.zero_constraint)
 end
 
+# Attributes, Bridge acting as a constraint
+
 # TODO ConstraintPrimal
 
 # Let A be the linear map corresponding to A(p) = rem(p, ideal(set.domain))
@@ -72,4 +74,8 @@ function MOI.get(model::MOI.ModelLike, attr::MOI.ConstraintDual,
     μ = measure(dual, set.monomials)
     I = ideal(bridge.domain)
     return [dot(rem(mono, I), μ) for mono in bridge.monomials]
+end
+function MOI.get(model::MOI.ModelLike, attr::MomentsAttribute,
+                 bridge::ZeroPolynomialInAlgebraicSetBridge)
+    return MOI.get(model, attr, bridge.zero_constraint)
 end

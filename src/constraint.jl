@@ -1,3 +1,5 @@
+export moments
+
 abstract type PolynomialSet end
 
 function JuMP.in_set_string(print_mode, set::PolynomialSet)
@@ -43,6 +45,15 @@ function JuMP.moi_set(::ZeroPoly, monos::AbstractVector{<:AbstractMonomial};
                       domain::AbstractSemialgebraicSet=FullSpace(),
                       basis=MonomialBasis)
     return ZeroPolynomialSet(domain, basis, monos)
+end
+
+"""
+    moments(cref::JuMP.ConstraintRef)
+
+Return the [`MomentsAttribute`](@ref) of `cref`.
+"""
+function MultivariateMoments.moments(cref::JuMP.ConstraintRef)
+    return MOI.get(cref.model, MomentsAttribute(), cref)
 end
 
 """

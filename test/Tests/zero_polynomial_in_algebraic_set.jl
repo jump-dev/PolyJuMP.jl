@@ -31,6 +31,7 @@ function zero_polynomial_in_algebraic_set_test(optimizer,
 
     @test dual_status(model) == MOI.FEASIBLE_POINT
     @test dual(UpperBoundRef(β)) ≈ -1.0 atol=atol rtol=rtol
+
     μ = dual(cref)
     @test μ isa AbstractMeasure{Float64}
     @test length(moments(μ)) == 2
@@ -39,8 +40,14 @@ function zero_polynomial_in_algebraic_set_test(optimizer,
     @test moment_value(moments(μ)[2]) ≈ -1.0 atol=atol rtol=rtol
     @test monomial(moments(μ)[2]) == y
 
+    μ = moments(cref)
+    @test μ isa AbstractMeasure{Float64}
+    @test length(moments(μ)) == 1
+    @test moment_value(moments(μ)[1]) ≈ -1.0 atol=atol rtol=rtol
+    @test monomial(moments(μ)[1]) == y
+
     F = MOI.VectorAffineFunction{Float64}
-    S = PolyJuMP.ZeroPolynomialSet{typeof(@set x == 1),MonomialBasis,
+    S = PolyJuMP.ZeroPolynomialSet{typeof(@set x == 1), MonomialBasis,
                                    monomialtype(x), monovectype(x)}
     @test MOI.get(model, MOI.ListOfConstraints()) == [
         (MOI.SingleVariable, MOI.LessThan{Float64}), (F, S)]

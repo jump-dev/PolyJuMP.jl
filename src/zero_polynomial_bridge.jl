@@ -39,13 +39,18 @@ function MOI.get(b::ZeroPolynomialBridge{T, F},
 end
 
 # Indices
-function MOI.delete(model::MOI.ModelLike, c::ZeroPolynomialBridge)
-    MOI.delete(model, c.zero_constraint)
+function MOI.delete(model::MOI.ModelLike, bridge::ZeroPolynomialBridge)
+    MOI.delete(model, bridge.zero_constraint)
 end
 
 # Attributes, Bridge acting as a constraint
 function MOI.get(model::MOI.ModelLike,
                  attr::Union{MOI.ConstraintPrimal, MOI.ConstraintDual},
-                 c::ZeroPolynomialBridge)
-    return MOI.get(model, attr, c.zero_constraint)
+                 bridge::ZeroPolynomialBridge)
+    return MOI.get(model, attr, bridge.zero_constraint)
+end
+function MOI.get(model::MOI.ModelLike, attr::MomentsAttribute,
+                 bridge::ZeroPolynomialBridge)
+    values = MOI.get(model, MOI.ConstraintDual(attr.N), bridge)
+    return measure(values, bridge.monomials)
 end

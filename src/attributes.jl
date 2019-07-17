@@ -1,6 +1,6 @@
 """
-    ConstraintDual(N)
-    ConstraintDual()
+    MomentsAttribute(N)
+    MomentsAttribute()
 
 A constraint attribute for the vector of moments corresponding to the
 constraint that a polynomial is zero in the full space in result `N`. If the

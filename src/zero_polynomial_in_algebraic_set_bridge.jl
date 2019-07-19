@@ -18,8 +18,12 @@ function ZeroPolynomialInAlgebraicSetBridge{T, F, BT, DT, MT, MVT}(model::MOI.Mo
                                                                                                                         MT <: AbstractMonomial,
                                                                                                                         MVT <: AbstractVector{MT}}
     p = polynomial(collect(MOI.Utilities.eachscalar(f)), s.monomials)
+    # As `*(::MOI.ScalarAffineFunction{T}, ::S)` is only defined if `S == T`, we
+    # need to call `changecoefficienttype`. This is critical since `T` is
+    # `Float64` when used with JuMP and the coefficient type is often `Int` with
+    # `FixedVariablesSet`.
     # FIXME convert needed because the coefficient type of `r` is `Any` otherwise if `domain` is `AlgebraicSet`
-    r = convert(typeof(p), rem(p, ideal(s.domain)))
+    r = convert(typeof(p), rem(p, ideal(MultivariatePolynomials.changecoefficienttype(s.domain, T))))
     zero_constraint = MOI.add_constraint(model, MOIU.vectorize(coefficients(r)),
                                          ZeroPolynomialSet(FullSpace(), s.basis,
                                                            monomials(r)))

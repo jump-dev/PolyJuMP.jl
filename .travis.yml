@@ -1,4 +1,6 @@
 language: julia
+codecov: true
+coveralls: true
 os:
   - linux
 #   - osx # Disable to speed up CI. PolyJuMP has no binary dependency so the
@@ -9,5 +11,3 @@ julia:
   - 1.1
 notifications:
   email: false
-after_success:
-    - julia -e 'using Pkg; Pkg.add("Coverage"); cd(Pkg.dir("PolyJuMP")); using Coverage; Coveralls.submit(process_folder()); Codecov.submit(process_folder())'

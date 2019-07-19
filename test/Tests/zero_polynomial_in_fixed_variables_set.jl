@@ -5,8 +5,8 @@ using MultivariateMoments
 using PolyJuMP
 using DynamicPolynomials
 
-function zero_polynomial_in_algebraic_set_test(optimizer,
-                                               config::MOI.Test.TestConfig)
+function zero_polynomial_in_fixed_variables_set_test(
+    optimizer, config::MOI.Test.TestConfig)
     atol = config.atol
     rtol = config.rtol
 
@@ -16,7 +16,7 @@ function zero_polynomial_in_algebraic_set_test(optimizer,
     @variable(model, β ≤ 1)
 
     @polyvar x y
-    cref = @constraint(model, α * x - β * y == 0, domain = @set x == y)
+    cref = @constraint(model, α * x * y - β * y == 0, domain = @set x == 1)
 
     @objective(model, Max, α)
     optimize!(model)
@@ -36,7 +36,7 @@ function zero_polynomial_in_algebraic_set_test(optimizer,
     @test μ isa AbstractMeasure{Float64}
     @test length(moments(μ)) == 2
     @test moment_value(moments(μ)[1]) ≈ -1.0 atol=atol rtol=rtol
-    @test monomial(moments(μ)[1]) == x
+    @test monomial(moments(μ)[1]) == x * y
     @test moment_value(moments(μ)[2]) ≈ -1.0 atol=atol rtol=rtol
     @test monomial(moments(μ)[2]) == y
 
@@ -47,7 +47,7 @@ function zero_polynomial_in_algebraic_set_test(optimizer,
     @test monomial(moments(μ)[1]) == y
 
     F = MOI.VectorAffineFunction{Float64}
-    S = PolyJuMP.ZeroPolynomialSet{typeof(@set x == y), MonomialBasis,
+    S = PolyJuMP.ZeroPolynomialSet{typeof(@set x == 1), MonomialBasis,
                                    monomialtype(x), monovectype(x)}
     @test MOI.get(model, MOI.ListOfConstraints()) == [
         (MOI.SingleVariable, MOI.LessThan{Float64}), (F, S)]
@@ -58,4 +58,4 @@ function zero_polynomial_in_algebraic_set_test(optimizer,
     end
 end
 
-linear_tests["zero_polynomial_in_algebraic_set"] = zero_polynomial_in_algebraic_set_test
+linear_tests["zero_polynomial_in_fixed_variables_set"] = zero_polynomial_in_fixed_variables_set_test

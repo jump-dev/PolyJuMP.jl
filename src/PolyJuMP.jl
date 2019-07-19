@@ -15,6 +15,7 @@ const MOI = MathOptInterface
 
 include("attributes.jl")
 include("zero_polynomial.jl")
+include("functions.jl")
 
 # Bridges
 const MOIB = MOI.Bridges

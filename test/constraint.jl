@@ -106,9 +106,9 @@ end
         end
         S = PolyJuMP.ZeroPolynomialSet
         testcon(m, @constraint(m, p == q, domain = @set x == 1 && f(x, y)),
-                S, jump_set, p - q, [], [x - 1, x + y - 2])
+                S, jump_set, p - q, [], [x + y - 2, x - 1])
         testcon(m, @constraint(m, p - q in PolyJuMP.ZeroPoly(), domain = @set x == 1 && f(x, y)),
-                S, jump_set, p - q, [], [x - 1, x + y - 2])
+                S, jump_set, p - q, [], [x + y - 2, x - 1])
         S = PolyJuMP.PlusMinusSet
         testcon(m, @constraint(m, p == q, domain = dom),
                 S, jump_set, p - q, [x^3 + x*y^2 + y - 1],

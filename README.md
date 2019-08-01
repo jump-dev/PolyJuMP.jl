@@ -12,7 +12,8 @@ PolyJuMP is an extension to [JuMP](https://github.com/JuliaOpt/JuMP.jl) for form
 - [**STABLE**][docs-stable-url] &mdash; **most recently tagged version of [SumOfSquares](https://github.com/JuliaOpt/SumOfSquares.jl)' documentation.**
 - [**LATEST**][docs-latest-url] &mdash; *in-development version of [SumOfSquares](https://github.com/JuliaOpt/SumOfSquares.jl)' documentation.*
 
-Some presentations on, or using, PolyJuMP:
+Some presentations on, or using, PolyJuMP (see [here](https://github.com/blegat/SumOfSquaresSlides) for the source code of the presentations):
+  * Tillmann Weisser, Benoît Legat, Chris Coey, Lea Kapelevich and Juan Pablo Vielma at [JuliaCon 2019](https://juliacon.org/2019/) [[Slides](https://drive.google.com/open?id=1HiA-praFyejE0Z3nVSpFEv938TAcPjA9)] [[Video](https://www.youtube.com/watch?v=cTmqmPcroFo)]
   * Benoît Legat at [CNLS 2019](https://cnls.lanl.gov/External/showtalksummary.php?selection=7768) [[Slides](https://drive.google.com/open?id=1kNF18C7RY2zi7jcZBMO1PRXtHuvVTFPn)]
   * Benoît Legat at [EURO 2019](https://www.euro2019dublin.com/) [[Slides](https://drive.google.com/open?id=1Wry56NzzL4QBRSwuhP4AlKOe2i2FL7dk)]
   * Benoît Legat at [juliaday Nantes 2019](https://julialang.univ-nantes.fr/programme/) [[Slides](https://drive.google.com/open?id=1pN3G9Pr8jbzK9EEaJ9a6p_qKwSbxb2bo)]

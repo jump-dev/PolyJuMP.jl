@@ -17,5 +17,5 @@ setpolymodule!(data::Data, pm::Module) = pm.setdefaults!(data)
 
 get_default(d) = d
 function get_default(::Nothing)
-    error("PolyJuMP is just a JuMP extension for modelling Polynomial Optimization: it does not implement any reformulation. To use automatic sums of squares (SOS) reformulations, install the SumOfSquares Julia package and try \`using SumOfSquares\` and \`setpolymodule!(SumOfSquares)\` or use \`SOSModel\` instead of \`Model\`.")
+    error("PolyJuMP is just a JuMP extension for modelling Polynomial Optimization: it does not implement any reformulation. To use automatic sums of squares (SOS) reformulations, install the SumOfSquares Julia package and try \`using SumOfSquares\` and \`setpolymodule!(model, SumOfSquares)\` or use \`SOSModel\` instead of \`Model\`.")
 end

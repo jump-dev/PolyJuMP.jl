@@ -29,11 +29,11 @@
         @test isa(p, PT)
         @test monomials(p) == monovec(x)
         if vars
-            @test all(α -> haskey(m.variable_to_zero_one, JuMP.index(α)) == binary, coefficients(p))
-            @test all(α -> haskey(m.variable_to_integrality, JuMP.index(α)) == integer, coefficients(p))
+            @test all(α -> JuMP.is_binary(α) == binary, coefficients(p))
+            @test all(α -> JuMP.is_integer(α) == integer, coefficients(p))
         else
-            @test all(α -> haskey(m.variable_to_zero_one, JuMP.index(first(keys(α.terms)))) == binary, coefficients(p))
-            @test all(α -> haskey(m.variable_to_integrality, JuMP.index(first(keys(α.terms)))) == integer, coefficients(p))
+            @test all(α -> JuMP.is_binary(first(keys(α.terms))) == binary, coefficients(p))
+            @test all(α -> JuMP.is_integer(first(keys(α.terms))) == integer, coefficients(p))
         end
     end
 

@@ -4,19 +4,19 @@ struct ZeroPolynomialInAlgebraicSetBridge{T, F <: MOI.AbstractVectorFunction,
                                           BT <: AbstractPolynomialBasis,
                                           DT <: AbstractSemialgebraicSet,
                                           MT <: AbstractMonomial,
-                                          MVT <: AbstractVector{MT}} <: MOIB.AbstractBridge
+                                          MVT <: AbstractVector{MT}} <: MOIB.Constraint.AbstractBridge
     zero_constraint::MOI.ConstraintIndex{F, ZeroPolynomialSet{FullSpace, BT, MT, MVT}}
     domain::DT
     monomials::MVT
 end
 
-function ZeroPolynomialInAlgebraicSetBridge{T, F, BT, DT, MT, MVT}(model::MOI.ModelLike,
-                                                                   f::MOI.AbstractVectorFunction,
-                                                                   s::ZeroPolynomialSet{<:AbstractAlgebraicSet}) where {T, F <: MOI.AbstractVectorFunction,
-                                                                                                                        BT <: AbstractPolynomialBasis,
-                                                                                                                        DT <: AbstractSemialgebraicSet,
-                                                                                                                        MT <: AbstractMonomial,
-                                                                                                                        MVT <: AbstractVector{MT}}
+function MOIB.Constraint.bridge_constraint(
+    ::Type{ZeroPolynomialInAlgebraicSetBridge{T, F, BT, DT, MT, MVT}},
+    model::MOI.ModelLike,
+    f::MOI.AbstractVectorFunction,
+    s::ZeroPolynomialSet{<:AbstractAlgebraicSet}
+) where {T, F, BT, DT, MT, MVT}
+
     p = polynomial(collect(MOI.Utilities.eachscalar(f)), s.monomials)
     # As `*(::MOI.ScalarAffineFunction{T}, ::S)` is only defined if `S == T`, we
     # need to call `changecoefficienttype`. This is critical since `T` is
@@ -36,12 +36,18 @@ function MOI.supports_constraint(::Type{ZeroPolynomialInAlgebraicSetBridge{T}},
                                  ::Type{<:ZeroPolynomialSet{<:AbstractAlgebraicSet}}) where T
     return true
 end
+function MOIB.added_constrained_variable_types(::Type{<:ZeroPolynomialInAlgebraicSetBridge})
+    return Tuple{DataType}[]
+end
 function MOIB.added_constraint_types(::Type{<:ZeroPolynomialInAlgebraicSetBridge{T, F, BT, DT, MT, MVT}}) where {T, F, BT, DT, MT, MVT}
     return [(F, ZeroPolynomialSet{FullSpace, BT, MT, MVT})]
 end
-function MOIB.concrete_bridge_type(::Type{<:ZeroPolynomialInAlgebraicSetBridge{T}},
-                                   F::Type{<:MOI.AbstractVectorFunction},
-                                   ::Type{<:ZeroPolynomialSet{DT, BT, MT, MVT}}) where {T, BT, DT<:AbstractAlgebraicSet, MT, MVT}
+function MOIB.Constraint.concrete_bridge_type(
+    ::Type{<:ZeroPolynomialInAlgebraicSetBridge{T}},
+    F::Type{<:MOI.AbstractVectorFunction},
+    ::Type{<:ZeroPolynomialSet{DT, BT, MT, MVT}}
+) where {T, BT, DT<:AbstractAlgebraicSet, MT, MVT}
+
     G = MOI.Utilities.promote_operation(-, T, F, F)
     return ZeroPolynomialInAlgebraicSetBridge{T, G, BT, DT, MT, MVT}
 end
@@ -63,6 +69,13 @@ end
 
 # Attributes, Bridge acting as a constraint
 
+function MOI.get(
+    model::MOI.ModelLike, attr::MOI.ConstraintSet,
+    bridge::ZeroPolynomialInAlgebraicSetBridge)
+
+    set = MOI.get(model, attr, bridge.zero_constraint)
+    return ZeroPolynomialSet(bridge.domain, set.basis, bridge.monomials)
+end
 # TODO ConstraintPrimal
 
 # Let A be the linear map corresponding to A(p) = rem(p, ideal(set.domain))

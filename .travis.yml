@@ -9,5 +9,8 @@ os:
 julia:
   - 1.0
   - 1.1
+  - 1.2
+before_script:
+  - julia -e 'using Pkg; Pkg.add(PackageSpec(name="JuMP", rev="master"))'
 notifications:
   email: false

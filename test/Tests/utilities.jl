@@ -57,6 +57,7 @@ function test_delete_bridge(model::Model,
                                                 MOI.ConstraintIndex{F, S}},
                             nvars::Int, nocs::Tuple) where {F, S}
     @test num_variables(model) == nvars
+    @test length(all_variables(model)) == nvars
     test_noc(model, F, S, 1)
     for noc in nocs
         test_noc(model, noc...)
@@ -68,6 +69,7 @@ function test_delete_bridge(model::Model,
     test_noc(model, F, S, 0)
     # As the bridge has been removed, if the constraints it has created where not removed, it wouldn't be there to decrease this counter anymore
     @test num_variables(model) == nvars
+    @test length(all_variables(model)) == nvars
     for noc in nocs
         test_noc(model, noc...)
     end

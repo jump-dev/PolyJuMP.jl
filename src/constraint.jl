@@ -89,13 +89,33 @@ bridge `F`-in-`S` constraints.
 function bridgeable end
 
 function bridgeable(c::JuMP.AbstractConstraint,
+                    S::Type{<:MOI.AbstractSet})
+    bridge_types = bridges(S)
+    for bridge_type in bridge_types
+        c = BridgeableConstraint(c, bridge_type)
+        concrete_bridge_type = MOIB.Variable.concrete_bridge_type(
+            bridge_type{Float64}, S)
+        for (ST,) in MOIB.added_constrained_variable_types(concrete_bridge_type)
+            c = bridgeable(c, ST)
+        end
+        for (FT, ST) in MOIB.added_constraint_types(concrete_bridge_type)
+            c = bridgeable(c, FT, ST)
+        end
+    end
+    return c
+end
+
+function bridgeable(c::JuMP.AbstractConstraint,
                     F::Type{<:MOI.AbstractFunction},
                     S::Type{<:MOI.AbstractSet})
     bridge_types = bridges(F, S)
     for bridge_type in bridge_types
         c = BridgeableConstraint(c, bridge_type)
-        concrete_bridge_type = MOIB.concrete_bridge_type(bridge_type{Float64},
-                                                         F, S)
+        concrete_bridge_type = MOIB.Constraint.concrete_bridge_type(
+            bridge_type{Float64}, F, S)
+        for (ST,) in MOIB.added_constrained_variable_types(concrete_bridge_type)
+            c = bridgeable(c, ST)
+        end
         for (FT, ST) in MOIB.added_constraint_types(concrete_bridge_type)
             c = bridgeable(c, FT, ST)
         end

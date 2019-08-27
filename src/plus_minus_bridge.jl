@@ -1,13 +1,16 @@
 struct PlusMinusBridge{T, F <: MOI.AbstractVectorFunction,
                        G <: MOI.AbstractVectorFunction,
-                       ST <: MOI.AbstractVectorSet} <: MOIB.AbstractBridge
+                       ST <: MOI.AbstractVectorSet} <: MOIB.Constraint.AbstractBridge
     plus::MOI.ConstraintIndex{F, ST}
     minus::MOI.ConstraintIndex{G, ST}
 end
 
-function PlusMinusBridge{T, F, G, ST}(model::MOI.ModelLike,
-                                      f::MOI.AbstractVectorFunction,
-                                      set::PlusMinusSet{ST}) where {T, F, G, ST}
+function MOIB.Constraint.bridge_constraint(
+    ::Type{PlusMinusBridge{T, F, G, ST}},
+    model::MOI.ModelLike,
+    f::MOI.AbstractVectorFunction,
+    set::PlusMinusSet{ST}) where {T, F, G, ST}
+
     plus = MOI.add_constraint(model, f, set.set)
     minus = MOI.add_constraint(model, MOIU.operate(-, T, f), set.set)
     return PlusMinusBridge{T, F, G, ST}(plus, minus)
@@ -19,15 +22,20 @@ function MOI.supports_constraint(::Type{PlusMinusBridge{T}},
                                  ::Type{<:PlusMinusSet}) where T
     return true
 end
+function MOIB.added_constrained_variable_types(::Type{<:PlusMinusBridge})
+    return Tuple{DataType}[]
+end
 function MOIB.added_constraint_types(::Type{<:PlusMinusBridge{T, F, F, ST}}) where {T, F, ST}
     return [(F, ST)]
 end
 function MOIB.added_constraint_types(::Type{<:PlusMinusBridge{T, F, G, ST}}) where {T, F, G, ST}
     return [(F, ST), (G, ST)]
 end
-function MOIB.concrete_bridge_type(::Type{<:PlusMinusBridge{T}},
-                                   F::Type{<:MOI.AbstractVectorFunction},
-                                   ::Type{<:PlusMinusSet{ST}}) where {T, ST}
+function MOIB.Constraint.concrete_bridge_type(
+    ::Type{<:PlusMinusBridge{T}},
+    F::Type{<:MOI.AbstractVectorFunction},
+    ::Type{<:PlusMinusSet{ST}}) where {T, ST}
+
     G = MOI.Utilities.promote_operation(-, T, F)
     return PlusMinusBridge{T, F, G, ST}
 end

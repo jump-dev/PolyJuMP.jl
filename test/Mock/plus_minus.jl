@@ -8,10 +8,10 @@ using PolyJuMP
 const NonNeg = TestPolyModule.NonNeg{MonomialBasis, typeof(@set x^2 ≤ 0),
                                      monomialtype(x), monovectype(x)}
 
-MOIU.@model(PolyNonNegModel,
-            (), (MOI.LessThan,), (NonNeg,), (),
-            (MOI.SingleVariable,), (), (MOI.VectorOfVariables,),
-            (MOI.VectorAffineFunction,))
+MOIU.@model(
+    PolyNonNegModel,
+    (), (MOI.LessThan,), (NonNeg,), (),
+    (), (), (MOI.VectorOfVariables,), (MOI.VectorAffineFunction,))
 
 config = MOI.Test.TestConfig()
 optimize!(mock) = MOIU.mock_optimize!(mock, [1.0, 1.0],

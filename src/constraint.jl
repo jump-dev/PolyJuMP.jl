@@ -64,6 +64,15 @@ not the bridges that may be needed by constraints added by the bridges.
 """
 bridges(::Type{<:MOI.AbstractFunction}, ::Type{<:MOI.AbstractSet}) = []
 
+"""
+    bridges(S::Type{<:MOI.AbstractSet})
+
+Return a list of bridges that may be needed to bridge constrained variables
+in `S` but not the bridges that may be needed by constraints added by the
+bridges.
+"""
+bridges(S::Type{<:MOI.AbstractSet}) = bridges(MOI.VectorOfVariables, S)
+
 function bridges(::Type{<:MOI.AbstractVectorFunction},
                  ::Type{<:ZeroPolynomialSet{FullSpace}})
     return [ZeroPolynomialBridge]
@@ -88,13 +97,20 @@ bridge `F`-in-`S` constraints.
 """
 function bridgeable end
 
+function _concrete(bridge_type::Type{<:MOIB.Variable.AbstractBridge},
+                   S::Type{<:MOI.AbstractSet})
+    MOIB.Variable.concrete_bridge_type(bridge_type, S)
+end
+function _concrete(bridge_type::Type{<:MOIB.Constraint.AbstractBridge},
+                   S::Type{<:MOI.AbstractSet})
+    MOIB.Constraint.concrete_bridge_type(bridge_type, MOI.VectorOfVariables, S)
+end
 function bridgeable(c::JuMP.AbstractConstraint,
                     S::Type{<:MOI.AbstractSet})
     bridge_types = bridges(S)
     for bridge_type in bridge_types
         c = BridgeableConstraint(c, bridge_type)
-        concrete_bridge_type = MOIB.Variable.concrete_bridge_type(
-            bridge_type{Float64}, S)
+        concrete_bridge_type = _concrete(bridge_type{Float64}, S)
         for (ST,) in MOIB.added_constrained_variable_types(concrete_bridge_type)
             c = bridgeable(c, ST)
         end

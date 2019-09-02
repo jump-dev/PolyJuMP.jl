@@ -38,7 +38,12 @@ function MOI.is_set_by_optimize(::MomentsAttribute)
 end
 
 # This is type piracy but we tolerate it.
-const ObjectWithoutIndex = Union{AbstractMonomial, AbstractTerm{<:MOI.Utilities.ObjectWithoutIndex}, AbstractPolynomial{<:MOI.Utilities.ObjectWithoutIndex}}
+const ObjectWithoutIndex = Union{
+    AbstractMonomial, AbstractTerm{<:MOI.Utilities.ObjectWithoutIndex},
+    AbstractPolynomial{<:MOI.Utilities.ObjectWithoutIndex},
+    MultivariateMoments.MomentMatrix{<:MOI.Utilities.ObjectWithoutIndex},
+    MultivariateMoments.AbstractMeasure{<:MOI.Utilities.ObjectWithoutIndex}
+}
 const ObjectOrTupleWithoutIndex = Union{ObjectWithoutIndex, Tuple{Vararg{ObjectWithoutIndex}}}
 const ObjectOrTupleOrArrayWithoutIndex = Union{ObjectOrTupleWithoutIndex, AbstractArray{<:ObjectOrTupleWithoutIndex}}
 MOI.Utilities.map_indices(::Function, x::ObjectOrTupleOrArrayWithoutIndex) = x

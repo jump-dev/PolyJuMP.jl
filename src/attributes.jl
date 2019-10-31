@@ -37,6 +37,11 @@ function MOI.is_set_by_optimize(::MomentsAttribute)
     return true
 end
 
+# If a variable is bridged, the `VectorOfVariables`-in-`ZeroPolynomialSet` is
+# bridged by `MOI.Bridges.Constraint.VectorFunctionizeBridge` and it has
+# to pass the constraint to the PolyJuMP bridge.
+MOI.Bridges.Constraint.invariant_under_function_conversion(::MomentsAttribute) = true
+
 # This is type piracy but we tolerate it.
 const ObjectWithoutIndex = Union{
     AbstractMonomial, AbstractTerm{<:MOI.Utilities.ObjectWithoutIndex},

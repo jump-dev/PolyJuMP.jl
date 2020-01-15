@@ -46,7 +46,7 @@ MOI.Bridges.Constraint.invariant_under_function_conversion(::MomentsAttribute) =
 const ObjectWithoutIndex = Union{
     AbstractMonomial, AbstractTerm{<:MOI.Utilities.ObjectWithoutIndex},
     AbstractPolynomial{<:MOI.Utilities.ObjectWithoutIndex},
-    MultivariateMoments.MomentMatrix{<:MOI.Utilities.ObjectWithoutIndex},
+    MultivariateMoments.AbstractMomentMatrix{<:MOI.Utilities.ObjectWithoutIndex},
     MultivariateMoments.AbstractMeasure{<:MOI.Utilities.ObjectWithoutIndex}
 }
 const ObjectOrTupleWithoutIndex = Union{ObjectWithoutIndex, Tuple{Vararg{ObjectWithoutIndex}}}

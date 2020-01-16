@@ -17,7 +17,7 @@ function MOIB.Constraint.bridge_constraint(
     s::ZeroPolynomialSet{<:AbstractAlgebraicSet}
 ) where {T, F, BT, DT, MT, MVT}
 
-    p = polynomial(collect(MOI.Utilities.eachscalar(f)), s.monomials)
+    p = polynomial(MOI.Utilities.scalarize(f), s.monomials)
     # As `*(::MOI.ScalarAffineFunction{T}, ::S)` is only defined if `S == T`, we
     # need to call `changecoefficienttype`. This is critical since `T` is
     # `Float64` when used with JuMP and the coefficient type is often `Int` with

@@ -1,7 +1,7 @@
 using LinearAlgebra
 
 struct ZeroPolynomialInAlgebraicSetBridge{T, F <: MOI.AbstractVectorFunction,
-                                          BT <: AbstractPolynomialBasis,
+                                          BT <: MB.AbstractPolynomialBasis,
                                           DT <: AbstractSemialgebraicSet,
                                           MT <: AbstractMonomial,
                                           MVT <: AbstractVector{MT}} <: MOIB.Constraint.AbstractBridge

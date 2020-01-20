@@ -8,7 +8,9 @@ os:
   - osx
 julia:
   - 1.0
-  - 1.1
-  - 1.2
+  - 1.3
 notifications:
   email: false
+before_script:
+  - julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/JuliaAlgebra/MultivariateBases.jl", rev="master"))'
+  - julia -e 'using Pkg; Pkg.add(PackageSpec(name="MultivariateMoments", rev="bl/basis"))'

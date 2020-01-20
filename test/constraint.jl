@@ -20,7 +20,7 @@ end
     @test_macro_throws ErrorException @constraint(m, p + 0, domain = (@set x >= -1 && x <= 1))
 
     function testcon(m, cref, S::Type, jump_set::PolyJuMP.PolynomialSet,
-                     p, ineqs, eqs, basis=PolyJuMP.MonomialBasis, kwargs=[])
+                     p, ineqs, eqs, basis=MB.MonomialBasis, kwargs=[])
         @test cref isa JuMP.ConstraintRef{
             Model, <:MOI.ConstraintIndex{MOI.VectorAffineFunction{Float64},
                                          <:S}}
@@ -91,7 +91,7 @@ end
                 S, jump_set, p + q, [], [x - y^3])
         @testset "Custom keyword" begin
             testcon(m, @constraint(m, p <= q, maxdegree=1),
-                    S, jump_set, -p + q, [], [], MonomialBasis,
+                    S, jump_set, -p + q, [], [], MB.MonomialBasis,
                     [(:maxdegree, 1)])
         end
     end

@@ -3,10 +3,10 @@ module PolyJuMP
 # MultivariatePolynomials extension
 
 using MultivariatePolynomials
+import MultivariateBases
+const MB = MultivariateBases
 using MultivariateMoments
 using SemialgebraicSets
-
-include("basis.jl")
 
 # MOI extension
 

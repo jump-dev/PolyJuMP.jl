@@ -54,32 +54,32 @@
         @variable m p5[1:3] Poly(X)
         @test isa(p5, Vector{typeof(var_poly)})
         testvar(m, p5[1], X)
-        @variable(m, p6, Poly(MonomialBasis(X)), integer=true)
+        @variable(m, p6, Poly(MB.MonomialBasis(X)), integer=true)
         testvar(m, p6, X, false, true)
     end
 
     @testset "ScaledMonomialBasis" begin
         m = Model()
-        @variable(m, p1, Poly(ScaledMonomialBasis([1, x, x^2])), Int)
+        @variable(m, p1, Poly(MB.ScaledMonomialBasis([1, x, x^2])), Int)
         testvar(m, p1, monovec([1, x, x^2]), false, true, false, false)
     end
 
     @testset "FixedPolynomialBasis" begin
         m = Model()
-        @variable(m, p1, Poly(FixedPolynomialBasis([1 - x^2, x^2 + 2])), Bin)
+        @variable(m, p1, Poly(MB.FixedPolynomialBasis([1 - x^2, x^2 + 2])), Bin)
         testvar(m, p1, monovec([x^2, 1]), true, false, false, false)
-        @variable(m, p2[1:2], Poly(FixedPolynomialBasis([1 - x^2, x^2 + 2])))
+        @variable(m, p2[1:2], Poly(MB.FixedPolynomialBasis([1 - x^2, x^2 + 2])))
         testvar(m, p2[1], monovec([x^2, 1]), false, false, false, false)
         # Elements of the basis have type monomial
-        @variable(m, p3[2:3], Poly(FixedPolynomialBasis([x, x^2])))
+        @variable(m, p3[2:3], Poly(MB.FixedPolynomialBasis([x, x^2])))
         testvar(m, p3[2], monovec([x^2, x]), false, false, false, false)
         # Elements of the basis have type term
-        @variable(m, p4[1:2], Poly(FixedPolynomialBasis([1, x, x^2])), Int)
+        @variable(m, p4[1:2], Poly(MB.FixedPolynomialBasis([1, x, x^2])), Int)
         testvar(m, p4[1], monovec([x^2, x, 1]), false, true, false, false)
         # Elements of the basis have type variable
-        @variable(m, p5[-1:1], Poly(FixedPolynomialBasis([x, y])), integer=true)
+        @variable(m, p5[-1:1], Poly(MB.FixedPolynomialBasis([x, y])), integer=true)
         testvar(m, p5[0], monovec([x, y]), false, true, false)
-        @variable(m, p6[-1:1], Poly(FixedPolynomialBasis([x])), integer=true)
+        @variable(m, p6[-1:1], Poly(MB.FixedPolynomialBasis([x])), integer=true)
         testvar(m, p6[0], monovec([x]), false, true, false, false)
     end
 end

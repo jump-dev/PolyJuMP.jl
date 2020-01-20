@@ -43,7 +43,7 @@ JuMP.dual_shape(shape::MomentsShape) = PolynomialShape(shape.monomials)
 JuMP.reshape_set(::ZeroPolynomialSet, ::PolynomialShape) = ZeroPoly()
 function JuMP.moi_set(::ZeroPoly, monos::AbstractVector{<:AbstractMonomial};
                       domain::AbstractSemialgebraicSet=FullSpace(),
-                      basis=MonomialBasis)
+                      basis=MB.MonomialBasis)
     return ZeroPolynomialSet(domain, basis, monos)
 end
 

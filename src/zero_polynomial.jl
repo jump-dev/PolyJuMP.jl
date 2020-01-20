@@ -1,5 +1,5 @@
 struct ZeroPolynomialSet{DT <: AbstractSemialgebraicSet,
-                         BT <: AbstractPolynomialBasis,
+                         BT <: MB.AbstractPolynomialBasis,
                          MT <: AbstractMonomial,
                          MVT <: AbstractVector{MT}} <: MOI.AbstractVectorSet
     domain::DT

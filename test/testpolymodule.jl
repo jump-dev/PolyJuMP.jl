@@ -6,9 +6,11 @@ const MOI = MathOptInterface
 using JuMP
 using PolyJuMP
 using MultivariatePolynomials
+import MultivariateBases
+const MB = MultivariateBases
 using SemialgebraicSets
 
-struct NonNeg{BT <: PolyJuMP.AbstractPolynomialBasis,
+struct NonNeg{BT <: MB.AbstractPolynomialBasis,
               DT <: SemialgebraicSets.AbstractSemialgebraicSet,
               MT <: MultivariatePolynomials.AbstractMonomial,
               MVT <: AbstractVector{MT}} <: MOI.AbstractVectorSet
@@ -27,7 +29,7 @@ JuMP.reshape_set(::NonNeg, ::PolyJuMP.PolynomialShape) = TestNonNeg()
 function JuMP.moi_set(cone::TestNonNeg,
                       monos::AbstractVector{<:AbstractMonomial};
                       domain::AbstractSemialgebraicSet=FullSpace(),
-                      basis=MonomialBasis, kwargs...)
+                      basis=MB.MonomialBasis, kwargs...)
     return NonNeg(basis, domain, monos, kwargs)
 end
 
@@ -62,7 +64,7 @@ function JuMP.reshape_vector(x::Vector,
     return p
 end
 
-struct PosDefMatrix{BT <: PolyJuMP.AbstractPolynomialBasis,
+struct PosDefMatrix{BT <: MB.AbstractPolynomialBasis,
                     DT <: SemialgebraicSets.AbstractSemialgebraicSet,
                     MT <: MultivariatePolynomials.AbstractMonomial,
                     MVT <: AbstractVector{MT}} <: MOI.AbstractVectorSet
@@ -79,7 +81,7 @@ end
 function JuMP.moi_set(::TestPosDefMatrix,
                       monos::Matrix{<:AbstractVector{<:AbstractMonomial}};
                       domain::AbstractSemialgebraicSet=FullSpace(),
-                      basis=MonomialBasis, kwargs...)
+                      basis=MB.MonomialBasis, kwargs...)
     return PosDefMatrix(basis, domain, monos, kwargs)
 end
 

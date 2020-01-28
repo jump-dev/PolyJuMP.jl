@@ -43,7 +43,7 @@ function zero_polynomial_test(optimizer::MOI.AbstractOptimizer,
     end
 
     F = MOI.VectorAffineFunction{Float64}
-    S = PolyJuMP.ZeroPolynomialSet{FullSpace,MonomialBasis,Monomial{true},
+    S = PolyJuMP.ZeroPolynomialSet{FullSpace,MB.MonomialBasis,Monomial{true},
                                    MonomialVector{true}}
     @test Set(MOI.get(model, MOI.ListOfConstraints())) == Set([
         (MOI.SingleVariable, MOI.LessThan{Float64}), (F, S), (MOI.VectorOfVariables, S)])

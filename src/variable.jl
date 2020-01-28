@@ -16,10 +16,10 @@ abstract type AbstractPoly end
 
 Polynomial variable ``v^\\top p`` where ``v`` is a vector of new decision variables and ``p`` is a vector of polynomials for the basis `polynomial_basis`.
 """
-struct Poly{PB<:AbstractPolynomialBasis} <: AbstractPoly
+struct Poly{PB<:MB.AbstractPolynomialBasis} <: AbstractPoly
     polynomial_basis::PB
 end
-Poly(x::AbstractVector{<:MultivariatePolynomials.AbstractPolynomialLike}) = Poly(MonomialBasis(x))
+Poly(x::AbstractVector{<:MultivariatePolynomials.AbstractPolynomialLike}) = Poly(MB.MonomialBasis(x))
 
 # Macro
 function cvarchecks(_error::Function, info; extra_kwargs...)
@@ -64,7 +64,7 @@ end
 function JuMP.variable_type(model::JuMP.AbstractModel, p::Poly)
     return polytype(model, p, p.polynomial_basis)
 end
-function polytype(model::JuMP.AbstractModel, ::Poly, pb::AbstractPolynomialBasis)
+function polytype(model::JuMP.AbstractModel, ::Poly, pb::MB.AbstractPolynomialBasis)
     return MultivariatePolynomials.polynomialtype(pb, JuMP.VariableRef)
 end
 

@@ -47,12 +47,12 @@ function zero_polynomial_in_fixed_variables_set_test(
     @test monomial(moments(μ)[1]) == y
 
     F = MOI.VectorAffineFunction{Float64}
-    S = PolyJuMP.ZeroPolynomialSet{typeof(@set x == 1), MonomialBasis,
+    S = PolyJuMP.ZeroPolynomialSet{typeof(@set x == 1), MB.MonomialBasis,
                                    monomialtype(x), monovectype(x)}
     @test MOI.get(model, MOI.ListOfConstraints()) == [
         (MOI.SingleVariable, MOI.LessThan{Float64}), (F, S)]
     @testset "Delete" begin
-        ST = PolyJuMP.ZeroPolynomialSet{FullSpace,MonomialBasis,Monomial{true},
+        ST = PolyJuMP.ZeroPolynomialSet{FullSpace,MB.MonomialBasis,Monomial{true},
                                         MonomialVector{true}}
         test_delete_bridge(model, cref, 2, ((F, MOI.Zeros, 0), (F, ST, 0)))
     end

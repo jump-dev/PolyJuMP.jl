@@ -1,6 +1,8 @@
 using Test
 
 using MultivariatePolynomials
+import MultivariateBases
+const MB = MultivariateBases
 using SemialgebraicSets
 
 using DynamicPolynomials

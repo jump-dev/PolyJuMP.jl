@@ -73,7 +73,11 @@ end
         @test sprint(show, MIME"text/plain"(), eqref) == "(β - α)x² + (α - β)xy + (-α)y² $in_sym PolyJuMP.ZeroPoly()"
         @test sprint(show, MIME"text/latex"(), eqref) == "\$ (β - α)x^{2} + (α - β)xy + (-α)y^{2} \\in PolyJuMP.ZeroPoly() \$"
         sdref = @constraint(m, [p q; q p] in PSDCone())
-        @test sprint(show, MIME"text/plain"(), sdref) == "[(β)x² + (α)xy          (α)x² + (β)xy + (α)y²;\n (α)x² + (β)xy + (α)y²  (β)x² + (α)xy        ] $in_sym Main.TestPolyModule.TestPosDefMatrix()"
+        if VERSION < v"1.4-"
+            @test sprint(show, MIME"text/plain"(), sdref) == "[(β)x² + (α)xy          (α)x² + (β)xy + (α)y²;\n (α)x² + (β)xy + (α)y²  (β)x² + (α)xy        ] $in_sym Main.TestPolyModule.TestPosDefMatrix()"
+        else
+            @test sprint(show, MIME"text/plain"(), sdref) == "[(β)x² + (α)xy          (α)x² + (β)xy + (α)y²;\n (α)x² + (β)xy + (α)y²  (β)x² + (α)xy] $in_sym Main.TestPolyModule.TestPosDefMatrix()"
+        end
         @test sprint(show, MIME"text/latex"(), sdref) == "\$ \\begin{bmatrix}\n(β)x^{2} + (α)xy & (α)x^{2} + (β)xy + (α)y^{2}\\\\\n(α)x^{2} + (β)xy + (α)y^{2} & (β)x^{2} + (α)xy\\\\\n\\end{bmatrix} \\in Main.TestPolyModule.TestPosDefMatrix() \$"
     end
 

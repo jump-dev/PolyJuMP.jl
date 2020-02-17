@@ -61,13 +61,6 @@ function JuMP.build_variable(_error::Function, info::JuMP.VariableInfo, p::Abstr
 end
 
 # Free polynomial
-function JuMP.variable_type(model::JuMP.AbstractModel, p::Poly)
-    return polytype(model, p, p.polynomial_basis)
-end
-function polytype(model::JuMP.AbstractModel, ::Poly, pb::MB.AbstractPolynomialBasis)
-    return MultivariatePolynomials.polynomialtype(pb, JuMP.VariableRef)
-end
-
 function JuMP.add_variable(model::JuMP.AbstractModel, v::Variable{<:Poly},
                            name::String="")
     function _newvar(i)

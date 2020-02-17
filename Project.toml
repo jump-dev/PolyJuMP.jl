@@ -13,9 +13,9 @@ MultivariatePolynomials = "102ac46a-7ee4-5c85-9060-abc95bfdeaa3"
 SemialgebraicSets = "8e049039-38e8-557d-ae3a-bc521ccf6204"
 
 [compat]
-JuMP = "0.20"
+JuMP = "0.21"
 MathOptInterface = "~0.9.6"
-MultivariateBases = "0.1"
+MultivariateBases = "0.1.2"
 MultivariateMoments = "0.3"
 MultivariatePolynomials = "~0.3"
 SemialgebraicSets = "0.2"

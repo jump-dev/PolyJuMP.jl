@@ -80,7 +80,7 @@
         @variable(m, p5[-1:1], Poly(MB.FixedPolynomialBasis([x, y])), integer=true)
         testvar(m, p5[0], monovec([x, y]), false, true, false)
         @variable(m, p6[-1:1], Poly(MB.FixedPolynomialBasis([x])), integer=true)
-        testvar(m, p6[0], monovec([x]), false, true, false, false)
+        testvar(m, p6[0], monovec([x]), false, true, true, false)
     end
 end
 

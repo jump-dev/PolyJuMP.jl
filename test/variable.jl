@@ -49,13 +49,6 @@
         testvar(m, p3[2], X)
         @variable(m, p4[i=2:3,j=i:4], Poly(X), binary=true)
         testvar(m, p4[2,3], X, true)
-
-        X = [x^2, y^2]
-        @variable m p5[1:3] Poly(X)
-        @test isa(p5, Vector{typeof(var_poly)})
-        testvar(m, p5[1], X)
-        @variable(m, p6, Poly(MB.MonomialBasis(X)), integer=true)
-        testvar(m, p6, X, false, true)
     end
 
     @testset "ScaledMonomialBasis" begin
@@ -82,6 +75,22 @@
         @variable(m, p6[-1:1], Poly(MB.FixedPolynomialBasis([x])), integer=true)
         testvar(m, p6[0], monovec([x]), false, true, true, false)
     end
+
+    @testset "ChebyshevBasis" begin
+        m = Model()
+        X = MB.maxdegree_basis(MB.ChebyshevBasis, [x, y], 2)
+        @variable m p1[1:3] Poly(X)
+        @test isa(p1, Vector{typeof(aff_poly)})
+        testvar(m, p1[1], monomials([x,y], 0:2), false, false, false)
+        @variable(m, p2, Poly(X), integer=true)
+        testvar(m, p2,  monomials([x,y], 0:2), false, true, false)
+        @variable(m, p3[2:3], Poly(X))
+        @test isa(p3, JuMP.Containers.DenseAxisArray{typeof(aff_poly),1,Tuple{UnitRange{Int}}})
+        testvar(m, p3[2], monomials([x,y], 0:2), false, false, false)
+        @variable(m, p4[i=2:3,j=i:4], Poly(X), binary=true)
+        testvar(m, p4[2,3], monomials([x,y], 0:2), true, false, false)
+    end
+
 end
 
 @testset "JuMP.value function" begin

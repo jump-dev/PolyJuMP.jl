@@ -5,8 +5,7 @@ using DynamicPolynomials
 
 using SemialgebraicSets
 using PolyJuMP
-const NonNeg = TestPolyModule.NonNeg{MB.MonomialBasis, typeof(@set x^2 ≤ 0),
-                                     monomialtype(x), monovectype(x)}
+const NonNeg = TestPolyModule.NonNeg{MB.MonomialBasis{monomialtype(x), monovectype(x)}, typeof(@set x^2 ≤ 0)}
 
 MOIU.@model(
     PolyNonNegModel,

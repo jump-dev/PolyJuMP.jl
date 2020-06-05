@@ -23,28 +23,26 @@ end
 ### Shapes for polynomial/moments primal-dual pair ###
 
 # Inspired from `JuMP.dual_shape` docstring example
-struct PolynomialShape{MT <: AbstractMonomial,
-                       MVT <: AbstractVector{MT}} <: JuMP.AbstractShape
-    monomials::MVT
+struct PolynomialShape{BT <: MB.AbstractPolynomialBasis} <: JuMP.AbstractShape
+    basis::BT
 end
 function JuMP.reshape_vector(x::Vector, shape::PolynomialShape)
-    return polynomial(x, shape.monomials)
+    return polynomial(x, shape.basis)
 end
-struct MomentsShape{MT <: AbstractMonomial,
-                    MVT <: AbstractVector{MT}} <: JuMP.AbstractShape
-    monomials::MVT
+struct MomentsShape{BT <: MB.AbstractPolynomialBasis} <: JuMP.AbstractShape
+    basis::BT
 end
 function JuMP.reshape_vector(x::Vector, shape::MomentsShape)
-    return measure(x, shape.monomials)
+    return measure(x, shape.basis)
 end
-JuMP.dual_shape(shape::PolynomialShape) = MomentsShape(shape.monomials)
-JuMP.dual_shape(shape::MomentsShape) = PolynomialShape(shape.monomials)
+JuMP.dual_shape(shape::PolynomialShape) = MomentsShape(shape.basis)
+JuMP.dual_shape(shape::MomentsShape) = PolynomialShape(shape.basis)
 
 JuMP.reshape_set(::ZeroPolynomialSet, ::PolynomialShape) = ZeroPoly()
-function JuMP.moi_set(::ZeroPoly, monos::AbstractVector{<:AbstractMonomial};
-                      domain::AbstractSemialgebraicSet=FullSpace(),
-                      basis=MB.MonomialBasis)
-    return ZeroPolynomialSet(domain, basis, monos)
+function JuMP.moi_set(::ZeroPoly, basis::MB.AbstractPolynomialBasis;
+                      domain::AbstractSemialgebraicSet=FullSpace()
+                     )
+    return ZeroPolynomialSet(domain, basis)
 end
 
 """
@@ -149,9 +147,10 @@ non_constant_coefficients(p) = non_constant(coefficients(p))
 function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
                                s::ZeroPoly;
                                domain::AbstractSemialgebraicSet=FullSpace(),
+                               basis_type = MB.MonomialBasis,
                                kws...)
     coefs = non_constant_coefficients(p)
-    monos = monomials(p)
+    monos = MB.basis_covering_monomials(basis_type, monomials(p))
     if domain isa BasicSemialgebraicSet
         # p(x) = 0 for all x in a basic semialgebraic set. We replace it by
         # p(x) ≤ 0 and p(x) ≥ 0 for all x in the basic semialgebraic set.
@@ -200,7 +199,7 @@ function JuMP.add_constraint(model::JuMP.Model,
                              name::String = "")
     cone = getdefault(model, NonNegPoly())
     coefs = non_constant_coefficients(constraint.polynomial_or_matrix)
-    monos = monomials(constraint.polynomial_or_matrix)
+    monos = MB.MonomialBasis(monomials(constraint.polynomial_or_matrix))
     set = PlusMinusSet(JuMP.moi_set(cone, monos; constraint.kws...))
     new_constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
     bridgeable_con = bridgeable(

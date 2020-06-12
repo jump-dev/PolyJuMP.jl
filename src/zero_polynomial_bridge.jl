@@ -1,19 +1,19 @@
 struct ZeroPolynomialBridge{T, F <: MOI.AbstractVectorFunction,
-                            MT <: AbstractMonomial,
-                            MVT <: AbstractVector{MT}} <: MOIB.Constraint.AbstractBridge
+                            BT <: MB.AbstractPolynomialBasis
+                           } <: MOIB.Constraint.AbstractBridge
     zero_constraint::MOI.ConstraintIndex{F, MOI.Zeros}
-    monomials::MVT
+    basis::BT
 end
 
 function MOIB.Constraint.bridge_constraint(
-    ::Type{ZeroPolynomialBridge{T, F, MT, MVT}}, model::MOI.ModelLike,
+    ::Type{ZeroPolynomialBridge{T, F, BT}}, model::MOI.ModelLike,
     f::MOI.AbstractVectorFunction,
-    s::ZeroPolynomialSet{FullSpace, <:MB.MonomialBasis}) where {T, F, MT, MVT}
+    s::ZeroPolynomialSet{FullSpace, BT}) where {T, F, BT<:MB.AbstractPolynomialBasis}
 
-    @assert MOI.output_dimension(f) == length(s.monomials)
+    @assert MOI.output_dimension(f) == length(s.basis)
     zero_constraint = MOI.add_constraint(model, f,
-                                         MOI.Zeros(length(s.monomials)))
-    return ZeroPolynomialBridge{T, F, MT, MVT}(zero_constraint, s.monomials)
+                                         MOI.Zeros(length(s.basis)))
+    return ZeroPolynomialBridge{T, F, BT}(zero_constraint, s.basis)
 end
 
 function MOI.supports_constraint(::Type{<:ZeroPolynomialBridge{T}},
@@ -30,10 +30,10 @@ end
 function MOIB.Constraint.concrete_bridge_type(
     ::Type{<:ZeroPolynomialBridge{T}},
     F::Type{<:MOI.AbstractVectorFunction},
-    ::Type{<:ZeroPolynomialSet{FullSpace, <:MB.MonomialBasis, MT, MVT}}
-) where {T, MT, MVT}
+    ::Type{<:ZeroPolynomialSet{FullSpace, BT}}
+) where {T, BT}
 
-    return ZeroPolynomialBridge{T, F, MT, MVT}
+    return ZeroPolynomialBridge{T, F, BT}
 end
 
 # Attributes, Bridge acting as an model
@@ -53,9 +53,8 @@ end
 
 # Attributes, Bridge acting as a constraint
 function MOI.get(model::MOI.ModelLike, ::MOI.ConstraintSet,
-                 bridge::ZeroPolynomialBridge{T, F, MT, MVT}) where {T, F, MT, MVT}
-    return ZeroPolynomialSet(FullSpace(), MB.MonomialBasis{MT, MVT},
-                             bridge.monomials)
+                 bridge::ZeroPolynomialBridge{T, F, BT}) where {T, F, BT}
+    return ZeroPolynomialSet(FullSpace(), bridge.basis)
 end
 function MOI.get(model::MOI.ModelLike,
                  attr::Union{MOI.ConstraintPrimal, MOI.ConstraintDual},
@@ -65,5 +64,5 @@ end
 function MOI.get(model::MOI.ModelLike, attr::MomentsAttribute,
                  bridge::ZeroPolynomialBridge)
     values = MOI.get(model, MOI.ConstraintDual(attr.N), bridge)
-    return measure(values, bridge.monomials)
+    return measure(values, bridge.basis)
 end

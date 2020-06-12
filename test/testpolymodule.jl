@@ -12,32 +12,30 @@ using SemialgebraicSets
 
 struct NonNeg{BT <: MB.AbstractPolynomialBasis,
               DT <: SemialgebraicSets.AbstractSemialgebraicSet,
-              MT <: MultivariatePolynomials.AbstractMonomial,
-              MVT <: AbstractVector{MT}} <: MOI.AbstractVectorSet
-    basis::Type{BT}
+             } <: MOI.AbstractVectorSet
+    basis::BT
     domain::DT
-    monomials::MVT
     kwargs
 end
 function Base.copy(set::NonNeg)
-    return NonNeg(set.basis, set.domain, set.monomials, set.kwargs)
+    return NonNeg(set.basis, set.domain, set.kwargs)
 end
 
 struct TestNonNeg <: PolyJuMP.PolynomialSet end
 
 JuMP.reshape_set(::NonNeg, ::PolyJuMP.PolynomialShape) = TestNonNeg()
 function JuMP.moi_set(cone::TestNonNeg,
-                      monos::AbstractVector{<:AbstractMonomial};
+                      basis::MB.AbstractPolynomialBasis;
                       domain::AbstractSemialgebraicSet=FullSpace(),
-                      basis=MB.MonomialBasis, kwargs...)
-    return NonNeg(basis, domain, monos, kwargs)
+                      kwargs...)
+    return NonNeg(basis, domain, kwargs)
 end
 
 
 function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
-                               s::TestNonNeg; kwargs...)
+                               s::TestNonNeg; basis = MB.MonomialBasis, kwargs...)
     coefs = PolyJuMP.non_constant_coefficients(p)
-    monos = monomials(p)
+    monos = MB.basis_covering_monomials(basis, monomials(p))
     set = JuMP.moi_set(s, monos; kwargs...)
     return JuMP.VectorConstraint(coefs, set, PolyJuMP.PolynomialShape(monos))
 end

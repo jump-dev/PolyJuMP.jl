@@ -150,7 +150,7 @@ function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
                                basis_type = MB.MonomialBasis,
                                kws...)
     coefs = non_constant_coefficients(p)
-    monos = MB.basis_covering_monomials(basis_type, monomials(p))
+    basis = MB.basis_covering_monomials(basis_type, monomials(p))
     if domain isa BasicSemialgebraicSet
         # p(x) = 0 for all x in a basic semialgebraic set. We replace it by
         # p(x) ≤ 0 and p(x) ≥ 0 for all x in the basic semialgebraic set.
@@ -165,8 +165,8 @@ function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
                                   (:domain, kws.itr...))
         return Constraint(_error, p, s, all_kws)
     else
-        set = JuMP.moi_set(s, monos; domain=domain, kws...)
-        constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
+        set = JuMP.moi_set(s, basis; domain=domain, kws...)
+        constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(basis))
         return bridgeable(constraint, JuMP.moi_function_type(typeof(coefs)),
                           typeof(set))
     end
@@ -199,9 +199,9 @@ function JuMP.add_constraint(model::JuMP.Model,
                              name::String = "")
     cone = getdefault(model, NonNegPoly())
     coefs = non_constant_coefficients(constraint.polynomial_or_matrix)
-    monos = MB.MonomialBasis(monomials(constraint.polynomial_or_matrix))
-    set = PlusMinusSet(JuMP.moi_set(cone, monos; constraint.kws...))
-    new_constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
+    basis = MB.MonomialBasis(monomials(constraint.polynomial_or_matrix))
+    set = PlusMinusSet(JuMP.moi_set(cone, basis; constraint.kws...))
+    new_constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(basis))
     bridgeable_con = bridgeable(
         new_constraint, JuMP.moi_function_type(typeof(coefs)), typeof(set))
     return JuMP.add_constraint(model, bridgeable_con, name)

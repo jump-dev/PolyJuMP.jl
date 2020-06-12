@@ -33,9 +33,9 @@ end
 
 
 function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
-                               s::TestNonNeg; basis_type = MB.MonomialBasis, kwargs...)
+                               s::TestNonNeg; basis = MB.MonomialBasis, kwargs...)
     coefs = PolyJuMP.non_constant_coefficients(p)
-    monos = MB.basis_covering_monomials(basis_type, monomials(p))
+    monos = MB.basis_covering_monomials(basis, monomials(p))
     set = JuMP.moi_set(s, monos; kwargs...)
     return JuMP.VectorConstraint(coefs, set, PolyJuMP.PolynomialShape(monos))
 end

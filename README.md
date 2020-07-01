@@ -5,12 +5,12 @@
 | [![Build Status][build-img]][build-url] [![Build Status][winbuild-img]][winbuild-url] |
 | [![Coveralls branch][coveralls-img]][coveralls-url] [![Codecov branch][codecov-img]][codecov-url] |
 
-PolyJuMP is an extension to [JuMP](https://github.com/JuliaOpt/JuMP.jl) for formulating and solving polynomial optimization problems. These problems can then be solved using [Sum of Squares Programming](https://github.com/JuliaOpt/SumOfSquares.jl).
+PolyJuMP is an extension to [JuMP](https://github.com/jump-dev/JuMP.jl) for formulating and solving polynomial optimization problems. These problems can then be solved using [Sum of Squares Programming](https://github.com/jump-dev/SumOfSquares.jl).
 
 ## Documentation
 
-- [**STABLE**][docs-stable-url] &mdash; **most recently tagged version of [SumOfSquares](https://github.com/JuliaOpt/SumOfSquares.jl)' documentation.**
-- [**LATEST**][docs-latest-url] &mdash; *in-development version of [SumOfSquares](https://github.com/JuliaOpt/SumOfSquares.jl)' documentation.*
+- [**STABLE**][docs-stable-url] &mdash; **most recently tagged version of [SumOfSquares](https://github.com/jump-dev/SumOfSquares.jl)' documentation.**
+- [**LATEST**][docs-latest-url] &mdash; *in-development version of [SumOfSquares](https://github.com/jump-dev/SumOfSquares.jl)' documentation.*
 
 Some presentations on, or using, PolyJuMP (see [here](https://github.com/blegat/SumOfSquaresSlides) for the source code of the presentations):
   * Tillmann Weisser, Benoît Legat, Chris Coey, Lea Kapelevich and Juan Pablo Vielma at [JuliaCon 2019](https://juliacon.org/2019/) [[Slides](https://drive.google.com/open?id=1HiA-praFyejE0Z3nVSpFEv938TAcPjA9)] [[Video](https://www.youtube.com/watch?v=cTmqmPcroFo)]
@@ -23,14 +23,14 @@ Some presentations on, or using, PolyJuMP (see [here](https://github.com/blegat/
 
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg
-[docs-stable-url]: https://juliaopt.github.io/SumOfSquares.jl/stable
-[docs-latest-url]: https://juliaopt.github.io/SumOfSquares.jl/latest
+[docs-stable-url]: https://jump.dev/SumOfSquares.jl/stable
+[docs-latest-url]: https://jump.dev/SumOfSquares.jl/latest
 
-[build-img]: https://travis-ci.org/JuliaOpt/PolyJuMP.jl.svg?branch=master
-[build-url]: https://travis-ci.org/JuliaOpt/PolyJuMP.jl
+[build-img]: https://travis-ci.org/jump-dev/PolyJuMP.jl.svg?branch=master
+[build-url]: https://travis-ci.org/jump-dev/PolyJuMP.jl
 [winbuild-img]: https://ci.appveyor.com/api/projects/status/2y6dc0j2xk4aa4v7?svg=true
 [winbuild-url]: https://ci.appveyor.com/project/JuliaOpt/polyjump-jl
-[coveralls-img]: https://coveralls.io/repos/github/JuliaOpt/PolyJuMP.jl/badge.svg?branch=master
-[coveralls-url]: https://coveralls.io/github/JuliaOpt/PolyJuMP.jl?branch=master
-[codecov-img]: http://codecov.io/github/JuliaOpt/PolyJuMP.jl/coverage.svg?branch=master
-[codecov-url]: http://codecov.io/github/JuliaOpt/PolyJuMP.jl?branch=master
+[coveralls-img]: https://coveralls.io/repos/github/jump-dev/PolyJuMP.jl/badge.svg?branch=master
+[coveralls-url]: https://coveralls.io/github/jump-dev/PolyJuMP.jl?branch=master
+[codecov-img]: http://codecov.io/github/jump-dev/PolyJuMP.jl/coverage.svg?branch=master
+[codecov-url]: http://codecov.io/github/jump-dev/PolyJuMP.jl?branch=master

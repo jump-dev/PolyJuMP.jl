@@ -46,8 +46,6 @@ struct MatrixPolynomialShape{MT <: AbstractMonomial,
     side_dimension::Int
     monomials::Matrix{MVT}
 end
-MOI.dimension(set::MatrixPolynomialShape) = sum(length, set.monomials)
-Base.copy(set::MatrixPolynomialShape) = set
 
 function JuMP.reshape_vector(x::Vector,
                              shape::MatrixPolynomialShape{MT}) where {MT}
@@ -74,6 +72,9 @@ struct PosDefMatrix{BT <: MB.AbstractPolynomialBasis,
     monomials::Matrix{MVT}
     kwargs
 end
+MOI.dimension(set::PosDefMatrix) = sum(length, set.monomials)
+Base.copy(set::PosDefMatrix) = set
+
 struct TestPosDefMatrix <: PolyJuMP.PolynomialSet end
 
 function JuMP.reshape_set(::PosDefMatrix, ::MatrixPolynomialShape)

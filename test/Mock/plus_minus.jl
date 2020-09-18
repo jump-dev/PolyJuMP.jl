@@ -14,10 +14,10 @@ MOIU.@model(
     (), (), (MOI.VectorOfVariables,), (MOI.VectorAffineFunction,))
 
 config = MOI.Test.TestConfig()
-optimize!(mock) = MOIU.mock_optimize!(mock, [1.0, 1.0],
+_optimize!(mock) = MOIU.mock_optimize!(mock, [1.0, 1.0],
     (MOI.VectorOfVariables, NonNeg) => [[0.0]],
     (MOI.VectorAffineFunction{Float64}, NonNeg) => [[0.0, -0.5],
                                                     [0.0, 0.5],
                                                     [0.0]])
-mock = bridged_mock(optimize!; model = PolyNonNegModel{Float64}())
+mock = bridged_mock(_optimize!; model = PolyNonNegModel{Float64}())
 Tests.plus_minus_test(mock, config; polymodule = TestPolyModule)

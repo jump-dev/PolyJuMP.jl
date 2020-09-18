@@ -19,9 +19,8 @@ struct NonNeg{BT <: MB.AbstractPolynomialBasis,
     monomials::MVT
     kwargs
 end
-function Base.copy(set::NonNeg)
-    return NonNeg(set.basis, set.domain, set.monomials, set.kwargs)
-end
+MOI.dimension(set::NonNeg) = length(set.monomials)
+Base.copy(set::NonNeg) = set
 
 struct TestNonNeg <: PolyJuMP.PolynomialSet end
 
@@ -47,6 +46,8 @@ struct MatrixPolynomialShape{MT <: AbstractMonomial,
     side_dimension::Int
     monomials::Matrix{MVT}
 end
+MOI.dimension(set::MatrixPolynomialShape) = sum(length, set.monomials)
+Base.copy(set::MatrixPolynomialShape) = set
 
 function JuMP.reshape_vector(x::Vector,
                              shape::MatrixPolynomialShape{MT}) where {MT}

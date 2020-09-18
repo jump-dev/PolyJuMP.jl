@@ -3,7 +3,7 @@
 | **Build Status** |
 |:----------------:|
 | [![Build Status][build-img]][build-url] [![Build Status][winbuild-img]][winbuild-url] |
-| [![Coveralls branch][coveralls-img]][coveralls-url] [![Codecov branch][codecov-img]][codecov-url] |
+| [![Codecov branch][codecov-img]][codecov-url] |
 
 PolyJuMP is an extension to [JuMP](https://github.com/jump-dev/JuMP.jl) for formulating and solving polynomial optimization problems. These problems can then be solved using [Sum of Squares Programming](https://github.com/jump-dev/SumOfSquares.jl).
 
@@ -30,7 +30,5 @@ Some presentations on, or using, PolyJuMP (see [here](https://github.com/blegat/
 [build-url]: https://travis-ci.org/jump-dev/PolyJuMP.jl
 [winbuild-img]: https://ci.appveyor.com/api/projects/status/2y6dc0j2xk4aa4v7?svg=true
 [winbuild-url]: https://ci.appveyor.com/project/JuliaOpt/polyjump-jl
-[coveralls-img]: https://coveralls.io/repos/github/jump-dev/PolyJuMP.jl/badge.svg?branch=master
-[coveralls-url]: https://coveralls.io/github/jump-dev/PolyJuMP.jl?branch=master
 [codecov-img]: http://codecov.io/github/jump-dev/PolyJuMP.jl/coverage.svg?branch=master
 [codecov-url]: http://codecov.io/github/jump-dev/PolyJuMP.jl?branch=master

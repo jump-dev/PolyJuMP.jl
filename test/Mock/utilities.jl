@@ -6,6 +6,9 @@ MOIU.@model(NoFreeVariable,
             (), (MOI.ScalarAffineFunction,), (MOI.VectorOfVariables,), (MOI.VectorAffineFunction,))
 # No free variables to make sure variable bridges are used to increase coverage
 MOI.supports_add_constrained_variables(::NoFreeVariable, ::Type{MOI.Reals}) = false
+MOI.supports_add_constrained_variables(::NoFreeVariable, ::Type{MOI.Nonnegatives}) = true
+MOI.supports_add_constrained_variables(::NoFreeVariable, ::Type{MOI.Nonpositives}) = true
+MOI.supports_add_constrained_variables(::NoFreeVariable, ::Type{MOI.Zeros}) = true
 
 function bridged_mock(mock_optimize!::Function...;
                       model = MOIU.Model{Float64}())

@@ -1,7 +1,7 @@
 export Poly
 
 function JuMP.value(t::AbstractTerm{<:JuMP.AbstractJuMPScalar})
-    JuMP.value(coefficient(t)) * monomial(t)
+    JuMP.value(MultivariatePolynomials.coefficient(t)) * monomial(t)
 end
 function JuMP.value(p::AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
     polynomial(JuMP.value.(terms(p)), MultivariatePolynomials.SortedUniqState())

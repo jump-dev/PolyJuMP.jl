@@ -3,6 +3,18 @@ function _isequal(x::AbstractArray, y::AbstractArray)
     size(x) == size(y) && all(_isequal.(x, y))
 end
 
+# `MOI.Utilities.Model` canonicalizes the constraints so we need to
+# canonicalize them as well for the printing tests.
+function _canon(model, p::MP.APL)
+    return MP.polynomial(map(MP.terms(p)) do t
+        coef = MP.coefficient(t)
+        moi = JuMP.moi_function(coef)
+        jump = JuMP.jump_function(model, MOI.Utilities.canonical(moi))
+        return MP.term(jump, MP.monomial(t))
+    end)
+end
+_canon(model, p::Matrix) = _canon.(model, p)
+
 @testset "@constraint macro with polynomials" begin
     m = Model()
     setpolymodule!(m, TestPolyModule)
@@ -30,10 +42,12 @@ end
         if set isa PolyJuMP.PlusMinusSet
             set = set.set
         end
-        expected_str = string(JuMP.function_string(REPLMode, p), ' ',
+        p_canon = _canon(m, p)
+        expected_str = string(JuMP.function_string(REPLMode, p_canon), ' ',
                               JuMP._math_symbol(REPLMode, :in), ' ', jump_set)
+        con = JuMP.constraint_object(cref)
         @test sprint(show, MIME"text/plain"(), cref) == expected_str
-        expected_str = string("\$\$ ", JuMP.function_string(IJuliaMode, p), ' ',
+        expected_str = string("\$\$ ", JuMP.function_string(IJuliaMode, p_canon), ' ',
                               JuMP._math_symbol(IJuliaMode, :in), ' ', jump_set,
                               " \$\$")
         @test sprint(show, MIME"text/latex"(), cref) == expected_str
@@ -70,8 +84,8 @@ end
     @testset "Printing" begin
         in_sym = JuMP._math_symbol(REPLMode, :in)
         eqref = @constraint(m, p == q)
-        @test sprint(show, MIME"text/plain"(), eqref) == "(β - α)x² + (α - β)xy + (-α)y² $in_sym PolyJuMP.ZeroPoly()"
-        @test sprint(show, MIME"text/latex"(), eqref) == "\$\$ (β - α)x^{2} + (α - β)xy + (-α)y^{2} \\in PolyJuMP.ZeroPoly() \$\$"
+        @test sprint(show, MIME"text/plain"(), eqref) == "(-α + β)x² + (α - β)xy + (-α)y² $in_sym PolyJuMP.ZeroPoly()"
+        @test sprint(show, MIME"text/latex"(), eqref) == "\$\$ (-α + β)x^{2} + (α - β)xy + (-α)y^{2} \\in PolyJuMP.ZeroPoly() \$\$"
         sdref = @constraint(m, [p q; q p] in PSDCone())
         if VERSION < v"1.4-"
             @test sprint(show, MIME"text/plain"(), sdref) == "[(β)x² + (α)xy          (α)x² + (β)xy + (α)y²;\n (α)x² + (β)xy + (α)y²  (β)x² + (α)xy        ] $in_sym Main.TestPolyModule.TestPosDefMatrix()"

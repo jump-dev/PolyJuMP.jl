@@ -160,10 +160,12 @@ function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
         # to go to `JuMP.add_constraint`.
 
         # We need to recreate the full list of keyword arguments. `kws` is a
-        # `Iterators.Pairs, `kws.data` is a `NamedTuple` and `kws.itr` is a
+        # `Iterators.Pairs, `values(kws)` is a `NamedTuple` and `keys(kws.itr)` is a
         # `Tuple`.
-        all_kws = Iterators.Pairs(merge((domain=domain,), kws.data),
-                                  (:domain, kws.itr...))
+        all_kws = Iterators.Pairs(
+            merge((domain=domain,), values(kws)),
+            (:domain, values(kws)...),
+        )
         return Constraint(_error, p, s, all_kws)
     else
         set = JuMP.moi_set(s, monos; domain=domain, kws...)

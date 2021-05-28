@@ -1,6 +1,7 @@
 using Test
 
 using MultivariatePolynomials
+const MP = MultivariatePolynomials
 import MultivariateBases
 const MB = MultivariateBases
 using SemialgebraicSets

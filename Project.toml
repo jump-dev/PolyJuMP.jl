@@ -15,9 +15,9 @@ SemialgebraicSets = "8e049039-38e8-557d-ae3a-bc521ccf6204"
 [compat]
 JuMP = "0.22"
 MathOptInterface = "0.10"
-MultivariateBases = "0.1.2"
+MultivariateBases = "0.1.4"
 MultivariateMoments = "0.3"
-MultivariatePolynomials = "~0.3"
+MultivariatePolynomials = "0.4"
 SemialgebraicSets = "0.2"
 julia = "1"
 

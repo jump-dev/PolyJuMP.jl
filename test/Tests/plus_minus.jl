@@ -49,7 +49,7 @@ function plus_minus_test(optimizer,
         NonNeg = _NonNegType(c2)
         S = PolyJuMP.PlusMinusSet{NonNeg}
         @test Set(MOI.get(model, MOI.ListOfConstraints())) == Set([
-            (MOI.SingleVariable, MOI.LessThan{Float64}), (G, S), (F, S)])
+            (MOI.VariableIndex, MOI.LessThan{Float64}), (G, S), (F, S)])
         test_delete_bridge(model, c2, 2, ((F, NonNeg, 0), (G, NonNeg, 0)))
         test_delete_bridge(model, c1, 2, ((F, NonNeg, 0), (G, NonNeg, 0)))
     end

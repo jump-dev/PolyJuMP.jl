@@ -50,7 +50,7 @@ function zero_polynomial_in_algebraic_set_test(optimizer,
     S = PolyJuMP.ZeroPolynomialSet{typeof(@set x == y), MB.MonomialBasis,
                                    monomialtype(x), monovectype(x)}
     @test MOI.get(model, MOI.ListOfConstraints()) == [
-        (MOI.SingleVariable, MOI.LessThan{Float64}), (F, S)]
+        (MOI.VariableIndex, MOI.LessThan{Float64}), (F, S)]
     @testset "Delete" begin
         ST = PolyJuMP.ZeroPolynomialSet{FullSpace,MB.MonomialBasis,Monomial{true},
                                         MonomialVector{true}}

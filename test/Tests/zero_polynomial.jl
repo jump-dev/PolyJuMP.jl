@@ -5,7 +5,7 @@ using PolyJuMP
 using DynamicPolynomials
 
 function zero_polynomial_test(optimizer::MOI.AbstractOptimizer,
-                              config::MOI.Test.TestConfig)
+                              config::MOI.Test.Config)
     atol = config.atol
     rtol = config.rtol
 
@@ -45,8 +45,8 @@ function zero_polynomial_test(optimizer::MOI.AbstractOptimizer,
     F = MOI.VectorAffineFunction{Float64}
     S = PolyJuMP.ZeroPolynomialSet{FullSpace,MB.MonomialBasis,Monomial{true},
                                    MonomialVector{true}}
-    @test Set(MOI.get(model, MOI.ListOfConstraints())) == Set([
-        (MOI.SingleVariable, MOI.LessThan{Float64}), (F, S), (MOI.VectorOfVariables, S)])
+    @test Set(MOI.get(model, MOI.ListOfConstraintTypesPresent())) == Set([
+        (MOI.VariableIndex, MOI.LessThan{Float64}), (F, S), (MOI.VectorOfVariables, S)])
     @testset "Delete" begin
         test_delete_bridge(model, cref, 3, ((F, MOI.Zeros, 0),))
     end

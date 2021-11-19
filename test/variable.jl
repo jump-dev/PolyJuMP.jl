@@ -93,5 +93,5 @@ end
     JuMP.fix(α, 2)
     JuMP.fix(β, 3)
     @test_broken JuMP.value(p) == 2x*y + 3x^2
-    @test JuMP.value(p, fix_value) == 2x*y + 3x^2
+    @test JuMP.value(fix_value, p) == 2x*y + 3x^2
 end

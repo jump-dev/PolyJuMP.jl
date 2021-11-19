@@ -139,7 +139,7 @@ function bridgeable(c::JuMP.AbstractConstraint,
     return c
 end
 
-### @constraint/@SDconstraint macros ###
+### @constraint macro ###
 
 non_constant(a::Vector{<:Number}) = convert(Vector{AffExpr}, a)
 non_constant(a::Vector{<:JuMP.AbstractJuMPScalar}) = a

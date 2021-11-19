@@ -134,7 +134,7 @@ _canon(model, p::Matrix) = _canon.(model, p)
     end
     @testset "PosDefMatrix" begin
         jump_set = TestPolyModule.TestPosDefMatrix()
-        testcon(m, @SDconstraint(m, [p q; q 0] ⪰ [0 0; 0 p]),
+        testcon(m, @constraint(m, [p q; q 0] - [0 0; 0 p] in PSDCone()),
                 TestPolyModule.PosDefMatrix, jump_set, [p q; q -p], [], [])
     end
 end

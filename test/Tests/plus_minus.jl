@@ -5,7 +5,7 @@ using PolyJuMP
 using DynamicPolynomials
 
 function plus_minus_test(optimizer,
-                         config::MOI.Test.TestConfig;
+                         config::MOI.Test.Config;
                          polymodule = nothing)
     atol = config.atol
     rtol = config.rtol
@@ -48,7 +48,7 @@ function plus_minus_test(optimizer,
         G = MOI.VectorAffineFunction{Float64}
         NonNeg = _NonNegType(c2)
         S = PolyJuMP.PlusMinusSet{NonNeg}
-        @test Set(MOI.get(model, MOI.ListOfConstraints())) == Set([
+        @test Set(MOI.get(model, MOI.ListOfConstraintTypesPresent())) == Set([
             (MOI.VariableIndex, MOI.LessThan{Float64}), (G, S), (F, S)])
         test_delete_bridge(model, c2, 2, ((F, NonNeg, 0), (G, NonNeg, 0)))
         test_delete_bridge(model, c1, 2, ((F, NonNeg, 0), (G, NonNeg, 0)))

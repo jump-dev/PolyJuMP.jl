@@ -13,7 +13,7 @@ MOIU.@model(
     (), (MOI.LessThan,), (NonNeg,), (),
     (), (), (MOI.VectorOfVariables,), (MOI.VectorAffineFunction,))
 
-config = MOI.Test.TestConfig()
+config = MOI.Test.Config()
 _optimize!(mock) = MOIU.mock_optimize!(mock, [1.0, 1.0],
     (MOI.VectorOfVariables, NonNeg) => [[0.0]],
     (MOI.VectorAffineFunction{Float64}, NonNeg) => [[0.0, -0.5],

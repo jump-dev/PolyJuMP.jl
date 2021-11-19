@@ -31,7 +31,7 @@ macro test_suite(setname, subsets=false)
     end
     esc(:(
       function $testname(model, # could be ModelLike or an optimizer constructor
-                         config::$MOI.Test.TestConfig,
+                         config::$MOI.Test.Config,
                          exclude::Vector{String} = String[])
             for (name,f) in $testdict
                 if name in exclude
@@ -48,7 +48,7 @@ end
 function test_noc(model, F, S, n)
     @test MOI.get(model, MOI.NumberOfConstraints{F, S}()) == n
     @test length(MOI.get(model, MOI.ListOfConstraintIndices{F, S}())) == n
-    @test ((F, S) in MOI.get(model, MOI.ListOfConstraints())) == !iszero(n)
+    @test ((F, S) in MOI.get(model, MOI.ListOfConstraintTypesPresent())) == !iszero(n)
 end
 
 # Test deletion of bridge

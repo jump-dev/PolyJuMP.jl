@@ -1,6 +1,10 @@
 @testset "Functions" begin
     @polyvar x
     α = MOI.VariableIndex(1)
+    @test α * x isa AbstractTerm{MOI.VariableIndex}
+    @test x * α isa AbstractTerm{MOI.VariableIndex}
+    @test α * x^2 isa AbstractTerm{MOI.VariableIndex}
+    @test x^2 * α isa AbstractTerm{MOI.VariableIndex}
     @test (1α) * x^2 isa AbstractTerm{MOI.ScalarAffineFunction{Int}}
     @test (1x)^2 * α isa AbstractTerm{MOI.ScalarAffineFunction{Int}}
     @test α * (1x) isa AbstractTerm{MOI.ScalarAffineFunction{Int}}

@@ -237,3 +237,26 @@ function JuMP.build_constraint(_error::Function,
                                s::PSDCone; kws...)
     return JuMP.build_constraint(_error, p, PosDefPolyMatrix(); kws...)
 end
+
+# Needed for the syntax `@constraint(model, A >= B, PSDCone())`
+function JuMP.build_constraint(
+    _error::Function,
+    f::AbstractMatrix{<:AbstractPolynomialLike},
+    s::MOI.GreaterThan,
+    extra::PSDCone,
+)
+    @assert iszero(s.lower)
+    return JuMP.build_constraint(_error, f, extra)
+end
+
+# Needed for the syntax `@constraint(model, A <= B, PSDCone())`
+function JuMP.build_constraint(
+    _error::Function,
+    f::AbstractMatrix{<:AbstractPolynomialLike},
+    s::MOI.LessThan,
+    extra::PSDCone,
+)
+    @assert iszero(s.upper)
+    new_f = MA.operate!!(*, -1, f)
+    return JuMP.build_constraint(_error, new_f, extra)
+end

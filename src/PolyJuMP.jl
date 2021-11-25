@@ -1,5 +1,8 @@
 module PolyJuMP
 
+import MutableArithmetics
+const MA = MutableArithmetics
+
 # MultivariatePolynomials extension
 
 using MultivariatePolynomials

@@ -43,12 +43,12 @@ _canon(model, p::Matrix) = _canon.(model, p)
             set = set.set
         end
         p_canon = _canon(m, p)
-        expected_str = string(JuMP.function_string(REPLMode, p_canon), ' ',
-                              JuMP._math_symbol(REPLMode, :in), ' ', jump_set)
+        expected_str = string(JuMP.function_string(MIME"text/plain"(), p_canon), ' ',
+                              JuMP._math_symbol(MIME"text/plain"(), :in), ' ', jump_set)
         con = JuMP.constraint_object(cref)
         @test sprint(show, MIME"text/plain"(), cref) == expected_str
-        expected_str = string("\$\$ ", JuMP.function_string(IJuliaMode, p_canon), ' ',
-                              JuMP._math_symbol(IJuliaMode, :in), ' ', jump_set,
+        expected_str = string("\$\$ ", JuMP.function_string(MIME"text/latex"(), p_canon), ' ',
+                              JuMP._math_symbol(MIME"text/latex"(), :in), ' ', jump_set,
                               " \$\$")
         @test sprint(show, MIME"text/latex"(), cref) == expected_str
         @test set.basis == basis
@@ -82,7 +82,7 @@ _canon(model, p::Matrix) = _canon.(model, p)
     dom = @set x^2 + y^2 == 1 && x^3 + x*y^2 + y >= 1
 
     @testset "Printing" begin
-        in_sym = JuMP._math_symbol(REPLMode, :in)
+        in_sym = JuMP._math_symbol(MIME"text/plain"(), :in)
         eqref = @constraint(m, p == q)
         @test sprint(show, MIME"text/plain"(), eqref) == "(-α + β)x² + (α - β)xy + (-α)y² $in_sym PolyJuMP.ZeroPoly()"
         @test sprint(show, MIME"text/latex"(), eqref) == "\$\$ (-α + β)x^{2} + (α - β)xy + (-α)y^{2} \\in PolyJuMP.ZeroPoly() \$\$"

@@ -106,7 +106,7 @@ end
 # TODO the function in JuMP should not require the eltype to be
 #      `AbstractJuMPScalar` so that we don't have to define this
 # These methods are just copy-paste from JuMP/src/print.jl
-function JuMP.function_string(::Type{REPLMode},
+function JuMP.function_string(::MIME"text/plain",
                               A::AbstractMatrix{<:AbstractPolynomialLike})
     str = sprint(show, MIME"text/plain"(), A)
     lines = split(str, '\n')
@@ -119,7 +119,7 @@ function JuMP.function_string(::Type{REPLMode},
     end
     return join(lines, '\n')
 end
-function JuMP.function_string(print_mode::Type{IJuliaMode},
+function JuMP.function_string(print_mode::MIME"text/latex",
                               A::AbstractMatrix{<:AbstractPolynomialLike})
     str = sprint(show, MIME"text/plain"(), A)
     str = "\\begin{bmatrix}\n"

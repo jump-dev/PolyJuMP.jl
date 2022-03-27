@@ -1,4 +1,4 @@
-module TestPolyModule
+module DummyPolyModule
 
 using LinearAlgebra
 using MathOptInterface
@@ -22,10 +22,10 @@ end
 MOI.dimension(set::NonNeg) = length(set.monomials)
 Base.copy(set::NonNeg) = set
 
-struct TestNonNeg <: PolyJuMP.PolynomialSet end
+struct DummyNonNeg <: PolyJuMP.PolynomialSet end
 
-JuMP.reshape_set(::NonNeg, ::PolyJuMP.PolynomialShape) = TestNonNeg()
-function JuMP.moi_set(cone::TestNonNeg,
+JuMP.reshape_set(::NonNeg, ::PolyJuMP.PolynomialShape) = DummyNonNeg()
+function JuMP.moi_set(cone::DummyNonNeg,
                       monos::AbstractVector{<:AbstractMonomial};
                       domain::AbstractSemialgebraicSet=FullSpace(),
                       basis=MB.MonomialBasis, kwargs...)
@@ -34,7 +34,7 @@ end
 
 
 function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
-                               s::TestNonNeg; kwargs...)
+                               s::DummyNonNeg; kwargs...)
     coefs = PolyJuMP.non_constant_coefficients(p)
     monos = monomials(p)
     set = JuMP.moi_set(s, monos; kwargs...)
@@ -75,12 +75,12 @@ end
 MOI.dimension(set::PosDefMatrix) = sum(length, set.monomials)
 Base.copy(set::PosDefMatrix) = set
 
-struct TestPosDefMatrix <: PolyJuMP.PolynomialSet end
+struct DummyPosDefMatrix <: PolyJuMP.PolynomialSet end
 
 function JuMP.reshape_set(::PosDefMatrix, ::MatrixPolynomialShape)
-    return TestPosDefMatrix()
+    return DummyPosDefMatrix()
 end
-function JuMP.moi_set(::TestPosDefMatrix,
+function JuMP.moi_set(::DummyPosDefMatrix,
                       monos::Matrix{<:AbstractVector{<:AbstractMonomial}};
                       domain::AbstractSemialgebraicSet=FullSpace(),
                       basis=MB.MonomialBasis, kwargs...)
@@ -89,7 +89,7 @@ end
 
 function JuMP.build_constraint(_error::Function,
                                p::Matrix{<:AbstractPolynomialLike},
-                               s::TestPosDefMatrix; kwargs...)
+                               s::DummyPosDefMatrix; kwargs...)
     n = LinearAlgebra.checksquare(p)
     # TODO we should use `non_constant_coefficients_type` once it exists
     coefs = coefficienttype(p[1, 1])[]
@@ -142,8 +142,8 @@ end
 
 
 function setdefaults!(data::PolyJuMP.Data)
-    PolyJuMP.setdefault!(data, PolyJuMP.NonNegPoly, TestNonNeg)
-    PolyJuMP.setdefault!(data, PolyJuMP.PosDefPolyMatrix, TestPosDefMatrix)
+    PolyJuMP.setdefault!(data, PolyJuMP.NonNegPoly, DummyNonNeg)
+    PolyJuMP.setdefault!(data, PolyJuMP.PosDefPolyMatrix, DummyPosDefMatrix)
 end
 
 end

@@ -1,11 +1,13 @@
 include("../testpolymodule.jl")
 
+import MultivariateBases
+const MB = MultivariateBases
 using DynamicPolynomials
 @polyvar x
 
 using SemialgebraicSets
 using PolyJuMP
-const NonNeg = TestPolyModule.NonNeg{MB.MonomialBasis, typeof(@set x^2 ≤ 0),
+const NonNeg = DummyPolyModule.NonNeg{MB.MonomialBasis, typeof(@set x^2 ≤ 0),
                                      monomialtype(x), monovectype(x)}
 
 MOIU.@model(
@@ -20,4 +22,4 @@ _optimize!(mock) = MOIU.mock_optimize!(mock, [1.0, 1.0],
                                                     [0.0, 0.5],
                                                     [0.0]])
 mock = bridged_mock(_optimize!; model = PolyNonNegModel{Float64}())
-Tests.plus_minus_test(mock, config; polymodule = TestPolyModule)
+Tests.plus_minus_test(mock, config; polymodule = DummyPolyModule)

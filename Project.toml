@@ -27,6 +27,7 @@ julia = "1.6"
 DynamicPolynomials = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TypedPolynomials = "afbbf031-7a57-5f58-a1b9-b774a0fad08d"
 
 [targets]
-test = ["LinearAlgebra", "DynamicPolynomials", "Test"]
+test = ["DynamicPolynomials", "LinearAlgebra", "Test", "TypedPolynomials"]

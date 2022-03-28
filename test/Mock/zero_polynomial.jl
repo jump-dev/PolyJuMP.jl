@@ -1,10 +1,15 @@
-config = MOI.Test.Config()
+@testset "Model" begin
+    optimize!(mock) = MOIU.mock_optimize!(mock, [1.0, 1.0, 0.0],
+        (MOI.VectorAffineFunction{Float64}, MOI.Zeros) => [[-1.0], [-1.0]])
+    mock = bridged_mock(optimize!)
+    Tests.real_zero_polynomial_test(mock, MOI.Test.Config())
+end
 
 @testset "Model" begin
     optimize!(mock) = MOIU.mock_optimize!(mock, [1.0, 1.0, 0.0],
         (MOI.VectorAffineFunction{Float64}, MOI.Zeros) => [[-1.0], [-1.0]])
     mock = bridged_mock(optimize!)
-    Tests.zero_polynomial_test(mock, config)
+    Tests.complex_zero_polynomial_test(mock, MOI.Test.Config())
 end
 
 # The VectorOfVariables-in-ZeroPolynomialSet is bridged by VectorFunctionizeBridge
@@ -15,5 +20,5 @@ end
         (MOI.ScalarAffineFunction{Float64}, MOI.LessThan{Float64}) => [-1.0],
         (MOI.VectorAffineFunction{Float64}, MOI.Zeros) => [[-1.0], [-1.0]])
     mock = bridged_mock(optimize!, model = NoFreeVariable{Float64}())
-    Tests.zero_polynomial_test(mock, config)
+    Tests.real_zero_polynomial_test(mock, MOI.Test.Config())
 end

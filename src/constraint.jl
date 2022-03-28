@@ -67,9 +67,9 @@ bridges(::Type{<:MOI.AbstractFunction}, ::Type{<:MOI.AbstractSet}) = []
 """
     bridges(S::Type{<:MOI.AbstractSet})
 
-Return a list of bridges that may be needed to bridge constrained variables
-in `S` but not the bridges that may be needed by constraints added by the
-bridges.
+Return a list of bridges that may be needed to bridge variables constrained
+in `S` on creation but not the bridges that may be needed by constraints added
+by the bridges.
 """
 bridges(S::Type{<:MOI.AbstractSet}) = bridges(MOI.VectorOfVariables, S)
 
@@ -89,6 +89,11 @@ function bridges(::Type{<:MOI.AbstractVectorFunction},
 end
 
 """
+    bridgeable(c::JuMP.AbstractConstraint, S::Type{<:MOI.AbstractSet})
+
+Wrap the constraint `c` in `JuMP.BridgeableConstraint`s that may be needed to
+bridge variables constrained in `S` on creation.
+
     bridgeable(c::JuMP.AbstractConstraint, F::Type{<:MOI.AbstractFunction},
                S::Type{<:MOI.AbstractSet})
 
@@ -121,6 +126,9 @@ function bridgeable(c::JuMP.AbstractConstraint,
     return c
 end
 
+_coef_type(::Type{<:MOI.AbstractFunction}) = Float64
+_coef_type(::Type{<:MOI.Utilities.TypedLike{T}}) where {T} = T
+
 function bridgeable(c::JuMP.AbstractConstraint,
                     F::Type{<:MOI.AbstractFunction},
                     S::Type{<:MOI.AbstractSet})
@@ -128,7 +136,10 @@ function bridgeable(c::JuMP.AbstractConstraint,
     for bridge_type in bridge_types
         c = BridgeableConstraint(c, bridge_type)
         concrete_bridge_type = MOIB.Constraint.concrete_bridge_type(
-            bridge_type{Float64}, F, S)
+            bridge_type{_coef_type(F)},
+            F,
+            S,
+        )
         for (ST,) in MOIB.added_constrained_variable_types(concrete_bridge_type)
             c = bridgeable(c, ST)
         end
@@ -141,7 +152,8 @@ end
 
 ### @constraint macro ###
 
-non_constant(a::Vector{<:Number}) = convert(Vector{AffExpr}, a)
+non_constant(a::Vector{<:Real}) = convert(Vector{AffExpr}, a)
+non_constant(a::Vector{<:Complex}) = convert(Vector{GenericAffExpr{ComplexF64,VariableRef}}, a)
 non_constant(a::Vector{<:JuMP.AbstractJuMPScalar}) = a
 non_constant_coefficients(p) = non_constant(coefficients(p))
 

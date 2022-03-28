@@ -1,3 +1,5 @@
+module Mock
+
 include("../Tests/Tests.jl")
 include("utilities.jl")
 
@@ -14,4 +16,6 @@ end
 end
 @testset "PlusMinus" begin
     include("plus_minus.jl")
+end
+
 end

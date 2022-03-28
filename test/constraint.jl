@@ -19,11 +19,15 @@ function _isequal(x::AbstractArray, y::AbstractArray)
     size(x) == size(y) && all(_isequal.(x, y))
 end
 
+_con_constant(a::Real) = convert(GenericAffExpr{Float64,VariableRef}, a)
+_con_constant(a::Complex) = convert(GenericAffExpr{ComplexF64,VariableRef}, a)
+_con_constant(a) = a
+
 # `MOI.Utilities.Model` canonicalizes the constraints so we need to
 # canonicalize them as well for the printing tests.
 function _canon(model, p::MP.APL)
     return MP.polynomial(map(MP.terms(p)) do t
-        coef = MP.coefficient(t)
+        coef = _con_constant(MP.coefficient(t))
         moi = JuMP.moi_function(coef)
         jump = JuMP.jump_function(model, MOI.Utilities.canonical(moi))
         return MP.term(jump, MP.monomial(t))
@@ -32,9 +36,9 @@ end
 _canon(model, p::Matrix) = _canon.(model, p)
 
 function _test_constraint(m, cref, S::Type, jump_set::PolyJuMP.PolynomialSet,
-                 p, ineqs, eqs, basis=MB.MonomialBasis, kwargs=[])
+                 p, ineqs, eqs, basis=MB.MonomialBasis, kwargs=[]; T=Float64)
     @test cref isa JuMP.ConstraintRef{
-        Model, <:MOI.ConstraintIndex{MOI.VectorAffineFunction{Float64},
+        Model, <:MOI.ConstraintIndex{MOI.VectorAffineFunction{T},
                                      <:S}}
     c = JuMP.constraint_object(cref)
     set = JuMP.moi_set(c)
@@ -63,7 +67,7 @@ function _test_constraint(m, cref, S::Type, jump_set::PolyJuMP.PolynomialSet,
     # == 0 is not defined either
     # c.p and p can be matrices
     @test _isequal(JuMP.reshape_vector(JuMP.jump_function(c),
-                                       JuMP.shape(c)), p)
+                                       JuMP.shape(c)), p_canon)
     if isempty(ineqs)
         if isempty(eqs)
             @test isa(set.domain, FullSpace)
@@ -132,6 +136,10 @@ function test_NonNeg(var)
     dom = @set x^2 + y^2 == 1 && x^3 + x*y^2 + y >= 1
     S = DummyPolyModule.NonNeg
     jump_set = DummyPolyModule.DummyNonNeg()
+    _test_constraint(m, @constraint(m, x >= y),
+            S, jump_set, x - y, [], [])
+    _test_constraint(m, @constraint(m, im * x >= y),
+            S, jump_set, im * x - y, [], [], T=ComplexF64)
     _test_constraint(m, @constraint(m, p >= q + 1, domain = @set y >= 1 && dom),
             S, jump_set, p - q - 1, [y - 1, x^3 + x*y^2 + y - 1],
             [x^2 + y^2 - 1])
@@ -164,12 +172,18 @@ function test_ZeroPolynomialSet(var)
         S = PolyJuMP.ZeroPolynomialSet{FullSpace}
         _test_constraint(m, @constraint(m, p == q),
                 S, jump_set, p - q, [], [])
+        @test PolyJuMP.ZeroPolynomialBridge in m.bridge_types
         _test_constraint(m, @constraint(m, p - q in PolyJuMP.ZeroPoly()),
                 S, jump_set, p - q, [], [])
+        _test_constraint(m, @constraint(m, x == y),
+                S, jump_set, x - y, [], [])
+        _test_constraint(m, @constraint(m, x == im * y),
+                S, jump_set, x - im * y, [], [], T=ComplexF64)
     end
     S = PolyJuMP.ZeroPolynomialSet
     _test_constraint(m, @constraint(m, p == q, domain = @set x == 1 && f(x, y)),
             S, jump_set, p - q, [], [x + y - 2, x - 1])
+    @test PolyJuMP.ZeroPolynomialInAlgebraicSetBridge in m.bridge_types
     _test_constraint(m, @constraint(m, p - q in PolyJuMP.ZeroPoly(), domain = @set x == 1 && f(x, y)),
             S, jump_set, p - q, [], [x + y - 2, x - 1])
     S = PolyJuMP.PlusMinusSet

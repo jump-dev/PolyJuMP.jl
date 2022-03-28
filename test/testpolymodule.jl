@@ -25,6 +25,31 @@ Base.copy(set::NonNeg) = set
 struct DummyNonNeg <: PolyJuMP.PolynomialSet end
 
 JuMP.reshape_set(::NonNeg, ::PolyJuMP.PolynomialShape) = DummyNonNeg()
+
+struct DummyNonNegBridge{T,F} <: MOIB.Constraint.AbstractBridge end
+function PolyJuMP.bridges(
+    ::Type{<:MOI.AbstractVectorFunction},
+    ::Type{<:NonNeg},
+)
+    return [DummyNonNegBridge]
+end
+function MOI.Bridges.added_constrained_variable_types(::Type{<:DummyNonNegBridge})
+    return Tuple{Type}[]
+end
+function MOI.Bridges.added_constraint_types(::Type{DummyNonNegBridge{T,F}}) where {T, F}
+    return Tuple{Type,Type}[(F, MOI.EqualTo{T})]
+end
+function MOI.Bridges.Constraint.concrete_bridge_type(
+    ::Type{<:DummyNonNegBridge{T}},
+    F::Type{<:MOI.AbstractVectorFunction},
+    ::Type{<:NonNeg}) where {T}
+    # This tests that `T` matches the coefficient type of `F`
+    # as otherwise it would error.
+    G = MOI.Utilities.promote_operation(-, T, F, MOI.VectorOfVariables)
+    H = MOI.Utilities.scalar_type(G)
+    return DummyNonNegBridge{T,H}
+end
+
 function JuMP.moi_set(cone::DummyNonNeg,
                       monos::AbstractVector{<:AbstractMonomial};
                       domain::AbstractSemialgebraicSet=FullSpace(),
@@ -38,7 +63,11 @@ function JuMP.build_constraint(_error::Function, p::AbstractPolynomialLike,
     coefs = PolyJuMP.non_constant_coefficients(p)
     monos = monomials(p)
     set = JuMP.moi_set(s, monos; kwargs...)
-    return JuMP.VectorConstraint(coefs, set, PolyJuMP.PolynomialShape(monos))
+    return PolyJuMP.bridgeable(
+        JuMP.VectorConstraint(coefs, set, PolyJuMP.PolynomialShape(monos)),
+        JuMP.moi_function_type(typeof(coefs)),
+        typeof(set),
+    )
 end
 
 struct MatrixPolynomialShape{MT <: AbstractMonomial,

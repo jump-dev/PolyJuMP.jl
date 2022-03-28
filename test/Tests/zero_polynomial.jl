@@ -4,8 +4,11 @@ using MultivariateMoments
 using PolyJuMP
 using DynamicPolynomials
 
-function zero_polynomial_test(optimizer::MOI.AbstractOptimizer,
-                              config::MOI.Test.Config)
+function _zero_polynomial_test(
+    optimizer::MOI.AbstractOptimizer,
+    config::MOI.Test.Config,
+    complex::Bool,
+)
     atol = config.atol
     rtol = config.rtol
 
@@ -16,8 +19,10 @@ function zero_polynomial_test(optimizer::MOI.AbstractOptimizer,
     @variable(model, γ)
 
     @polyvar x y
-    cref = @constraint(model, (α - β) * x * y == 0)
-    cγ = @constraint(model, γ * x * y in PolyJuMP.ZeroPoly())
+    z = complex ? 0 + 0im : 0
+    cref = @constraint(model, (α - β) * x * y == z)
+    p = γ * x * y
+    cγ = @constraint(model, p in PolyJuMP.ZeroPoly())
 
     @objective(model, Max, α + γ)
     optimize!(model)
@@ -28,9 +33,11 @@ function zero_polynomial_test(optimizer::MOI.AbstractOptimizer,
     @test primal_status(model) == MOI.FEASIBLE_POINT
     @test value(α) ≈ 1.0 atol=atol rtol=rtol
     @test value(β) ≈ 1.0 atol=atol rtol=rtol
+    @test value(γ) ≈ 0.0 atol=atol rtol=rtol
     @test value(UpperBoundRef(β)) ≈ 1.0 atol=atol rtol=rtol
     @test value(cref) isa MultivariatePolynomials.AbstractPolynomial{Float64}
     @test value(cref) ≈ 0.0 * x * y atol=atol rtol=rtol
+    @test value(cγ) ≈ 0.0 * x * y atol=atol rtol=rtol
 
     @test dual_status(model) == MOI.FEASIBLE_POINT
     @test dual(UpperBoundRef(β)) ≈ -1.0 atol=atol rtol=rtol
@@ -52,4 +59,18 @@ function zero_polynomial_test(optimizer::MOI.AbstractOptimizer,
     end
 end
 
-linear_tests["zero_polynomial"] = zero_polynomial_test
+function real_zero_polynomial_test(
+    optimizer::MOI.AbstractOptimizer,
+    config::MOI.Test.Config,
+)
+    return _zero_polynomial_test(optimizer, config, false)
+end
+function complex_zero_polynomial_test(
+    optimizer::MOI.AbstractOptimizer,
+    config::MOI.Test.Config,
+)
+    return _zero_polynomial_test(optimizer, config, false)
+end
+
+linear_tests["zero_polynomial"] = real_zero_polynomial_test
+linear_tests["zero_polynomial"] = complex_zero_polynomial_test

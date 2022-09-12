@@ -2,8 +2,12 @@ export moments
 
 abstract type PolynomialSet end
 
-function JuMP.in_set_string(print_mode, set::PolynomialSet)
-    return string(JuMP._math_symbol(print_mode, :in), ' ', set)
+function JuMP.in_set_string(::MIME, set::PolynomialSet)
+    return string(Sys.iswindows() ? "in" : "∈", ' ', set)
+end
+
+function JuMP.in_set_string(::MIME"text/latex", set::PolynomialSet)
+    return string("\\in ", set)
 end
 
 struct ZeroPoly <: PolynomialSet end

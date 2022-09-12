@@ -47,13 +47,13 @@ function _test_constraint(m, cref, S::Type, jump_set::PolyJuMP.PolynomialSet,
         set = set.set
     end
     p_canon = _canon(m, p)
+    in_str = Sys.iswindows() ? "in" : "∈"
     expected_str = string(JuMP.function_string(MIME"text/plain"(), p_canon), ' ',
-                          JuMP._math_symbol(MIME"text/plain"(), :in), ' ', jump_set)
+                          in_str, ' ', jump_set)
     con = JuMP.constraint_object(cref)
     @test sprint(show, MIME"text/plain"(), cref) == expected_str
     expected_str = string("\$\$ ", JuMP.function_string(MIME"text/latex"(), p_canon), ' ',
-                          JuMP._math_symbol(MIME"text/latex"(), :in), ' ', jump_set,
-                          " \$\$")
+                          "\\in ", jump_set, " \$\$")
     @test sprint(show, MIME"text/latex"(), cref) == expected_str
     @test set.basis == basis
     if !isempty(kwargs)
@@ -110,7 +110,7 @@ function test_printing(var)
     p = α * x*y + β * x^2
     q = α*x^2 + β*x*y + α*y^2
 
-    in_sym = JuMP._math_symbol(MIME"text/plain"(), :in)
+    in_sym = Sys.iswindows() ? "in" : "∈"
     eqref = @constraint(m, p == q)
     @test sprint(show, MIME"text/plain"(), eqref) == "(-α + β)x² + (α - β)xy + (-α)y² $in_sym PolyJuMP.ZeroPoly()"
     @test sprint(show, MIME"text/latex"(), eqref) == "\$\$ (-α + β)x^{2} + (α - β)xy + (-α)y^{2} \\in PolyJuMP.ZeroPoly() \$\$"

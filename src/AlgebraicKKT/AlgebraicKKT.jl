@@ -17,13 +17,12 @@ import PolyJuMP
 
 const VarType = DynamicPolynomials.PolyVar{true}
 const PolyType{T} = DynamicPolynomials.Polynomial{true,T}
-const FuncType{T} = PolyJuMP.ScalarPolynomialFunction{T,PolyType}
 
 mutable struct Optimizer{T} <: MOI.AbstractOptimizer
     # Model
     variables::Dict{MOI.VariableIndex,VarType}
     objective_sense::MOI.OptimizationSense
-    objective_function::Union{Nothing,FuncType}
+    objective_function::Union{Nothing,PolyType{T}}
     set
     extrema::Vector{Vector{T}}
     objective_values::Vector{T}
@@ -36,10 +35,10 @@ mutable struct Optimizer{T} <: MOI.AbstractOptimizer
             Dict{MOI.VariableIndex,VarType}(),
             MOI.FEASIBILITY_SENSE,
             nothing,
-            SemialgebraicSets.FullSpace,
+            SemialgebraicSets.FullSpace(),
             Vector{T}[],
             T[],
-            optimizer,
+            nothing,
             Base.rtoldefault(T),
             Base.rtoldefault(T),
         )
@@ -77,6 +76,8 @@ function MOI.empty!(model::Optimizer)
     return
 end
 
+MOI.is_valid(model::Optimizer, vi::MOI.VariableIndex) = in(vi.value, 1:length(model.variables))
+
 function MOI.add_variable(model::Optimizer)
     i = length(model.variables) + 1
     vi = MOI.VariableIndex(i)
@@ -90,21 +91,24 @@ function _polynomial(variables, func::PolyJuMP.ScalarPolynomialFunction)
     return func.polynomial(MP.variables(func.polynomial) => new_variables)
 end
 
-function _set(poly::MP.AbstractPolynomial{T}, set::MOI.EqualTo{T}) where {T}
+function _set(poly::MP.AbstractPolynomialLike, set::MOI.EqualTo)
     return SemialgebraicSets.equality(poly, MOI.constant(set))
 end
 
-function _set(poly::MP.AbstractPolynomial{T}, set::MOI.GreaterThan{T}) where {T}
+function _set(poly::MP.AbstractPolynomialLike, set::MOI.GreaterThan)
     return SemialgebraicSets.PolynomialInequality(poly - MOI.constant(set))
 end
 
-function _set(poly::MP.AbstractPolynomial{T}, set::MOI.LessThan{T}) where {T}
+function _set(poly::MP.AbstractPolynomialLike, set::MOI.LessThan)
     return SemialgebraicSets.PolynomialInequality(MOI.constant(set) - poly)
 end
 
+_num(set, ::MOI.EqualTo) = SemialgebraicSets.nequalities(set)
+_num(set, ::Union{MOI.LessThan,MOI.GreaterThan}) = SemialgebraicSets.ninequalities(set)
+
 function MOI.add_constraint(model::Optimizer{T}, func::PolyJuMP.ScalarPolynomialFunction{T}, set::MOI.AbstractScalarSet) where {T}
     model.set = model.set ∩ _set(_polynomial(model.variables, func), set)
-    return
+    return MOI.ConstraintIndex{typeof(func), typeof(set)}(_num(model.set, set))
 end
 
 function MOI.set(model::Optimizer, ::MOI.ObjectiveSense, sense::MOI.OptimizationSense)
@@ -130,7 +134,7 @@ function _add_to_system(system, lagrangian, set::SemialgebraicSets.AlgebraicSet)
     for i in eachindex(λ)
         p = SemialgebraicSets.equalities(set)[i]
         SemialgebraicSets.addequality!(system, p)
-        lagrangian = MA.add_mul!(lagrangian, λ[i], p)
+        lagrangian = MA.add_mul!!(lagrangian, λ[i], p)
     end
     return lagrangian
 end
@@ -141,7 +145,7 @@ function _add_to_system(system, lagrangian, set::SemialgebraicSets.BasicSemialge
     for i in eachindex(σ)
         p = SemialgebraicSets.inequalities(set)[i]
         SemialgebraicSets.addequality!(system, σ[i] * p)
-        lagrangian = MA.add_mul!(lagrangian, σ[i]^2, p)
+        lagrangian = MA.add_mul!!(lagrangian, σ[i]^2, p)
     end
     return lagrangian
 end
@@ -154,29 +158,41 @@ function _violates_inequalities(set::SemialgebraicSets.BasicSemialgebraicSet, x,
     return any(p -> p(x => sol) < -tol, SemialgebraicSets.inequalities(set))
 end
 
-function MOI.optimize!(model::Optimizer)
-    DynamicPolynomials.@polyvar σ[1:ninequalities(model.set)]
-    T = _coefficient_type(model)
-    system = SemialgebraicSets.AlgebraicSet{T,polynomialtype(VarType, T)}()
+function _square(x::Vector{T}, n) where T
+    return T[(i + n in eachindex(x)) ? x[i] : x[i]^2 for i in eachindex(x)]
+end
+
+function MOI.optimize!(model::Optimizer{T}) where {T}
+    DynamicPolynomials.@polyvar σ[1:SemialgebraicSets.ninequalities(model.set)]
+    if isnothing(model.algebraic_solver)
+        system = SemialgebraicSets.AlgebraicSet{T,PolyType{T}}()
+    else
+        I = SemialgebraicSets.PolynomialIdeal{T,PolyType{T}}()
+        system = SemialgebraicSets.AlgebraicSet(I, model.algebraic_solver)
+    end
     if model.objective_sense == MOI.FEASIBILITY_SENSE
         lagrangian = MA.Zero()
     else
         lagrangian = MA.mutable_copy(model.objective_function)
     end
     lagrangian = _add_to_system(system, lagrangian, model.set)
-    x = collect(values(model.variables))
+    x = sort!(collect(values(model.variables)), rev=true)
     ∇x = MP.differentiate(lagrangian, x)
     for p in ∇x
         SemialgebraicSets.addequality!(system, p)
     end
-    model.extrema = Vector{T}[sol for sol in system if !_violates_inequalities(model.set, x, sol, model.tol)]
-    if model.sense != MOI.FEASIBILITY_SENSE
-        model.objective_values = T[model.objective_function(x => sol) for sol in model.extrema]
-        I = sortperm(model.objective_values, rev = model.sense == MOI.MAX_SENSE)
+    model.extrema = Vector{T}[_square(sol, SemialgebraicSets.ninequalities(model.set)) for sol in system if !_violates_inequalities(model.set, x, sol, model.feasibility_tolerance)]
+    if model.objective_sense != MOI.FEASIBILITY_SENSE
+        model.objective_values = T[model.objective_function(x => sol[eachindex(x)]) for sol in model.extrema]
+        I = sortperm(model.objective_values, rev = model.objective_sense == MOI.MAX_SENSE)
         model.extrema = model.extrema[I]
         model.objective_values = model.objective_values[I]
+        # Even if SemialgebraicSets remove duplicates, we may have solution with different `σ` but same `σ^2`
+        J = Int[i for i in eachindex(model.extrema) if i == 1 || !isapprox(model.extrema[i], model.extrema[i - 1])]
+        model.extrema = model.extrema[J]
+        model.objective_values = model.objective_values[J]
         i = findfirst(eachindex(model.objective_values)) do i
-            abs(model.objective_values[i] - first(model.objective_values)) > tol
+            abs(model.objective_values[i] - first(model.objective_values)) > model.optimality_tolerance
         end
         if !isnothing(i)
             model.extrema = model.extrema[1:(i - 1)]
@@ -184,6 +200,14 @@ function MOI.optimize!(model::Optimizer)
         end
     end
     return
+end
+
+MOI.get(model::Optimizer, ::MOI.ResultCount) = length(model.extrema)
+
+function MOI.get(model::Optimizer, attr::MOI.VariablePrimal, vi::MOI.VariableIndex)
+    MOI.throw_if_not_valid(model, vi)
+    MOI.check_result_index_bounds(model, attr)
+    return model.extrema[attr.result_index][vi.value]
 end
 
 end

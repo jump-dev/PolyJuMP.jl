@@ -45,6 +45,10 @@ mutable struct Optimizer{T} <: MOI.AbstractOptimizer
     end
 end
 
+function MOI.get(::Optimizer{T}, ::MOI.Bridges.ListOfNonstandardBridges{T}) where {T}
+    return [PolyJuMP.ToPolynomialBridge{T}]
+end
+
 function MOI.set(model::Optimizer, attr::MOI.RawOptimizerAttribute, solver::SemialgebraicSets.AbstractAlgebraicSolver)
     if attr.name != "algebraic_solver"
         throw(MOI.UnsupportedAttribute(attr))
@@ -103,12 +107,20 @@ function _set(poly::MP.AbstractPolynomialLike, set::MOI.LessThan)
     return SemialgebraicSets.PolynomialInequality(MOI.constant(set) - poly)
 end
 
-_num(set, ::MOI.EqualTo) = SemialgebraicSets.nequalities(set)
-_num(set, ::Union{MOI.LessThan,MOI.GreaterThan}) = SemialgebraicSets.ninequalities(set)
+_num(set, ::Type{<:MOI.EqualTo}) = SemialgebraicSets.nequalities(set)
+_num(set, ::Type{<:Union{MOI.LessThan,MOI.GreaterThan}}) = SemialgebraicSets.ninequalities(set)
+
+function MOI.supports_constraint(::Optimizer{T}, ::Type{<:PolyJuMP.ScalarPolynomialFunction{T}}, ::Type{<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}}}) where {T}
+    return true
+end
+
+function MOI.is_valid(model::Optimizer, ci::MOI.ConstraintIndex{<:PolyJuMP.ScalarPolynomialFunction,S}) where S
+    return ci.value in 1:_num(model.set, S)
+end
 
 function MOI.add_constraint(model::Optimizer{T}, func::PolyJuMP.ScalarPolynomialFunction{T}, set::MOI.AbstractScalarSet) where {T}
     model.set = model.set ∩ _set(_polynomial(model.variables, func), set)
-    return MOI.ConstraintIndex{typeof(func), typeof(set)}(_num(model.set, set))
+    return MOI.ConstraintIndex{typeof(func), typeof(set)}(_num(model.set, typeof(set)))
 end
 
 function MOI.set(model::Optimizer, ::MOI.ObjectiveSense, sense::MOI.OptimizationSense)
@@ -116,6 +128,7 @@ function MOI.set(model::Optimizer, ::MOI.ObjectiveSense, sense::MOI.Optimization
     return
 end
 
+MOI.supports(::Optimizer{T}, ::MOI.ObjectiveFunction{<:PolyJuMP.ScalarPolynomialFunction{T}}) where {T} = true
 function MOI.set(model::Optimizer{T}, ::MOI.ObjectiveFunction, func::PolyJuMP.ScalarPolynomialFunction{T}) where {T}
     model.objective_function = _polynomial(model.variables, func)
     return
@@ -160,6 +173,11 @@ end
 
 function _square(x::Vector{T}, n) where T
     return T[(i + n in eachindex(x)) ? x[i] : x[i]^2 for i in eachindex(x)]
+end
+
+MOI.supports_incremental_interface(::Optimizer) = true
+function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
+    return MOIU.default_copy_to(dest, src)
 end
 
 function MOI.optimize!(model::Optimizer{T}) where {T}
@@ -208,6 +226,20 @@ function MOI.get(model::Optimizer, attr::MOI.VariablePrimal, vi::MOI.VariableInd
     MOI.throw_if_not_valid(model, vi)
     MOI.check_result_index_bounds(model, attr)
     return model.extrema[attr.result_index][vi.value]
+end
+
+function _index(model, ci::MOI.ConstraintIndex{<:PolyJuMP.ScalarPolynomialFunction,<:MOI.EqualTo})
+    return length(model.variables) + ci.value
+end
+
+function _index(model, ci::MOI.ConstraintIndex{<:PolyJuMP.ScalarPolynomialFunction,<:Union{MOI.LessThan,MOI.GreaterThan}})
+    return length(model.variables) + SemialgebraicSets.nequalities(model.set) + ci.value
+end
+
+function MOI.get(model::Optimizer, attr::MOI.ConstraintDual, ci::MOI.ConstraintIndex)
+    MOI.throw_if_not_valid(model, ci)
+    MOI.check_result_index_bounds(model, attr)
+    return model.extrema[attr.result_index][_index(model, ci)]
 end
 
 end

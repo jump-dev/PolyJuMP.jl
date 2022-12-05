@@ -77,9 +77,9 @@ function _test_linquad(T, F1, O)
 end
 
 function test_linquad(var, T)
-   if !(var isa DynamicPolynomials.PolyVar)
-       return # Avoid running the same thing several times
-   end
+    if !(var isa DynamicPolynomials.PolyVar)
+        return # Avoid running the same thing several times
+    end
     for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction]
         for O in [MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction]
             _test_linquad(T, F1, O)
@@ -128,6 +128,59 @@ function test_JuMP(var, T)
             _test_JuMP(F1, O)
         end
     end
+end
+
+function test_MOI_runtests(var, T)
+    if !(var isa DynamicPolynomials.PolyVar) || T != Float64
+        return # Avoid running the same thing several times
+    end
+    config = MOI.Test.Config(
+        rtol = 1e-6,
+        atol = 1e-6,
+        exclude = Any[MOI.SolverVersion, MOI.ObjectiveBound],
+    )
+    optimizer = MOI.instantiate(
+        PolyJuMP.AlgebraicKKT.Optimizer{T},
+        with_bridge_type = T,
+    )
+    cache = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{T}())
+    cached = MOI.Utilities.CachingOptimizer(cache, optimizer)
+    return MOI.Test.runtests(
+        cached,
+        config,
+        exclude = [
+            # ErrorException: A non zero-dimensional algebraic set is not iterable
+            "test_objective_FEASIBILITY_SENSE_clears_objective",
+            "test_objective_qp_ObjectiveFunction_edge_cases",
+            "test_quadratic_SecondOrderCone_basic",
+            "test_quadratic_constraint_integration",
+            "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_EqualTo_lower",
+            "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_EqualTo_upper",
+            "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_GreaterThan",
+            "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_Interval_lower",
+            "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_LessThan",
+            "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_Interval_upper",
+            "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_LessThan:",
+            "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_VariableIndex_LessThan",
+            "A non zero-dimensional algebraic set is not iterable",
+            "test_solve_VariableIndex_ConstraintDual_MAX_SENSE",
+            "test_solve_VariableIndex_ConstraintDual_MIN_SENSE",
+            "test_constraint_qcp_duplicate_diagonal",
+            "test_linear_FEASIBILITY_SENSE",
+            # FIXME `modify` not supported by bridge
+            "test_modification_coef_scalar_objective",
+            "test_modification_coef_scalaraffine_lessthan",
+            "test_modification_const_scalar_objective",
+            "test_modification_multirow_vectoraffine_nonpos",
+            # FIXME Invalid NLP data
+            "test_nonlinear_invalid",
+            # FIXME MethodError: no method matching substitute_variables
+            "test_quadratic_constraint_LessThan",
+            "test_quadratic_constraint_GreaterThan",
+            # FIXME 2 instead of -2
+            "test_quadratic_nonhomogeneous",
+        ],
+    )
 end
 
 function runtests(var, T)

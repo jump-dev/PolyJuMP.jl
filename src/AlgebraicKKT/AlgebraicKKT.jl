@@ -21,7 +21,6 @@ const PolyType{T} = DynamicPolynomials.Polynomial{true,T}
 mutable struct Optimizer{T} <: MOI.AbstractOptimizer
     # Model
     variables::Dict{MOI.VariableIndex,VarType}
-    less_than::BitVector
     objective_sense::MOI.OptimizationSense
     objective_function::Union{Nothing,PolyType{T}}
     set::Any
@@ -37,7 +36,6 @@ end
 function Optimizer{T}() where {T}
     optimizer = Optimizer{T}(
         Dict{MOI.VariableIndex,VarType}(),
-        falses(0),
         MOI.FEASIBILITY_SENSE,
         nothing,
         SemialgebraicSets.FullSpace(),
@@ -100,6 +98,7 @@ function MOI.empty!(model::Optimizer)
     model.set = SemialgebraicSets.FullSpace()
     empty!(model.extrema)
     empty!(model.objective_values)
+    model.solve_time = NaN
     return
 end
 
@@ -132,9 +131,12 @@ function _set(poly::MP.AbstractPolynomialLike, set::MOI.LessThan)
     return SemialgebraicSets.PolynomialInequality(MOI.constant(set) - poly)
 end
 
+_nineq(::SemialgebraicSets.AbstractAlgebraicSet) = 0
+_nineq(set) = SemialgebraicSets.ninequalities(set)
+
 _num(set, ::Type{<:MOI.EqualTo}) = SemialgebraicSets.nequalities(set)
 function _num(set, ::Type{<:Union{MOI.LessThan,MOI.GreaterThan}})
-    return SemialgebraicSets.ninequalities(set)
+    return _nineq(set)
 end
 
 function MOI.supports_constraint(
@@ -159,11 +161,6 @@ function MOI.add_constraint(
 ) where {T}
     model.set = model.set ∩ _set(_polynomial(model.variables, func), set)
     i = _num(model.set, typeof(set))
-    if set isa MOI.LessThan
-        push!(model.less_than, true)
-    elseif set isa MOI.GreaterThan
-        push!(model.less_than, false)
-    end
     return MOI.ConstraintIndex{typeof(func),typeof(set)}(i)
 end
 
@@ -214,7 +211,7 @@ function _add_to_system(
     for i in eachindex(λ)
         p = SemialgebraicSets.equalities(set)[i]
         SemialgebraicSets.addequality!(system, p)
-        lagrangian = MA.add_mul!!(lagrangian, λ[i], p)
+        lagrangian = MA.sub_mul!!(lagrangian, λ[i], p)
     end
     return lagrangian
 end
@@ -223,17 +220,17 @@ function _add_to_system(
     system,
     lagrangian,
     set::SemialgebraicSets.BasicSemialgebraicSet,
-    minimization::Bool,
+    maximization::Bool,
 )
-    lagrangian = _add_to_system(system, lagrangian, set.V, minimization)
-    DynamicPolynomials.@polyvar σ[1:SemialgebraicSets.ninequalities(set)]
+    lagrangian = _add_to_system(system, lagrangian, set.V, maximization)
+    DynamicPolynomials.@polyvar σ[1:_nineq(set)]
     for i in eachindex(σ)
         p = SemialgebraicSets.inequalities(set)[i]
         SemialgebraicSets.addequality!(system, σ[i] * p)
-        if minimization
-            lagrangian = MA.sub_mul!!(lagrangian, σ[i]^2, p)
-        else
+        if maximization
             lagrangian = MA.add_mul!!(lagrangian, σ[i]^2, p)
+        else
+            lagrangian = MA.sub_mul!!(lagrangian, σ[i]^2, p)
         end
     end
     return lagrangian
@@ -282,7 +279,7 @@ function _optimize!(model::Optimizer{T}) where {T}
         system,
         lagrangian,
         model.set,
-        model.objective_sense == MOI.MIN_SENSE,
+        model.objective_sense == MOI.MAX_SENSE,
     )
     x = sort!(collect(values(model.variables)), rev = true)
     if lagrangian isa MA.Zero
@@ -295,7 +292,7 @@ function _optimize!(model::Optimizer{T}) where {T}
         SemialgebraicSets.addequality!(system, p)
     end
     model.extrema = Vector{T}[
-        _square(sol, SemialgebraicSets.ninequalities(model.set)) for
+        _square(sol, _nineq(model.set)) for
         sol in system if !_violates_inequalities(
             model.set,
             x,
@@ -339,16 +336,20 @@ end
 MOI.get(model::Optimizer, ::MOI.SolveTimeSec) = model.solve_time
 
 function MOI.get(model::Optimizer, ::MOI.RawStatusString)
-    if isempty(model.extrema)
-        return "The KKT system is infeasible so the polynomial optimization problem is infeasible"
+    if isnan(model.solve_time)
+        return "`optimize!` has not been called yet"
+    elseif isempty(model.extrema)
+        return "The KKT system is infeasible so the polynomial optimization problem is either infeasible or unbounded"
     else
         return "The KKT system has $(length(model.extrema)) solutions corresponding to optimal solutions"
     end
 end
 
 function MOI.get(model::Optimizer, ::MOI.TerminationStatus)
-    if isempty(model.extrema)
-        return MOI.INFEASIBLE
+    if isnan(model.solve_time)
+        return MOI.OPTIMIZE_NOT_CALLED
+    elseif isempty(model.extrema)
+        return MOI.INFEASIBLE_OR_UNBOUNDED
     else
         return MOI.OPTIMAL
     end
@@ -357,6 +358,7 @@ end
 MOI.get(model::Optimizer, ::MOI.ResultCount) = length(model.extrema)
 
 function MOI.get(model::Optimizer, attr::MOI.ObjectiveValue)
+    MOI.check_result_index_bounds(model, attr)
     return model.objective_values[attr.result_index]
 end
 
@@ -408,12 +410,12 @@ end
 function MOI.get(
     model::Optimizer,
     attr::MOI.ConstraintDual,
-    ci::MOI.ConstraintIndex,
-)
+    ci::MOI.ConstraintIndex{F,S},
+) where {F,S}
     MOI.throw_if_not_valid(model, ci)
     MOI.check_result_index_bounds(model, attr)
     value = model.extrema[attr.result_index][_index(model, ci)]
-    if model.less_than[ci.value]
+    if S <: MOI.LessThan
         value = -value
     end
     return value

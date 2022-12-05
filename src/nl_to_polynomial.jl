@@ -190,7 +190,7 @@ end
 function MOI.set(
     model::NLToPolynomial,
     attr::MOI.AbstractConstraintAttribute,
-    vi::MOI.ConstraintIndex,
+    ci::MOI.ConstraintIndex,
     value,
 )
     return MOI.set(model.model, attr, ci, value)

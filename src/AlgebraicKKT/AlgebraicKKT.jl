@@ -44,6 +44,7 @@ mutable struct Optimizer{T} <: MOI.AbstractOptimizer
         )
     end
 end
+Optimizer() = Optimizer{Float64}()
 
 function MOI.get(::Optimizer{T}, ::MOI.Bridges.ListOfNonstandardBridges{T}) where {T}
     return [
@@ -265,6 +266,14 @@ function MOI.optimize!(model::Optimizer{T}) where {T}
         end
     end
     return
+end
+
+function MOI.get(model::Optimizer, ::MOI.TerminationStatus)
+    if isempty(model.extrema)
+        return MOI.INFEASIBLE
+    else
+        return MOI.OPTIMAL
+    end
 end
 
 MOI.get(model::Optimizer, ::MOI.ResultCount) = length(model.extrema)

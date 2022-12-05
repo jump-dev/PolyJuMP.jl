@@ -1,4 +1,4 @@
-module TestConstraint
+module TestAlgebraicKKT
 
 using Test
 
@@ -10,7 +10,6 @@ using JuMP
 using PolyJuMP
 
 function _test_solution(model, vars, c1, c2)
-    MOI.optimize!(model)
     @test MOI.get(model, MOI.ResultCount()) == 1
     @test MOI.get.(model, MOI.VariablePrimal(), vars) ≈ [1.0, √2 / 2, √2 / 2]
     @test MOI.get(model, MOI.ConstraintDual(), c1) ≈ √2
@@ -38,14 +37,12 @@ function test_algebraic(var, T)
     MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
     obj = PolyJuMP.ScalarPolynomialFunction(o * x + o * y, vars[2:3])
     MOI.set(model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
+    MOI.optimize!(model)
     return _test_solution(model, vars, c1, c2)
 end
 
-function _test_linquadnl(var, T, F1, O)
-    model = MOI.instantiate(
-        PolyJuMP.AlgebraicKKT.Optimizer{T},
-        with_bridge_type = T,
-    )
+function _test_linquad(T, F1, O)
+    model = MOI.instantiate(PolyJuMP.AlgebraicKKT.Optimizer{T}, with_bridge_type = T)
     z = zero(T)
     o = one(T)
     vars = MOI.add_variables(model, 3)
@@ -60,17 +57,48 @@ function _test_linquadnl(var, T, F1, O)
         MOI.LessThan(z),
     )
     MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
-    if O == MOI.ScalarAffineFunction
+    if O === MOI.ScalarAffineFunction
         obj = o * vars[2] + o * vars[3]
+    elseif O == MOI.ScalarQuadraticFunction
+        obj = o * vars[2] + o * vars[3] + z * vars[2] * vars[3]
     end
     MOI.set(model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
+    MOI.optimize!(model)
     return _test_solution(model, vars, c1, c2)
 end
 
-function test_linquadnl(var, T)
+function test_linquad(var, T)
     for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction]
-        for O in [MOI.ScalarAffineFunction]
-            _test_linquadnl(var, T, F1, O)
+        for O in [MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction]
+            _test_linquad(T, F1, O)
+        end
+    end
+end
+
+function _test_JuMP(F1, O)
+    model = Model(PolyJuMP.AlgebraicKKT.Optimizer)
+    @variable(model, t)
+    @variable(model, x)
+    @variable(model, y)
+    if F1 === MOI.VariableIndex
+        @constraint(model, c1, t in MOI.LessThan(1.0))
+    elseif F1 == MOI.ScalarAffineFunction
+        @constraint(model, c1, t <= 1)
+    end
+    @constraint(model, c2, x^2 + y^2 <= t^2)
+    if O === MOI.ScalarAffineFunction
+        @objective(model, Max, x + y)
+    elseif O == MOI.ScalarQuadraticFunction
+        @objective(model, Max, x + y + 0 * x * y)
+    end
+    optimize!(model)
+    return _test_solution(model, [t, x, y], c1, c2)
+end
+
+function test_JuMP(var, T)
+    for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction]
+        for O in [MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction]
+            _test_JuMP(F1, O)
         end
     end
 end
@@ -85,11 +113,11 @@ function runtests(var, T)
     end
 end
 
-end
+end # module
 
 import DynamicPolynomials
 DynamicPolynomials.@polyvar(x)
-TestConstraint.runtests(x, Float64)
+TestAlgebraicKKT.runtests(x, Float64)
 import TypedPolynomials
 TypedPolynomials.@polyvar(y)
-TestConstraint.runtests(y, Float64)
+TestAlgebraicKKT.runtests(y, Float64)

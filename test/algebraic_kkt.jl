@@ -9,11 +9,17 @@ using SemialgebraicSets
 using JuMP
 using PolyJuMP
 
+_optimize!(model::MOI.ModelLike) = MOI.optimize!(model)
+_optimize!(model::Model) = optimize!(model)
+_dual(model::MOI.ModelLike, c) = MOI.get(model, MOI.ConstraintDual(), c)
+_dual(model::Model, c) = dual(c)
+
 function _test_solution(model, vars, c1, c2)
+    _optimize!(model)
     @test MOI.get(model, MOI.ResultCount()) == 1
     @test MOI.get.(model, MOI.VariablePrimal(), vars) ≈ [1.0, √2 / 2, √2 / 2]
-    @test MOI.get(model, MOI.ConstraintDual(), c1) ≈ √2
-    @test MOI.get(model, MOI.ConstraintDual(), c2) ≈ √2 / 2
+    @test _dual(model, c1) ≈ √2
+    @test _dual(model, c2) ≈ √2 / 2
 end
 
 function test_algebraic(var, T)
@@ -37,7 +43,6 @@ function test_algebraic(var, T)
     MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
     obj = PolyJuMP.ScalarPolynomialFunction(o * x + o * y, vars[2:3])
     MOI.set(model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
-    MOI.optimize!(model)
     return _test_solution(model, vars, c1, c2)
 end
 
@@ -63,7 +68,6 @@ function _test_linquad(T, F1, O)
         obj = o * vars[2] + o * vars[3] + z * vars[2] * vars[3]
     end
     MOI.set(model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
-    MOI.optimize!(model)
     return _test_solution(model, vars, c1, c2)
 end
 
@@ -84,6 +88,10 @@ function _test_JuMP(F1, O)
         @constraint(model, c1, t in MOI.LessThan(1.0))
     elseif F1 == MOI.ScalarAffineFunction
         @constraint(model, c1, t <= 1)
+    elseif F1 == 1
+        @NLconstraint(model, c1, t <= 1)
+    elseif F1 == 2
+        @NLconstraint(model, c1, 1 * t <= 1)
     end
     @constraint(model, c2, x^2 + y^2 <= t^2)
     if O === MOI.ScalarAffineFunction
@@ -96,15 +104,14 @@ function _test_JuMP(F1, O)
         @NLobjective(model, Max, x - (-y))
     elseif O == 3
         @NLobjective(model, Max, -(-x) + y)
-    elseif O == 4
+    else
         @NLobjective(model, Max, 1 * x + 1 * y)
     end
-    optimize!(model)
     return _test_solution(model, [t, x, y], c1, c2)
 end
 
 function test_JuMP(var, T)
-    for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction]
+    for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction, 1, 2]
         for O in [MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction, 1, 2, 3, 4]
             _test_JuMP(F1, O)
         end

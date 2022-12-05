@@ -5,10 +5,11 @@ const VarType = DynamicPolynomials.PolyVar{true}
 const PolyType{T} = DynamicPolynomials.Polynomial{true,T}
 const FuncType{T} = ScalarPolynomialFunction{T,PolyType{T}}
 
-struct NLToPolynomial{T,M<:MOI.ModelLike} <: MOI.AbstractOptimizer
+mutable struct NLToPolynomial{T,M<:MOI.ModelLike} <: MOI.AbstractOptimizer
     model::M
+    constraint_indices::Vector{MOI.ConstraintIndex{FuncType{T}}}
     function NLToPolynomial{T}(model::M) where {T,M}
-        return new{T,M}(model)
+        return new{T,M}(model, MOI.ConstraintIndex{FuncType{T}}[])
     end
 end
 
@@ -37,6 +38,15 @@ function _to_polynomial!(d, ::Type{T}, expr::Expr) where {T}
     end
 end
 
+function _to_polynomial(expr, ::Type{T}) where {T}
+    d = Dict{MOI.VariableIndex, VarType}()
+    poly = _to_polynomial!(d, T, expr)
+    variable_map = collect(d)
+    sort!(variable_map, by = x -> x[2])
+    variables = [x[1] for x in variable_map]
+    return FuncType{T}(poly, variables)
+end
+
 MOI.supports(::NLToPolynomial, ::MOI.NLPBlock) = true
 function MOI.set(model::NLToPolynomial{T}, ::MOI.NLPBlock, data::MOI.NLPBlockData) where {T}
     # FIXME if a non-NLP objective is set afterwards, it might overwrite.
@@ -44,20 +54,34 @@ function MOI.set(model::NLToPolynomial{T}, ::MOI.NLPBlock, data::MOI.NLPBlockDat
     # https://github.com/jump-dev/MathOptInterface.jl/issues/846
     MOI.initialize(data.evaluator, [:ExprGraph])
     if data.has_objective
-        d = Dict{MOI.VariableIndex, VarType}()
-        poly = _to_polynomial!(d, T, MOI.objective_expr(data.evaluator))
-        variable_map = collect(d)
-        sort!(variable_map, by = x -> x[2])
-        variables = [x[1] for x in variable_map]
-        obj = FuncType{T}(poly, variables)
+        obj = _to_polynomial(MOI.objective_expr(data.evaluator), T)
         MOI.set(model.model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
     end
+    model.constraint_indices = map(eachindex(data.constraint_bounds)) do i
+        func, set = MOI.FileFormats.MOF.extract_function_and_set(MOI.constraint_expr(data.evaluator, i))
+        return MOI.add_constraint(model, _to_polynomial(func, T), set)
+    end
+end
+
+function MOI.get(model::NLToPolynomial, attr::MOI.NLPBlockDual)
+    return map(model.constraint_indices) do ci
+        MOI.get(model.model, MOI.ConstraintDual(attr.result_index), ci)
+    end
+end
+
+# TODO not used yet and we don't want to use MOI.Nonlinear as it might break with minor releases
+#function MOI.get(model::NLToPolynomial, attr::MOI.ConstraintDual, ci::MOI.Nonlinear.ConstraintIndex)
+#    return MOI.get(model.model, attr, model.constraint_indices[ci.value])
+#end
+
+function MOI.empty!(model::NLToPolynomial)
+    empty!(model.constraint_indices)
+    MOI.empty!(model.model)
 end
 
 # The boilerplate part: passing everything to the inner `.model`
 
 MOI.is_empty(model::NLToPolynomial) = MOI.is_empty(model.model)
-MOI.empty!(model::NLToPolynomial) = MOI.empty!(model.model)
 
 MOI.supports_incremental_interface(model::NLToPolynomial) = MOI.supports_incremental_interface(model.model)
 function MOI.copy_to(dest::NLToPolynomial, src::MOI.ModelLike)

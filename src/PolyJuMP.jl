@@ -22,11 +22,7 @@ include("zero_polynomial.jl")
 include("functions.jl")
 
 # Bridges
-const MOIB = MOI.Bridges
-include("zero_polynomial_bridge.jl")
-include("zero_polynomial_in_algebraic_set_bridge.jl")
-include("plus_minus_bridge.jl")
-include("to_polynomial_bridge.jl")
+include("Bridges/Bridges.jl")
 
 # JuMP extension
 

@@ -40,17 +40,31 @@ end
 # If a variable is bridged, the `VectorOfVariables`-in-`ZeroPolynomialSet` is
 # bridged by `MOI.Bridges.Constraint.VectorFunctionizeBridge` and it has
 # to pass the constraint to the PolyJuMP bridge.
-MOI.Bridges.Constraint.invariant_under_function_conversion(::MomentsAttribute) = true
+function MOI.Bridges.Constraint.invariant_under_function_conversion(
+    ::MomentsAttribute,
+)
+    return true
+end
 
 # This is type piracy but we tolerate it.
 const ObjectWithoutIndex = Union{
-    AbstractMonomial, AbstractTerm{<:MOI.Utilities.ObjectWithoutIndex},
+    AbstractMonomial,
+    AbstractTerm{<:MOI.Utilities.ObjectWithoutIndex},
     AbstractPolynomial{<:MOI.Utilities.ObjectWithoutIndex},
     MB.AbstractPolynomialBasis,
-    MultivariateMoments.AbstractMomentMatrix{<:MOI.Utilities.ObjectWithoutIndex},
-    MultivariateMoments.AbstractMeasure{<:MOI.Utilities.ObjectWithoutIndex}
+    MultivariateMoments.AbstractMomentMatrix{
+        <:MOI.Utilities.ObjectWithoutIndex,
+    },
+    MultivariateMoments.AbstractMeasure{<:MOI.Utilities.ObjectWithoutIndex},
 }
-const ObjectOrTupleWithoutIndex = Union{ObjectWithoutIndex, Tuple{Vararg{ObjectWithoutIndex}}}
-const ObjectOrTupleOrArrayWithoutIndex = Union{ObjectOrTupleWithoutIndex, AbstractArray{<:ObjectOrTupleWithoutIndex}}
+const ObjectOrTupleWithoutIndex =
+    Union{ObjectWithoutIndex,Tuple{Vararg{ObjectWithoutIndex}}}
+const ObjectOrTupleOrArrayWithoutIndex =
+    Union{ObjectOrTupleWithoutIndex,AbstractArray{<:ObjectOrTupleWithoutIndex}}
 MOI.Utilities.map_indices(::Function, x::ObjectOrTupleOrArrayWithoutIndex) = x
-MOI.Utilities.substitute_variables(::Function, x::ObjectOrTupleOrArrayWithoutIndex) = x
+function MOI.Utilities.substitute_variables(
+    ::Function,
+    x::ObjectOrTupleOrArrayWithoutIndex,
+)
+    return x
+end

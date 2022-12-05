@@ -28,32 +28,39 @@ function _zero_polynomial_test(
     optimize!(model)
 
     @test termination_status(model) == MOI.OPTIMAL
-    @test objective_value(model) ≈ 1.0 atol=atol rtol=rtol
+    @test objective_value(model) ≈ 1.0 atol = atol rtol = rtol
 
     @test primal_status(model) == MOI.FEASIBLE_POINT
-    @test value(α) ≈ 1.0 atol=atol rtol=rtol
-    @test value(β) ≈ 1.0 atol=atol rtol=rtol
-    @test value(γ) ≈ 0.0 atol=atol rtol=rtol
-    @test value(UpperBoundRef(β)) ≈ 1.0 atol=atol rtol=rtol
+    @test value(α) ≈ 1.0 atol = atol rtol = rtol
+    @test value(β) ≈ 1.0 atol = atol rtol = rtol
+    @test value(γ) ≈ 0.0 atol = atol rtol = rtol
+    @test value(UpperBoundRef(β)) ≈ 1.0 atol = atol rtol = rtol
     @test value(cref) isa MultivariatePolynomials.AbstractPolynomial{Float64}
-    @test value(cref) ≈ 0.0 * x * y atol=atol rtol=rtol
-    @test value(cγ) ≈ 0.0 * x * y atol=atol rtol=rtol
+    @test value(cref) ≈ 0.0 * x * y atol = atol rtol = rtol
+    @test value(cγ) ≈ 0.0 * x * y atol = atol rtol = rtol
 
     @test dual_status(model) == MOI.FEASIBLE_POINT
-    @test dual(UpperBoundRef(β)) ≈ -1.0 atol=atol rtol=rtol
+    @test dual(UpperBoundRef(β)) ≈ -1.0 atol = atol rtol = rtol
 
     for μ in [dual(cref), moments(cref), dual(cγ), moments(cγ)]
         @test μ isa AbstractMeasure{Float64}
         @test length(moments(μ)) == 1
-        @test moment_value(moments(μ)[1]) ≈ -1.0 atol=atol rtol=rtol
-        @test monomial(moments(μ)[1]) == x*y
+        @test moment_value(moments(μ)[1]) ≈ -1.0 atol = atol rtol = rtol
+        @test monomial(moments(μ)[1]) == x * y
     end
 
     F = MOI.VectorAffineFunction{Float64}
-    S = PolyJuMP.ZeroPolynomialSet{FullSpace,MB.MonomialBasis,Monomial{true},
-                                   MonomialVector{true}}
+    S = PolyJuMP.ZeroPolynomialSet{
+        FullSpace,
+        MB.MonomialBasis,
+        Monomial{true},
+        MonomialVector{true},
+    }
     @test Set(MOI.get(model, MOI.ListOfConstraintTypesPresent())) == Set([
-        (MOI.VariableIndex, MOI.LessThan{Float64}), (F, S), (MOI.VectorOfVariables, S)])
+        (MOI.VariableIndex, MOI.LessThan{Float64}),
+        (F, S),
+        (MOI.VectorOfVariables, S),
+    ])
     @testset "Delete" begin
         test_delete_bridge(model, cref, 3, ((F, MOI.Zeros, 0),))
     end

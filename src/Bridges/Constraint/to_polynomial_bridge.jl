@@ -2,7 +2,8 @@ import DynamicPolynomials
 
 const VarType = DynamicPolynomials.PolyVar{true}
 const PolyType{T} = DynamicPolynomials.Polynomial{true,T}
-const FuncType{T} = ScalarPolynomialFunction{T,DynamicPolynomials.Polynomial{true,T}}
+const FuncType{T} =
+    PolyJuMP.ScalarPolynomialFunction{T,DynamicPolynomials.Polynomial{true,T}}
 
 """
     ToPolynomialBridge{T,S} <: Bridges.Constraint.AbstractBridge
@@ -24,19 +25,19 @@ const FuncType{T} = ScalarPolynomialFunction{T,DynamicPolynomials.Polynomial{tru
 
 `ToPolynomialBridge` creates:
 
-  * [`MOI.ScalarPolynomialFunction{T}`](@ref) in `S`
+  * [`PolyJuMP.ScalarPolynomialFunction{T}`](@ref) in `S`
 """
 struct ToPolynomialBridge{T,S} <:
        MOI.Bridges.Constraint.AbstractFunctionConversionBridge{FuncType{T},S}
     constraint::MOI.ConstraintIndex{FuncType{T},S}
 end
 
-function _to_polynomial(::Type{T}, vi::MOI.VariableIndex) where T
+function _to_polynomial(::Type{T}, vi::MOI.VariableIndex) where {T}
     DynamicPolynomials.@polyvar x
     return FuncType{T}(polynomial(x, T), [vi])
 end
 
-function _to_polynomial(::Type{T}, func::MOI.ScalarAffineFunction{T}) where T
+function _to_polynomial(::Type{T}, func::MOI.ScalarAffineFunction{T}) where {T}
     variables = [t.variable for t in func.terms]
     sort!(variables)
     unique!(variables)
@@ -49,7 +50,10 @@ function _to_polynomial(::Type{T}, func::MOI.ScalarAffineFunction{T}) where T
     return FuncType{T}(polynomial(terms), variables)
 end
 
-function _to_polynomial(::Type{T}, func::MOI.ScalarQuadraticFunction{T}) where T
+function _to_polynomial(
+    ::Type{T},
+    func::MOI.ScalarQuadraticFunction{T},
+) where {T}
     linear_variables = [t.variable for t in func.affine_terms]
     quad_variables_1 = [t.variable_1 for t in func.quadratic_terms]
     quad_variables_2 = [t.variable_2 for t in func.quadratic_terms]

@@ -23,8 +23,10 @@ function test_functions(var)
     @test (1.0x) * α isa AbstractTerm{MOI.ScalarAffineFunction{Float64}}
     @test α * (1x + 2) isa AbstractPolynomial{MOI.ScalarAffineFunction{Int}}
     @test (1x + 2) * α isa AbstractPolynomial{MOI.ScalarAffineFunction{Int}}
-    @test α * (1.0x + 2.0) isa AbstractPolynomial{MOI.ScalarAffineFunction{Float64}}
-    @test (1.0x + 2.0) * α isa AbstractPolynomial{MOI.ScalarAffineFunction{Float64}}
+    @test α * (1.0x + 2.0) isa
+          AbstractPolynomial{MOI.ScalarAffineFunction{Float64}}
+    @test (1.0x + 2.0) * α isa
+          AbstractPolynomial{MOI.ScalarAffineFunction{Float64}}
 end
 
 function runtests(var)

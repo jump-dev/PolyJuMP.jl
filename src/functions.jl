@@ -7,13 +7,17 @@
 Defines the polynomial function of the variables `variables` where the variable
 `variables(p)[i]` corresponds to `variables[i]`.
 """
-struct ScalarPolynomialFunction{T,P<:AbstractPolynomial{T}} <: MOI.AbstractScalarFunction
+struct ScalarPolynomialFunction{T,P<:AbstractPolynomial{T}} <:
+       MOI.AbstractScalarFunction
     polynomial::P
     variables::Vector{MOI.VariableIndex}
 end
 
 function Base.copy(func::ScalarPolynomialFunction)
-    return ScalarPolynomialFunction(MA.copy_if_mutable(func.polynomial), copy(func.variables))
+    return ScalarPolynomialFunction(
+        MA.copy_if_mutable(func.polynomial),
+        copy(func.variables),
+    )
 end
 
 function MOI.Utilities.canonicalize!(::ScalarPolynomialFunction) end

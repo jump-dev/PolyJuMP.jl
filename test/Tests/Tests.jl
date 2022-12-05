@@ -2,7 +2,7 @@ module Tests
 
 include("utilities.jl")
 
-const linear_tests = Dict{String, Function}()
+const linear_tests = Dict{String,Function}()
 
 import MultivariateBases
 const MB = MultivariateBases

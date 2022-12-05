@@ -19,15 +19,27 @@ _to_polynomial!(d, ::Type{T}, x::T) where {T} = x
 
 function _to_polynomial!(d, ::Type{T}, expr::Expr) where {T}
     if Base.isexpr(expr, :call) && expr.args[1] === :+
-        return sum(_to_polynomial!.(Ref(d), T, expr.args[2:end]), init=zero(PolyType{T}))
+        return sum(
+            _to_polynomial!.(Ref(d), T, expr.args[2:end]),
+            init = zero(PolyType{T}),
+        )
     elseif Base.isexpr(expr, :call) && expr.args[1] === :*
-        return prod(_to_polynomial!.(Ref(d), T, expr.args[2:end]), init=one(PolyType{T}))
-    elseif Base.isexpr(expr, :call) && expr.args[1] === :- && length(expr.args) == 2
+        return prod(
+            _to_polynomial!.(Ref(d), T, expr.args[2:end]),
+            init = one(PolyType{T}),
+        )
+    elseif Base.isexpr(expr, :call) &&
+           expr.args[1] === :- &&
+           length(expr.args) == 2
         return -_to_polynomial!(d, T, expr.args[2])
-    elseif Base.isexpr(expr, :call) && expr.args[1] === :- && length(expr.args) == 3
+    elseif Base.isexpr(expr, :call) &&
+           expr.args[1] === :- &&
+           length(expr.args) == 3
         a, b = _to_polynomial!.(Ref(d), T, expr.args[2:end])
         return a - b
-    elseif Base.isexpr(expr, :ref) && expr.args[1] === :x && expr.args[2] isa MOI.VariableIndex
+    elseif Base.isexpr(expr, :ref) &&
+           expr.args[1] === :x &&
+           expr.args[2] isa MOI.VariableIndex
         vi = expr.args[2]
         if !haskey(d, vi)
             d[vi] = MP.similarvariable(VarType, Symbol("x[$(vi.value)]"))
@@ -39,7 +51,7 @@ function _to_polynomial!(d, ::Type{T}, expr::Expr) where {T}
 end
 
 function _to_polynomial(expr, ::Type{T}) where {T}
-    d = Dict{MOI.VariableIndex, VarType}()
+    d = Dict{MOI.VariableIndex,VarType}()
     poly = _to_polynomial!(d, T, expr)
     variable_map = collect(d)
     sort!(variable_map, by = x -> x[2])
@@ -48,7 +60,11 @@ function _to_polynomial(expr, ::Type{T}) where {T}
 end
 
 MOI.supports(::NLToPolynomial, ::MOI.NLPBlock) = true
-function MOI.set(model::NLToPolynomial{T}, ::MOI.NLPBlock, data::MOI.NLPBlockData) where {T}
+function MOI.set(
+    model::NLToPolynomial{T},
+    ::MOI.NLPBlock,
+    data::MOI.NLPBlockData,
+) where {T}
     # FIXME if a non-NLP objective is set afterwards, it might overwrite.
     # but let's not complicate as it will be fixed by
     # https://github.com/jump-dev/MathOptInterface.jl/issues/846
@@ -58,14 +74,16 @@ function MOI.set(model::NLToPolynomial{T}, ::MOI.NLPBlock, data::MOI.NLPBlockDat
         MOI.set(model.model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
     end
     model.constraint_indices = map(eachindex(data.constraint_bounds)) do i
-        func, set = MOI.FileFormats.MOF.extract_function_and_set(MOI.constraint_expr(data.evaluator, i))
+        func, set = MOI.FileFormats.MOF.extract_function_and_set(
+            MOI.constraint_expr(data.evaluator, i),
+        )
         return MOI.add_constraint(model, _to_polynomial(func, T), set)
     end
 end
 
 function MOI.get(model::NLToPolynomial, attr::MOI.NLPBlockDual)
     return map(model.constraint_indices) do ci
-        MOI.get(model.model, MOI.ConstraintDual(attr.result_index), ci)
+        return MOI.get(model.model, MOI.ConstraintDual(attr.result_index), ci)
     end
 end
 
@@ -76,14 +94,16 @@ end
 
 function MOI.empty!(model::NLToPolynomial)
     empty!(model.constraint_indices)
-    MOI.empty!(model.model)
+    return MOI.empty!(model.model)
 end
 
 # The boilerplate part: passing everything to the inner `.model`
 
 MOI.is_empty(model::NLToPolynomial) = MOI.is_empty(model.model)
 
-MOI.supports_incremental_interface(model::NLToPolynomial) = MOI.supports_incremental_interface(model.model)
+function MOI.supports_incremental_interface(model::NLToPolynomial)
+    return MOI.supports_incremental_interface(model.model)
+end
 function MOI.copy_to(dest::NLToPolynomial, src::MOI.ModelLike)
     return MOI.Utilities.default_copy_to(dest, src)
 end
@@ -122,11 +142,7 @@ function MOI.get(
     return MOI.get(model.model, attr)
 end
 
-function MOI.set(
-    model::NLToPolynomial,
-    attr::MOI.AbstractModelAttribute,
-    value,
-)
+function MOI.set(model::NLToPolynomial, attr::MOI.AbstractModelAttribute, value)
     return MOI.set(model.model, attr, value)
 end
 

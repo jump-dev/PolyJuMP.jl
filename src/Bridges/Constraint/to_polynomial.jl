@@ -2,8 +2,7 @@ import DynamicPolynomials
 
 const VarType = DynamicPolynomials.PolyVar{true}
 const PolyType{T} = DynamicPolynomials.Polynomial{true,T}
-const FuncType{T} =
-    PolyJuMP.ScalarPolynomialFunction{T,PolyType{T}}
+const FuncType{T} = PolyJuMP.ScalarPolynomialFunction{T,PolyType{T}}
 
 """
     ToPolynomialBridge{T,S} <: Bridges.Constraint.AbstractBridge
@@ -51,11 +50,15 @@ function MOI.supports_constraint(
     return true
 end
 
-function MOI.Bridges.added_constrained_variable_types(::Type{<:ToPolynomialBridge})
+function MOI.Bridges.added_constrained_variable_types(
+    ::Type{<:ToPolynomialBridge},
+)
     return Tuple{Type}[]
 end
 
-function MOI.Bridges.added_constraint_types(::Type{ToPolynomialBridge{T,S}}) where {T,S}
+function MOI.Bridges.added_constraint_types(
+    ::Type{ToPolynomialBridge{T,S}},
+) where {T,S}
     return Tuple{Type,Type}[(FuncType{T}, S)]
 end
 

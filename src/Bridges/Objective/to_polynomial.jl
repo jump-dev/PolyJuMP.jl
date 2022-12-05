@@ -48,7 +48,9 @@ function MOI.Bridges.Objective.supports_objective_function(
     return MOI.Utilities.is_coefficient_type(F, T)
 end
 
-function MOI.Bridges.added_constrained_variable_types(::Type{<:ToPolynomialBridge})
+function MOI.Bridges.added_constrained_variable_types(
+    ::Type{<:ToPolynomialBridge},
+)
     return Tuple{Type}[]
 end
 
@@ -56,7 +58,9 @@ function MOI.Bridges.added_constraint_types(::Type{<:ToPolynomialBridge})
     return Tuple{Type,Type}[]
 end
 
-function MOI.Bridges.set_objective_function_type(::Type{ToPolynomialBridge{T}}) where {T}
+function MOI.Bridges.set_objective_function_type(
+    ::Type{ToPolynomialBridge{T}},
+) where {T}
     return FuncType{T}
 end
 

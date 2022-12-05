@@ -47,7 +47,10 @@ function test_algebraic(var, T)
 end
 
 function _test_linquad(T, F1, O)
-    model = MOI.instantiate(PolyJuMP.AlgebraicKKT.Optimizer{T}, with_bridge_type = T)
+    model = MOI.instantiate(
+        PolyJuMP.AlgebraicKKT.Optimizer{T},
+        with_bridge_type = T,
+    )
     z = zero(T)
     o = one(T)
     vars = MOI.add_variables(model, 3)
@@ -112,7 +115,8 @@ end
 
 function test_JuMP(var, T)
     for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction, 1, 2]
-        for O in [MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction, 1, 2, 3, 4]
+        for O in
+            [MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction, 1, 2, 3, 4]
             _test_JuMP(F1, O)
         end
     end

@@ -6,6 +6,8 @@ using MultivariatePolynomials
 const MP = MultivariatePolynomials
 using SemialgebraicSets
 
+import DynamicPolynomials
+
 using JuMP
 using PolyJuMP
 
@@ -18,8 +20,8 @@ function _test_solution(model, vars, c1, c2)
     _optimize!(model)
     @test MOI.get(model, MOI.ResultCount()) == 1
     @test MOI.get.(model, MOI.VariablePrimal(), vars) ≈ [1.0, √2 / 2, √2 / 2]
-    @test _dual(model, c1) ≈ √2
-    @test _dual(model, c2) ≈ √2 / 2
+    @test _dual(model, c1) ≈ -√2
+    @test _dual(model, c2) ≈ -√2 / 2
 end
 
 function test_algebraic(var, T)
@@ -75,6 +77,9 @@ function _test_linquad(T, F1, O)
 end
 
 function test_linquad(var, T)
+   if !(var isa DynamicPolynomials.PolyVar)
+       return # Avoid running the same thing several times
+   end
     for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction]
         for O in [MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction]
             _test_linquad(T, F1, O)
@@ -114,6 +119,9 @@ function _test_JuMP(F1, O)
 end
 
 function test_JuMP(var, T)
+    if !(var isa DynamicPolynomials.PolyVar) || T != Float64
+        return # Avoid running the same thing several times
+    end
     for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction, 1, 2]
         for O in
             [MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction, 1, 2, 3, 4]

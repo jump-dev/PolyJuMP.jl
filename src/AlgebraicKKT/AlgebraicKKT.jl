@@ -30,19 +30,21 @@ mutable struct Optimizer{T} <: MOI.AbstractOptimizer
     algebraic_solver::Union{Nothing,SemialgebraicSets.AbstractAlgebraicSolver}
     feasibility_tolerance::T
     optimality_tolerance::T
-    function Optimizer{T}() where {T}
-        return new{T}(
-            Dict{MOI.VariableIndex,VarType}(),
-            MOI.FEASIBILITY_SENSE,
-            nothing,
-            SemialgebraicSets.FullSpace(),
-            Vector{T}[],
-            T[],
-            nothing,
-            Base.rtoldefault(T),
-            Base.rtoldefault(T),
-        )
-    end
+end
+function Optimizer{T}() where {T}
+    optimizer = Optimizer{T}(
+        Dict{MOI.VariableIndex,VarType}(),
+        MOI.FEASIBILITY_SENSE,
+        nothing,
+        SemialgebraicSets.FullSpace(),
+        Vector{T}[],
+        T[],
+        nothing,
+        Base.rtoldefault(T),
+        Base.rtoldefault(T),
+    )
+    # This can be replaced by `ListOfNonstandardBridges` once https://github.com/jump-dev/MathOptInterface.jl/issues/846 is done
+    return PolyJuMP.NLToPolynomial{T}(optimizer)
 end
 Optimizer() = Optimizer{Float64}()
 

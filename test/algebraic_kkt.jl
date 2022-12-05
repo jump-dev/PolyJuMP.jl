@@ -90,6 +90,14 @@ function _test_JuMP(F1, O)
         @objective(model, Max, x + y)
     elseif O == MOI.ScalarQuadraticFunction
         @objective(model, Max, x + y + 0 * x * y)
+    elseif O == 1
+        @NLobjective(model, Max, x + y)
+    elseif O == 2
+        @NLobjective(model, Max, x - (-y))
+    elseif O == 3
+        @NLobjective(model, Max, -(-x) + y)
+    elseif O == 4
+        @NLobjective(model, Max, 1 * x + 1 * y)
     end
     optimize!(model)
     return _test_solution(model, [t, x, y], c1, c2)
@@ -97,7 +105,7 @@ end
 
 function test_JuMP(var, T)
     for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction]
-        for O in [MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction]
+        for O in [MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction, 1, 2, 3, 4]
             _test_JuMP(F1, O)
         end
     end

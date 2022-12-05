@@ -23,6 +23,7 @@ include("functions.jl")
 
 # Bridges
 include("Bridges/Bridges.jl")
+include("nl_to_polynomial.jl")
 
 # JuMP extension
 

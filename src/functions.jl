@@ -61,8 +61,6 @@ function Base.convert(
     return ScalarPolynomialFunction{T,P}(polynomial(terms), variables)
 end
 
-
-
 function Base.copy(func::ScalarPolynomialFunction)
     return ScalarPolynomialFunction(
         MA.copy_if_mutable(func.polynomial),

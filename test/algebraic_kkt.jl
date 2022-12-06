@@ -145,7 +145,7 @@ function test_MOI_runtests(var, T)
     )
     cache = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{T}())
     cached = MOI.Utilities.CachingOptimizer(cache, optimizer)
-    return MOI.Test.runtests(
+    MOI.Test.runtests(
         cached,
         config,
         exclude = [
@@ -177,10 +177,9 @@ function test_MOI_runtests(var, T)
             # FIXME MethodError: no method matching substitute_variables
             "test_quadratic_constraint_LessThan",
             "test_quadratic_constraint_GreaterThan",
-            # FIXME 2 instead of -2
-            "test_quadratic_nonhomogeneous",
         ],
     )
+    return
 end
 
 function runtests(var, T)

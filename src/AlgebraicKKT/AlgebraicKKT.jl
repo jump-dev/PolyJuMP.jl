@@ -201,7 +201,7 @@ function _add_to_system(
     system,
     lagrangian,
     set::SemialgebraicSets.AlgebraicSet,
-    ::Bool,
+    maximization::Bool,
 )
     n = SemialgebraicSets.nequalities(set)
     if iszero(n)
@@ -211,7 +211,11 @@ function _add_to_system(
     for i in eachindex(λ)
         p = SemialgebraicSets.equalities(set)[i]
         SemialgebraicSets.addequality!(system, p)
-        lagrangian = MA.sub_mul!!(lagrangian, λ[i], p)
+        if maximization
+            lagrangian = MA.add_mul!!(lagrangian, λ[i], p)
+        else
+            lagrangian = MA.sub_mul!!(lagrangian, λ[i], p)
+        end
     end
     return lagrangian
 end

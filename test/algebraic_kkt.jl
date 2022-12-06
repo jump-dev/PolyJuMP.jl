@@ -169,11 +169,6 @@ function test_MOI_runtests(var, T)
             "test_solve_VariableIndex_ConstraintDual_MIN_SENSE",
             "test_constraint_qcp_duplicate_diagonal",
             "test_linear_FEASIBILITY_SENSE",
-            # FIXME `modify` not supported by bridge
-            "test_modification_coef_scalar_objective",
-            "test_modification_coef_scalaraffine_lessthan",
-            "test_modification_const_scalar_objective",
-            "test_modification_multirow_vectoraffine_nonpos",
         ],
     )
     return

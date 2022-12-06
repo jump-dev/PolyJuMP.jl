@@ -143,6 +143,8 @@ function test_MOI_runtests(var, T)
         PolyJuMP.AlgebraicKKT.Optimizer{T},
         with_bridge_type = T,
     )
+    # Remove `ZerosBridge` otherwise querying `ConstraintDual` won't work in `test_quadratic_constraint_GreaterThan`
+    MOI.Bridges.remove_bridge(optimizer, MOI.Bridges.Variable.ZerosBridge{T})
     cache = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{T}())
     cached = MOI.Utilities.CachingOptimizer(cache, optimizer)
     MOI.Test.runtests(
@@ -172,9 +174,6 @@ function test_MOI_runtests(var, T)
             "test_modification_coef_scalaraffine_lessthan",
             "test_modification_const_scalar_objective",
             "test_modification_multirow_vectoraffine_nonpos",
-            # FIXME MethodError: no method matching substitute_variables
-            "test_quadratic_constraint_LessThan",
-            "test_quadratic_constraint_GreaterThan",
         ],
     )
     return

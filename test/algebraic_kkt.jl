@@ -172,8 +172,6 @@ function test_MOI_runtests(var, T)
             "test_modification_coef_scalaraffine_lessthan",
             "test_modification_const_scalar_objective",
             "test_modification_multirow_vectoraffine_nonpos",
-            # FIXME Invalid NLP data
-            "test_nonlinear_invalid",
             # FIXME MethodError: no method matching substitute_variables
             "test_quadratic_constraint_LessThan",
             "test_quadratic_constraint_GreaterThan",

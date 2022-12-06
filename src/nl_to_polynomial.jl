@@ -1,4 +1,4 @@
-# This will be moved to a bridge once https://github.com/jump-dev/MathOptInterface.jl/issues/846 is done
+# This will be refactored into a constraint bridge once https://github.com/jump-dev/MathOptInterface.jl/issues/846 is done
 
 import DynamicPolynomials
 const VarType = DynamicPolynomials.PolyVar{true}
@@ -8,12 +8,21 @@ const FuncType{T} = ScalarPolynomialFunction{T,PolyType{T}}
 mutable struct NLToPolynomial{T,M<:MOI.ModelLike} <: MOI.AbstractOptimizer
     model::M
     constraint_indices::Vector{MOI.ConstraintIndex{FuncType{T}}}
+    invalid::Union{Nothing,String}
     function NLToPolynomial{T}(model::M) where {T,M}
-        return new{T,M}(model, MOI.ConstraintIndex{FuncType{T}}[])
+        return new{T,M}(model, MOI.ConstraintIndex{FuncType{T}}[], nothing)
     end
 end
 
 # The interesting part: rewriting NL into polynomial
+
+struct InvalidNLExpression <: Exception
+    message::String
+end
+
+function _to_polynomial!(d, ::Type, expr)
+    throw(InvalidNLExpression("Unexpected expression type `$(typeof(expr))`` of `$expr`"))
+end
 
 _to_polynomial!(d, ::Type{T}, x::T) where {T} = x
 
@@ -46,7 +55,7 @@ function _to_polynomial!(d, ::Type{T}, expr::Expr) where {T}
         end
         return d[vi]
     else
-        error("Cannot convert expression \"$(expr)\" into a polynomial.")
+        throw(InvalidNLExpression("Unrecognized expression `$(expr)`"))
     end
 end
 
@@ -59,6 +68,19 @@ function _to_polynomial(expr, ::Type{T}) where {T}
     return FuncType{T}(poly, variables)
 end
 
+function _to_polynomial(model::NLToPolynomial{T}, expr) where {T}
+    try
+        return _to_polynomial(expr, T)
+    catch err
+        if err isa InvalidNLExpression
+            model.invalid = string("Cannot convert expression `$(expr)` into a polynomial: ", err.message, ".")
+            return
+        else
+            rethrow(err)
+        end
+    end
+end
+
 MOI.supports(::NLToPolynomial, ::MOI.NLPBlock) = true
 function MOI.set(
     model::NLToPolynomial{T},
@@ -69,15 +91,23 @@ function MOI.set(
     # but let's not complicate as it will be fixed by
     # https://github.com/jump-dev/MathOptInterface.jl/issues/846
     MOI.initialize(data.evaluator, [:ExprGraph])
+    model.invalid = nothing
     if data.has_objective
-        obj = _to_polynomial(MOI.objective_expr(data.evaluator), T)
+        obj = _to_polynomial(model, MOI.objective_expr(data.evaluator))
+        if isnothing(obj)
+            return
+        end
         MOI.set(model.model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
     end
     model.constraint_indices = map(eachindex(data.constraint_bounds)) do i
         func, set = MOI.FileFormats.MOF.extract_function_and_set(
             MOI.constraint_expr(data.evaluator, i),
         )
-        return MOI.add_constraint(model, _to_polynomial(func, T), set)
+        poly = _to_polynomial(model, func)
+        if isnothing(poly)
+            return
+        end
+        return MOI.add_constraint(model, poly, set)
     end
 end
 
@@ -94,12 +124,66 @@ end
 
 function MOI.empty!(model::NLToPolynomial)
     empty!(model.constraint_indices)
-    return MOI.empty!(model.model)
+    MOI.empty!(model.model)
+    model.invalid = nothing
+    return
+end
+
+function MOI.is_empty(model::NLToPolynomial)
+    return MOI.is_empty(model.model) && isnothing(model.invalid)
+end
+
+function MOI.optimize!(model::NLToPolynomial)
+    if isnothing(model.invalid)
+        MOI.optimize!(model.model)
+    end
+    return
+end
+
+_invalid_value(model::NLToPolynomial, ::MOI.RawStatusString) = model.invalid
+_invalid_value(::NLToPolynomial, ::MOI.TerminationStatus) = MOI.INVALID_MODEL
+_invalid_value(::NLToPolynomial, ::MOI.ResultCount) = 0
+_invalid_value(::NLToPolynomial, ::Union{MOI.PrimalStatus,MOI.DualStatus}) = MOI.NO_SOLUTION
+function _invalid_value(::NLToPolynomial, attr::Union{MOI.VariablePrimal,MOI.ConstraintDual,MOI.ConstraintPrimal})
+    throw(MOI.ResultIndexBoundsError(attr, 0))
+end
+
+function MOI.get(
+    model::NLToPolynomial,
+    attr::MOI.AbstractModelAttribute,
+)
+    if isnothing(model.invalid) || !MOI.is_set_by_optimize(attr)
+        return MOI.get(model.model, attr)
+    else
+        return _invalid_value(model, attr)
+    end
+end
+
+function MOI.get(
+    model::NLToPolynomial,
+    attr::MOI.AbstractVariableAttribute,
+    vi::MOI.VariableIndex,
+)
+    if isnothing(model.invalid) || !MOI.is_set_by_optimize(attr)
+        return MOI.get(model.model, attr, vi)
+    else
+        return _invalid_value(model, attr)
+    end
+end
+
+function MOI.get(
+    model::NLToPolynomial,
+    attr::MOI.AbstractConstraintAttribute,
+    ci::MOI.ConstraintIndex,
+)
+    if isnothing(model.invalid) || !MOI.is_set_by_optimize(attr)
+        return MOI.get(model.model, attr, ci)
+    else
+        return _invalid_value(model, attr)
+    end
 end
 
 # The boilerplate part: passing everything to the inner `.model`
-
-MOI.is_empty(model::NLToPolynomial) = MOI.is_empty(model.model)
 
 function MOI.supports_incremental_interface(model::NLToPolynomial)
     return MOI.supports_incremental_interface(model.model)
@@ -107,8 +191,6 @@ end
 function MOI.copy_to(dest::NLToPolynomial, src::MOI.ModelLike)
     return MOI.Utilities.default_copy_to(dest, src)
 end
-
-MOI.optimize!(model::NLToPolynomial) = MOI.optimize!(model.model)
 
 MOI.add_variable(model::NLToPolynomial) = MOI.add_variable(model.model)
 
@@ -137,7 +219,7 @@ end
 
 function MOI.get(
     model::NLToPolynomial,
-    attr::Union{MOI.AbstractOptimizerAttribute,MOI.AbstractModelAttribute},
+    attr::MOI.AbstractOptimizerAttribute,
 )
     return MOI.get(model.model, attr)
 end
@@ -152,14 +234,6 @@ function MOI.supports(
     ::Type{MOI.VariableIndex},
 )
     return MOI.supports(model.model, attr, MOI.VariableIndex)
-end
-
-function MOI.get(
-    model::NLToPolynomial,
-    attr::MOI.AbstractVariableAttribute,
-    vi::MOI.VariableIndex,
-)
-    return MOI.get(model.model, attr, vi)
 end
 
 function MOI.set(
@@ -177,14 +251,6 @@ function MOI.supports(
     ::Type{MOI.ConstraintIndex{F,S}},
 ) where {F,S}
     return MOI.supports(model.model, attr, MOI.ConstraintIndex{F,S})
-end
-
-function MOI.get(
-    model::NLToPolynomial,
-    attr::MOI.AbstractConstraintAttribute,
-    ci::MOI.ConstraintIndex,
-)
-    return MOI.get(model.model, attr, ci)
 end
 
 function MOI.set(

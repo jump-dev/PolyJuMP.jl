@@ -7,26 +7,43 @@
 Defines the polynomial function of the variables `variables` where the variable
 `variables(p)[i]` corresponds to `variables[i]`.
 """
-struct ScalarPolynomialFunction{T,P<:AbstractPolynomial{T}} <:
-       MOI.AbstractScalarFunction
+struct ScalarPolynomialFunction{T,P<:AbstractPolynomial{T}} <: MOI.AbstractScalarFunction
     polynomial::P
     variables::Vector{MOI.VariableIndex}
+end
+
+function MOI.constant(func::ScalarPolynomialFunction)
+    return MP.coefficient(func.polynomial, MP.constantmonomial(func.polynomial))
+end
+
+function _polynomial_variable(::Type{P}, vi::MOI.VariableIndex) where {P}
+    return MP.similarvariable(P, Symbol("x[$(vi.value)]"))
 end
 
 function Base.convert(
     ::Type{ScalarPolynomialFunction{T,P}},
     vi::MOI.VariableIndex,
 ) where {T,P}
-    x = MP.similarvariable(P, Val{:x})
+    x = _polynomial_variable(P, vi)
     return ScalarPolynomialFunction{T,P}(polynomial(x, T), [vi])
 end
 
 function _polynomial_variables!(::Type{P}, variables) where {P}
     sort!(variables, by = v -> v.value)
     unique!(variables)
-    x = [MP.similarvariable(P, Symbol("x[$i]")) for i in eachindex(variables)]
+    # FIXME It is an issue for TypedPolynomials since `"x[1]" < "x[2]"` but `"x[1]" > "x[10]"`
+    x = _polynomial_variable.(P, variables)
+    if !issorted(x, rev = true)
+        error("`$P` unsupported, use DynamicPolynomials instead")
+    end
     d = Dict(variables[i] => x[i] for i in eachindex(variables))
     return x, d
+end
+
+function _polynomial_with_variables(::Type{P}, func::MOI.ScalarAffineFunction, d) where {P}
+    terms = [MP.term(t.coefficient, d[t.variable]) for t in func.terms]
+    push!(terms, MOI.constant(func))
+    return MP.polynomial(terms)
 end
 
 function Base.convert(
@@ -35,11 +52,8 @@ function Base.convert(
 ) where {T,P}
     variables = [t.variable for t in func.terms]
     x, d = _polynomial_variables!(P, variables)
-    terms = MP.termtype(P)[MOI.constant(func)]
-    for t in func.terms
-        push!(terms, MP.term(t.coefficient, d[t.variable]))
-    end
-    return ScalarPolynomialFunction{T,P}(polynomial(terms), variables)
+    poly = _polynomial_with_variables(P, func, d)
+    return ScalarPolynomialFunction{T,P}(poly, variables)
 end
 
 function Base.convert(
@@ -70,6 +84,21 @@ function Base.copy(func::ScalarPolynomialFunction)
 end
 
 function MOI.Utilities.canonicalize!(::ScalarPolynomialFunction) end
+
+_variables(aff::MOI.ScalarAffineFunction) = MOI.VariableIndex[t.variable for t in aff.terms]
+
+function MOI.Utilities.substitute_variables(
+    variable_map::Function,
+    func::ScalarPolynomialFunction{T,P},
+) where {T,P}
+    new_aff =
+        MOI.ScalarAffineFunction{T}[variable_map(var) for var in func.variables]
+    variables = collect(Iterators.flatten(_variables(aff) for aff in new_aff))
+    x, d = _polynomial_variables!(P, variables)
+    new_polys = [_polynomial_with_variables(P, aff, d) for aff in new_aff]
+    new_poly = func.polynomial(MP.variables(func.polynomial) => new_polys)
+    return ScalarPolynomialFunction{T,typeof(new_poly)}(new_poly, variables)
+end
 
 function MOI.Utilities.is_coefficient_type(
     ::Type{<:ScalarPolynomialFunction{T}},

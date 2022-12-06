@@ -164,7 +164,6 @@ function test_MOI_runtests(var, T)
             "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_Interval_upper",
             "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_LessThan:",
             "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_VariableIndex_LessThan",
-            "A non zero-dimensional algebraic set is not iterable",
             "test_solve_VariableIndex_ConstraintDual_MAX_SENSE",
             "test_solve_VariableIndex_ConstraintDual_MIN_SENSE",
             "test_constraint_qcp_duplicate_diagonal",

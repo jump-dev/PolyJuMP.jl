@@ -1,4 +1,4 @@
-module AlgebraicKKT
+module KKT
 
 import MutableArithmetics
 const MA = MutableArithmetics
@@ -55,7 +55,7 @@ function Optimizer{T}() where {T}
 end
 Optimizer() = Optimizer{Float64}()
 
-MOI.get(::Optimizer, ::MOI.SolverName) = "AlgebraicKKT"
+MOI.get(::Optimizer, ::MOI.SolverName) = "PolyJuMP.KKT"
 
 function MOI.get(
     ::Optimizer{T},

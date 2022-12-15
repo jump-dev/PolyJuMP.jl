@@ -307,16 +307,20 @@ function _optimize!(model::Optimizer{T}) where {T}
     for p in ∇x
         SemialgebraicSets.addequality!(system, p)
     end
-    if !SemialgebraicSets.iszerodimensional(system)
+    solutions = nothing
+    try # We could check `SemialgebraicSets.iszerodimensional(system)` but that would only work for Gröbner basis based
+        solutions = collect(system)
+    catch err
         model.extrema = Vector{T}[]
         model.objective_values = zeros(T, 0)
         model.termination_status = MOI.OTHER_ERROR
-        model.raw_status = "KKT system is not zero-dimensional which is not supported."
+        model.raw_status = "KKT system solver failed with : $(sprint(showerror, err))."
+        @show model.raw_status
         return
     end
     model.extrema = Vector{T}[
         _square(sol, _nineq(model.set)) for
-        sol in system if !_violates_inequalities(
+        sol in solutions if !_violates_inequalities(
             model.set,
             x,
             sol,

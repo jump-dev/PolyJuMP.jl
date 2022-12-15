@@ -234,7 +234,11 @@ function MOI.get(model::NLToPolynomial, attr::MOI.AbstractOptimizerAttribute)
     return MOI.get(model.model, attr)
 end
 
-function MOI.set(model::NLToPolynomial, attr::MOI.AbstractModelAttribute, value)
+function MOI.set(
+    model::NLToPolynomial,
+    attr::Union{MOI.AbstractModelAttribute,MOI.AbstractOptimizerAttribute},
+    value,
+)
     return MOI.set(model.model, attr, value)
 end
 

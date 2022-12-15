@@ -24,8 +24,9 @@ function _test_solution(model, vars, c1, c2)
     @test _dual(model, c2) ≈ -√2 / 2
 end
 
-function test_algebraic(var, T)
+function test_algebraic(var, T, solver)
     model = PolyJuMP.AlgebraicKKT.Optimizer{T}()
+    MOI.set(model, MOI.RawOptimizerAttribute("algebraic_solver"), solver)
     t = MP.similarvariable(var, Val{:t})
     x = MP.similarvariable(var, Val{:x})
     y = MP.similarvariable(var, Val{:y})
@@ -48,9 +49,12 @@ function test_algebraic(var, T)
     return _test_solution(model, vars, c1, c2)
 end
 
-function _test_linquad(T, F1, O)
+function _test_linquad(T, F1, O, solver)
     model = MOI.instantiate(
-        PolyJuMP.AlgebraicKKT.Optimizer{T},
+        optimizer_with_attributes(
+            PolyJuMP.AlgebraicKKT.Optimizer{T},
+            "algebraic_solver" => solver,
+        ),
         with_bridge_type = T,
     )
     z = zero(T)
@@ -76,19 +80,20 @@ function _test_linquad(T, F1, O)
     return _test_solution(model, vars, c1, c2)
 end
 
-function test_linquad(var, T)
+function test_linquad(var, T, solver)
     if !(var isa DynamicPolynomials.PolyVar)
         return # Avoid running the same thing several times
     end
     for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction]
         for O in [MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction]
-            _test_linquad(T, F1, O)
+            _test_linquad(T, F1, O, solver)
         end
     end
 end
 
-function _test_JuMP(F1, O)
+function _test_JuMP(F1, O, solver)
     model = Model(PolyJuMP.AlgebraicKKT.Optimizer)
+    set_optimizer_attribute(model, "algebraic_solver", solver)
     @variable(model, t)
     @variable(model, x)
     @variable(model, y)
@@ -118,19 +123,19 @@ function _test_JuMP(F1, O)
     return _test_solution(model, [t, x, y], c1, c2)
 end
 
-function test_JuMP(var, T)
+function test_JuMP(var, T, solver)
     if !(var isa DynamicPolynomials.PolyVar) || T != Float64
         return # Avoid running the same thing several times
     end
     for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction, 1, 2]
         for O in
             [MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction, 1, 2, 3, 4]
-            _test_JuMP(F1, O)
+            _test_JuMP(F1, O, solver)
         end
     end
 end
 
-function test_MOI_runtests(var, T)
+function test_MOI_runtests(var, T, solver)
     if !(var isa DynamicPolynomials.PolyVar) || T != Float64
         return # Avoid running the same thing several times
     end
@@ -144,6 +149,7 @@ function test_MOI_runtests(var, T)
         PolyJuMP.AlgebraicKKT.Optimizer{T},
         with_bridge_type = T,
     )
+    MOI.set(optimizer, MOI.RawOptimizerAttribute("algebraic_solver"), solver)
     # Remove `ZerosBridge` otherwise querying `ConstraintDual` won't work in `test_quadratic_constraint_GreaterThan`
     MOI.Bridges.remove_bridge(optimizer, MOI.Bridges.Variable.ZerosBridge{T})
     cache = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{T}())
@@ -152,6 +158,8 @@ function test_MOI_runtests(var, T)
         cached,
         config,
         exclude = [
+            # See https://github.com/JuliaHomotopyContinuation/HomotopyContinuation.jl/issues/522
+            "test_solve_TerminationStatus_DUAL_INFEASIBLE",
             ### Non zero dimensional KKT system
             ## Infinite set of optimal solution:
             # min_x 0 | x ≥ 1
@@ -197,11 +205,18 @@ function test_MOI_runtests(var, T)
     return
 end
 
+import HomotopyContinuation
+
+const SOLVERS = [
+    SemialgebraicSets.defaultalgebraicsolver(Float64),
+    HomotopyContinuation.SemialgebraicSetsHCSolver(; compile = false),
+]
+
 function runtests(var, T)
     for name in names(@__MODULE__; all = true)
         if startswith("$name", "test_")
-            @testset "$(name)" begin
-                getfield(@__MODULE__, name)(var, T)
+            @testset "$(name) $(typeof(solver))" for solver in SOLVERS
+                getfield(@__MODULE__, name)(var, T, solver)
             end
         end
     end

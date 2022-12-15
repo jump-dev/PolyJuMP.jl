@@ -1,4 +1,4 @@
-module TestAlgebraicKKT
+module TestKKT
 
 using Test
 
@@ -25,7 +25,7 @@ function _test_solution(model, vars, c1, c2)
 end
 
 function test_algebraic(var, T, solver)
-    model = PolyJuMP.AlgebraicKKT.Optimizer{T}()
+    model = PolyJuMP.KKT.Optimizer{T}()
     MOI.set(model, MOI.RawOptimizerAttribute("algebraic_solver"), solver)
     t = MP.similarvariable(var, Val{:t})
     x = MP.similarvariable(var, Val{:x})
@@ -52,7 +52,7 @@ end
 function _test_linquad(T, F1, O, solver)
     model = MOI.instantiate(
         optimizer_with_attributes(
-            PolyJuMP.AlgebraicKKT.Optimizer{T},
+            PolyJuMP.KKT.Optimizer{T},
             "algebraic_solver" => solver,
         ),
         with_bridge_type = T,
@@ -92,7 +92,7 @@ function test_linquad(var, T, solver)
 end
 
 function _test_JuMP(F1, O, solver)
-    model = Model(PolyJuMP.AlgebraicKKT.Optimizer)
+    model = Model(PolyJuMP.KKT.Optimizer)
     set_optimizer_attribute(model, "algebraic_solver", solver)
     @variable(model, t)
     @variable(model, x)
@@ -146,9 +146,10 @@ function test_MOI_runtests(var, T, solver)
         exclude = Any[MOI.SolverVersion, MOI.ObjectiveBound],
     )
     optimizer = MOI.instantiate(
-        PolyJuMP.AlgebraicKKT.Optimizer{T},
+        PolyJuMP.KKT.Optimizer{T},
         with_bridge_type = T,
     )
+    @test MOI.get(optimizer, MOI.SolverName()) == "PolyJuMP.KKT"
     MOI.set(optimizer, MOI.RawOptimizerAttribute("algebraic_solver"), solver)
     # Remove `ZerosBridge` otherwise querying `ConstraintDual` won't work in `test_quadratic_constraint_GreaterThan`
     MOI.Bridges.remove_bridge(optimizer, MOI.Bridges.Variable.ZerosBridge{T})
@@ -226,7 +227,7 @@ end # module
 
 import DynamicPolynomials
 DynamicPolynomials.@polyvar(x)
-TestAlgebraicKKT.runtests(x, Float64)
+TestKKT.runtests(x, Float64)
 import TypedPolynomials
 TypedPolynomials.@polyvar(y)
-TestAlgebraicKKT.runtests(y, Float64)
+TestKKT.runtests(y, Float64)

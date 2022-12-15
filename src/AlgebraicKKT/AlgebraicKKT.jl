@@ -28,6 +28,8 @@ mutable struct Optimizer{T} <: MOI.AbstractOptimizer
     extrema::Vector{Vector{T}}
     objective_values::Vector{T}
     solve_time::Float64
+    termination_status::MOI.TerminationStatusCode
+    raw_status::String
     # Optimizer attributes
     algebraic_solver::Union{Nothing,SemialgebraicSets.AbstractAlgebraicSolver}
     feasibility_tolerance::T
@@ -42,6 +44,8 @@ function Optimizer{T}() where {T}
         Vector{T}[],
         T[],
         NaN,
+        MOI.OPTIMIZE_NOT_CALLED,
+        "",
         nothing,
         Base.rtoldefault(T),
         Base.rtoldefault(T),
@@ -53,10 +57,7 @@ Optimizer() = Optimizer{Float64}()
 
 MOI.get(::Optimizer, ::MOI.SolverName) = "AlgebraicKKT"
 
-function MOI.get(
-    ::Optimizer{T},
-    ::MOI.Bridges.ListOfNonstandardBridges{T},
-) where {T}
+function MOI.get(::Optimizer{T}, ::MOI.Bridges.ListOfNonstandardBridges{T}) where {T}
     return [
         PolyJuMP.Bridges.Constraint.ToPolynomialBridge{T},
         PolyJuMP.Bridges.Objective.ToPolynomialBridge{T},
@@ -99,6 +100,8 @@ function MOI.empty!(model::Optimizer)
     empty!(model.extrema)
     empty!(model.objective_values)
     model.solve_time = NaN
+    model.termination_status = MOI.OPTIMIZE_NOT_CALLED
+    model.raw_status = ""
     return
 end
 
@@ -111,6 +114,7 @@ function MOI.add_variable(model::Optimizer)
     vi = MOI.VariableIndex(i)
     var = VarType("x[$i]")
     model.variables[vi] = var
+    model.termination_status = MOI.OPTIMIZE_NOT_CALLED
     return vi
 end
 
@@ -161,15 +165,13 @@ function MOI.add_constraint(
 ) where {T}
     model.set = model.set ∩ _set(_polynomial(model.variables, func), set)
     i = _num(model.set, typeof(set))
+    model.termination_status = MOI.OPTIMIZE_NOT_CALLED
     return MOI.ConstraintIndex{typeof(func),typeof(set)}(i)
 end
 
-function MOI.set(
-    model::Optimizer,
-    ::MOI.ObjectiveSense,
-    sense::MOI.OptimizationSense,
-)
+function MOI.set(model::Optimizer, ::MOI.ObjectiveSense, sense::MOI.OptimizationSense)
     model.objective_sense = sense
+    model.termination_status = MOI.OPTIMIZE_NOT_CALLED
     return
 end
 
@@ -185,15 +187,11 @@ function MOI.set(
     func::PolyJuMP.ScalarPolynomialFunction{T},
 ) where {T}
     model.objective_function = _polynomial(model.variables, func)
+    model.termination_status = MOI.OPTIMIZE_NOT_CALLED
     return
 end
 
-function _add_to_system(
-    system,
-    lagrangian,
-    set::SemialgebraicSets.FullSpace,
-    ::Bool,
-)
+function _add_to_system(system, lagrangian, set::SemialgebraicSets.FullSpace, ::Bool)
     return lagrangian
 end
 
@@ -249,12 +247,7 @@ function _violates_inequalities(
     return false
 end
 
-function _violates_inequalities(
-    set::SemialgebraicSets.BasicSemialgebraicSet,
-    x,
-    sol,
-    tol,
-)
+function _violates_inequalities(set::SemialgebraicSets.BasicSemialgebraicSet, x, sol, tol)
     return any(p -> p(x => sol) < -tol, SemialgebraicSets.inequalities(set))
 end
 
@@ -289,30 +282,34 @@ function _optimize!(model::Optimizer{T}) where {T}
     if lagrangian isa MA.Zero
         model.extrema = [zeros(T, length(x))]
         model.objective_values = zeros(T, 1)
+        model.termination_status = MOI.LOCALLY_SOLVED # We could use `OPTIMAL` here but it would then make MOI tests fail as they expect `LOCALLY_SOLVED`
+        model.raw_status = "Lagrangian function is zero so any solution is optimal even if the solver reports a unique solution `0`."
         return
     end
     ∇x = MP.differentiate(lagrangian, x)
     for p in ∇x
         SemialgebraicSets.addequality!(system, p)
     end
+    display(system)
+    @show typeof(system)
+    @show SemialgebraicSets.iszerodimensional(system)
+    display(system)
+    if !SemialgebraicSets.iszerodimensional(system)
+        model.extrema = Vector{T}[]
+        model.objective_values = zeros(T, 0)
+        model.termination_status = MOI.OTHER_ERROR
+        model.raw_status = "KKT system is not zero-dimensional which is not supported."
+        return
+    end
+    display(system)
     model.extrema = Vector{T}[
-        _square(sol, _nineq(model.set)) for
-        sol in system if !_violates_inequalities(
-            model.set,
-            x,
-            sol,
-            model.feasibility_tolerance,
-        )
+        _square(sol, _nineq(model.set)) for sol in system if
+        !_violates_inequalities(model.set, x, sol, model.feasibility_tolerance)
     ]
     if model.objective_sense != MOI.FEASIBILITY_SENSE
-        model.objective_values = T[
-            model.objective_function(x => sol[eachindex(x)]) for
-            sol in model.extrema
-        ]
-        I = sortperm(
-            model.objective_values,
-            rev = model.objective_sense == MOI.MAX_SENSE,
-        )
+        model.objective_values =
+            T[model.objective_function(x => sol[eachindex(x)]) for sol in model.extrema]
+        I = sortperm(model.objective_values, rev = model.objective_sense == MOI.MAX_SENSE)
         model.extrema = model.extrema[I]
         model.objective_values = model.objective_values[I]
         # Even if SemialgebraicSets remove duplicates, we may have solution with different `σ` but same `σ^2`
@@ -323,12 +320,20 @@ function _optimize!(model::Optimizer{T}) where {T}
         model.extrema = model.extrema[J]
         model.objective_values = model.objective_values[J]
         i = findfirst(eachindex(model.objective_values)) do i
-            return abs(model.objective_values[i] - first(model.objective_values)) > model.optimality_tolerance
+            return abs(model.objective_values[i] - first(model.objective_values)) >
+                   model.optimality_tolerance
         end
         if !isnothing(i)
             model.extrema = model.extrema[1:(i-1)]
             model.objective_values = model.objective_values[1:(i-1)]
         end
+    end
+    if isempty(model.extrema)
+        model.termination_status = MOI.INFEASIBLE_OR_UNBOUNDED
+        model.raw_status = "The KKT system is infeasible so the polynomial optimization problem is either infeasible or unbounded."
+    else
+        model.termination_status = MOI.LOCALLY_SOLVED
+        model.raw_status = "Unless the problem is unbounded, the $(length(model.extrema)) solutions reported by the solver are optimal. The termination status is `LOCALLY_SOLVED` instead of `OPTIMAL` to leave the possibility that the problem may be unbounded."
     end
     return
 end
@@ -340,23 +345,15 @@ end
 MOI.get(model::Optimizer, ::MOI.SolveTimeSec) = model.solve_time
 
 function MOI.get(model::Optimizer, ::MOI.RawStatusString)
-    if isnan(model.solve_time)
-        return "`optimize!` has not been called yet"
-    elseif isempty(model.extrema)
-        return "The KKT system is infeasible so the polynomial optimization problem is either infeasible or unbounded"
+    if model.termination_status === MOI.OPTIMIZE_NOT_CALLED
+        return "`optimize!` has not yet been called"
     else
-        return "The KKT system has $(length(model.extrema)) solutions corresponding to optimal solutions"
+        return model.raw_status
     end
 end
 
 function MOI.get(model::Optimizer, ::MOI.TerminationStatus)
-    if isnan(model.solve_time)
-        return MOI.OPTIMIZE_NOT_CALLED
-    elseif isempty(model.extrema)
-        return MOI.INFEASIBLE_OR_UNBOUNDED
-    else
-        return MOI.OPTIMAL
-    end
+    return model.termination_status
 end
 
 MOI.get(model::Optimizer, ::MOI.ResultCount) = length(model.extrema)
@@ -374,11 +371,7 @@ function MOI.get(model::Optimizer, attr::MOI.PrimalStatus)
     end
 end
 
-function MOI.get(
-    model::Optimizer,
-    attr::MOI.VariablePrimal,
-    vi::MOI.VariableIndex,
-)
+function MOI.get(model::Optimizer, attr::MOI.VariablePrimal, vi::MOI.VariableIndex)
     MOI.throw_if_not_valid(model, vi)
     MOI.check_result_index_bounds(model, attr)
     return model.extrema[attr.result_index][vi.value]
@@ -398,9 +391,7 @@ function _index(
         <:Union{MOI.LessThan,MOI.GreaterThan},
     },
 )
-    return length(model.variables) +
-           SemialgebraicSets.nequalities(model.set) +
-           ci.value
+    return length(model.variables) + SemialgebraicSets.nequalities(model.set) + ci.value
 end
 
 function MOI.get(model::Optimizer, attr::MOI.DualStatus)

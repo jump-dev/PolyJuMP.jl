@@ -21,7 +21,11 @@ struct InvalidNLExpression <: Exception
 end
 
 function _to_polynomial!(d, ::Type, expr)
-    throw(InvalidNLExpression("Unexpected expression type `$(typeof(expr))`` of `$expr`"))
+    throw(
+        InvalidNLExpression(
+            "Unexpected expression type `$(typeof(expr))`` of `$expr`",
+        ),
+    )
 end
 
 _to_polynomial!(d, ::Type{T}, x::T) where {T} = x
@@ -73,7 +77,11 @@ function _to_polynomial(model::NLToPolynomial{T}, expr) where {T}
         return _to_polynomial(expr, T)
     catch err
         if err isa InvalidNLExpression
-            model.invalid = string("Cannot convert expression `$(expr)` into a polynomial: ", err.message, ".")
+            model.invalid = string(
+                "Cannot convert expression `$(expr)` into a polynomial: ",
+                err.message,
+                ".",
+            )
             return
         else
             rethrow(err)
@@ -143,15 +151,20 @@ end
 _invalid_value(model::NLToPolynomial, ::MOI.RawStatusString) = model.invalid
 _invalid_value(::NLToPolynomial, ::MOI.TerminationStatus) = MOI.INVALID_MODEL
 _invalid_value(::NLToPolynomial, ::MOI.ResultCount) = 0
-_invalid_value(::NLToPolynomial, ::Union{MOI.PrimalStatus,MOI.DualStatus}) = MOI.NO_SOLUTION
-function _invalid_value(::NLToPolynomial, attr::Union{MOI.VariablePrimal,MOI.ConstraintDual,MOI.ConstraintPrimal})
+function _invalid_value(
+    ::NLToPolynomial,
+    ::Union{MOI.PrimalStatus,MOI.DualStatus},
+)
+    return MOI.NO_SOLUTION
+end
+function _invalid_value(
+    ::NLToPolynomial,
+    attr::Union{MOI.VariablePrimal,MOI.ConstraintDual,MOI.ConstraintPrimal},
+)
     throw(MOI.ResultIndexBoundsError(attr, 0))
 end
 
-function MOI.get(
-    model::NLToPolynomial,
-    attr::MOI.AbstractModelAttribute,
-)
+function MOI.get(model::NLToPolynomial, attr::MOI.AbstractModelAttribute)
     if isnothing(model.invalid) || !MOI.is_set_by_optimize(attr)
         return MOI.get(model.model, attr)
     else
@@ -217,10 +230,7 @@ function MOI.supports(
     return MOI.supports(model.model, attr)
 end
 
-function MOI.get(
-    model::NLToPolynomial,
-    attr::MOI.AbstractOptimizerAttribute,
-)
+function MOI.get(model::NLToPolynomial, attr::MOI.AbstractOptimizerAttribute)
     return MOI.get(model.model, attr)
 end
 

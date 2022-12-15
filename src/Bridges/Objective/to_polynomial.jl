@@ -96,7 +96,11 @@ function MOI.get(
     return MOI.get(model, attr_f)
 end
 
-function MOI.modify(model::MOI.ModelLike, ::ToPolynomialBridge{T}, change::MOI.AbstractFunctionModification) where {T}
+function MOI.modify(
+    model::MOI.ModelLike,
+    ::ToPolynomialBridge{T},
+    change::MOI.AbstractFunctionModification,
+) where {T}
     F = FuncType{T}
     MOI.modify(model, MOI.ObjectiveFunction{F}(), change)
     return

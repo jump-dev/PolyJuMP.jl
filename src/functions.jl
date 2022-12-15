@@ -7,7 +7,8 @@
 Defines the polynomial function of the variables `variables` where the variable
 `variables(p)[i]` corresponds to `variables[i]`.
 """
-struct ScalarPolynomialFunction{T,P<:AbstractPolynomial{T}} <: MOI.AbstractScalarFunction
+struct ScalarPolynomialFunction{T,P<:AbstractPolynomial{T}} <:
+       MOI.AbstractScalarFunction
     polynomial::P
     variables::Vector{MOI.VariableIndex}
 end
@@ -40,7 +41,11 @@ function _polynomial_variables!(::Type{P}, variables) where {P}
     return x, d
 end
 
-function _polynomial_with_variables(::Type{P}, func::MOI.ScalarAffineFunction, d) where {P}
+function _polynomial_with_variables(
+    ::Type{P},
+    func::MOI.ScalarAffineFunction,
+    d,
+) where {P}
     terms = [MP.term(t.coefficient, d[t.variable]) for t in func.terms]
     push!(terms, MOI.constant(func))
     return MP.polynomial(terms)
@@ -85,7 +90,9 @@ end
 
 function MOI.Utilities.canonicalize!(::ScalarPolynomialFunction) end
 
-_variables(aff::MOI.ScalarAffineFunction) = MOI.VariableIndex[t.variable for t in aff.terms]
+function _variables(aff::MOI.ScalarAffineFunction)
+    return MOI.VariableIndex[t.variable for t in aff.terms]
+end
 
 function MOI.Utilities.substitute_variables(
     variable_map::Function,

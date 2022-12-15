@@ -36,8 +36,8 @@ function test_scalar_polynomial_function(var)
     α = MOI.VariableIndex(1)
     β = MOI.VariableIndex(2)
     γ = MOI.VariableIndex(3)
-    poly = x^2 + 2x*y + z^3
-    f = PolyJuMP.ScalarPolynomialFunction{Int, typeof(poly)}(poly, [β, γ, α])
+    poly = x^2 + 2x * y + z^3
+    f = PolyJuMP.ScalarPolynomialFunction{Int,typeof(poly)}(poly, [β, γ, α])
     g = MOI.Utilities.substitute_variables(f) do var
         i = var.value
         j = mod1(i + 1, 3)
@@ -47,7 +47,7 @@ function test_scalar_polynomial_function(var)
     X = c + 2
     Y = a + 3
     Z = b + 1
-    @test g.polynomial == X^2 + 2X*Y + Z^3
+    @test g.polynomial == X^2 + 2X * Y + Z^3
     @test g.variables == [α, β, γ]
     @test iszero(MOI.constant(f))
     @test MOI.constant(g) == 17

@@ -89,7 +89,11 @@ function MOI.delete(model::MOI.ModelLike, b::ToPolynomialBridge)
     return
 end
 
-function MOI.modify(model::MOI.ModelLike, b::ToPolynomialBridge, change::MOI.AbstractFunctionModification)
+function MOI.modify(
+    model::MOI.ModelLike,
+    b::ToPolynomialBridge,
+    change::MOI.AbstractFunctionModification,
+)
     MOI.modify(model, b.constraint, change)
     return
 end

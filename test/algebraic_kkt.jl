@@ -137,6 +137,7 @@ function test_MOI_runtests(var, T)
     config = MOI.Test.Config(
         rtol = 1e-6,
         atol = 1e-6,
+        optimal_status = MOI.LOCALLY_SOLVED,
         exclude = Any[MOI.SolverVersion, MOI.ObjectiveBound],
     )
     optimizer = MOI.instantiate(

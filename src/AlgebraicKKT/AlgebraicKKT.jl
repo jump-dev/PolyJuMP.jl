@@ -57,7 +57,10 @@ Optimizer() = Optimizer{Float64}()
 
 MOI.get(::Optimizer, ::MOI.SolverName) = "AlgebraicKKT"
 
-function MOI.get(::Optimizer{T}, ::MOI.Bridges.ListOfNonstandardBridges{T}) where {T}
+function MOI.get(
+    ::Optimizer{T},
+    ::MOI.Bridges.ListOfNonstandardBridges{T},
+) where {T}
     return [
         PolyJuMP.Bridges.Constraint.ToPolynomialBridge{T},
         PolyJuMP.Bridges.Objective.ToPolynomialBridge{T},
@@ -169,7 +172,11 @@ function MOI.add_constraint(
     return MOI.ConstraintIndex{typeof(func),typeof(set)}(i)
 end
 
-function MOI.set(model::Optimizer, ::MOI.ObjectiveSense, sense::MOI.OptimizationSense)
+function MOI.set(
+    model::Optimizer,
+    ::MOI.ObjectiveSense,
+    sense::MOI.OptimizationSense,
+)
     model.objective_sense = sense
     model.termination_status = MOI.OPTIMIZE_NOT_CALLED
     return
@@ -191,7 +198,12 @@ function MOI.set(
     return
 end
 
-function _add_to_system(system, lagrangian, set::SemialgebraicSets.FullSpace, ::Bool)
+function _add_to_system(
+    system,
+    lagrangian,
+    set::SemialgebraicSets.FullSpace,
+    ::Bool,
+)
     return lagrangian
 end
 
@@ -247,7 +259,12 @@ function _violates_inequalities(
     return false
 end
 
-function _violates_inequalities(set::SemialgebraicSets.BasicSemialgebraicSet, x, sol, tol)
+function _violates_inequalities(
+    set::SemialgebraicSets.BasicSemialgebraicSet,
+    x,
+    sol,
+    tol,
+)
     return any(p -> p(x => sol) < -tol, SemialgebraicSets.inequalities(set))
 end
 
@@ -290,10 +307,6 @@ function _optimize!(model::Optimizer{T}) where {T}
     for p in ∇x
         SemialgebraicSets.addequality!(system, p)
     end
-    display(system)
-    @show typeof(system)
-    @show SemialgebraicSets.iszerodimensional(system)
-    display(system)
     if !SemialgebraicSets.iszerodimensional(system)
         model.extrema = Vector{T}[]
         model.objective_values = zeros(T, 0)
@@ -301,15 +314,24 @@ function _optimize!(model::Optimizer{T}) where {T}
         model.raw_status = "KKT system is not zero-dimensional which is not supported."
         return
     end
-    display(system)
     model.extrema = Vector{T}[
-        _square(sol, _nineq(model.set)) for sol in system if
-        !_violates_inequalities(model.set, x, sol, model.feasibility_tolerance)
+        _square(sol, _nineq(model.set)) for
+        sol in system if !_violates_inequalities(
+            model.set,
+            x,
+            sol,
+            model.feasibility_tolerance,
+        )
     ]
     if model.objective_sense != MOI.FEASIBILITY_SENSE
-        model.objective_values =
-            T[model.objective_function(x => sol[eachindex(x)]) for sol in model.extrema]
-        I = sortperm(model.objective_values, rev = model.objective_sense == MOI.MAX_SENSE)
+        model.objective_values = T[
+            model.objective_function(x => sol[eachindex(x)]) for
+            sol in model.extrema
+        ]
+        I = sortperm(
+            model.objective_values,
+            rev = model.objective_sense == MOI.MAX_SENSE,
+        )
         model.extrema = model.extrema[I]
         model.objective_values = model.objective_values[I]
         # Even if SemialgebraicSets remove duplicates, we may have solution with different `σ` but same `σ^2`
@@ -320,8 +342,7 @@ function _optimize!(model::Optimizer{T}) where {T}
         model.extrema = model.extrema[J]
         model.objective_values = model.objective_values[J]
         i = findfirst(eachindex(model.objective_values)) do i
-            return abs(model.objective_values[i] - first(model.objective_values)) >
-                   model.optimality_tolerance
+            return abs(model.objective_values[i] - first(model.objective_values)) > model.optimality_tolerance
         end
         if !isnothing(i)
             model.extrema = model.extrema[1:(i-1)]
@@ -371,7 +392,11 @@ function MOI.get(model::Optimizer, attr::MOI.PrimalStatus)
     end
 end
 
-function MOI.get(model::Optimizer, attr::MOI.VariablePrimal, vi::MOI.VariableIndex)
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.VariablePrimal,
+    vi::MOI.VariableIndex,
+)
     MOI.throw_if_not_valid(model, vi)
     MOI.check_result_index_bounds(model, attr)
     return model.extrema[attr.result_index][vi.value]
@@ -391,7 +416,9 @@ function _index(
         <:Union{MOI.LessThan,MOI.GreaterThan},
     },
 )
-    return length(model.variables) + SemialgebraicSets.nequalities(model.set) + ci.value
+    return length(model.variables) +
+           SemialgebraicSets.nequalities(model.set) +
+           ci.value
 end
 
 function MOI.get(model::Optimizer, attr::MOI.DualStatus)

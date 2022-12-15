@@ -35,6 +35,6 @@ include("constraint.jl")
 include("data.jl")
 include("default.jl")
 
-include("AlgebraicKKT/AlgebraicKKT.jl")
+include("KKT/KKT.jl")
 
 end # module

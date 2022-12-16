@@ -145,10 +145,7 @@ function test_MOI_runtests(var, T, solver)
         optimal_status = MOI.LOCALLY_SOLVED,
         exclude = Any[MOI.SolverVersion, MOI.ObjectiveBound],
     )
-    optimizer = MOI.instantiate(
-        PolyJuMP.KKT.Optimizer{T},
-        with_bridge_type = T,
-    )
+    optimizer = MOI.instantiate(PolyJuMP.KKT.Optimizer{T}, with_bridge_type = T)
     @test MOI.get(optimizer, MOI.SolverName()) == "PolyJuMP.KKT"
     MOI.set(optimizer, MOI.RawOptimizerAttribute("algebraic_solver"), solver)
     # Remove `ZerosBridge` otherwise querying `ConstraintDual` won't work in `test_quadratic_constraint_GreaterThan`

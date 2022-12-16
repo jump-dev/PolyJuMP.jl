@@ -6,6 +6,7 @@ const MA = MutableArithmetics
 # MultivariatePolynomials extension
 
 using MultivariatePolynomials
+const MP = MultivariatePolynomials
 import MultivariateBases
 const MB = MultivariateBases
 using MultivariateMoments
@@ -21,10 +22,8 @@ include("zero_polynomial.jl")
 include("functions.jl")
 
 # Bridges
-const MOIB = MOI.Bridges
-include("zero_polynomial_bridge.jl")
-include("zero_polynomial_in_algebraic_set_bridge.jl")
-include("plus_minus_bridge.jl")
+include("Bridges/Bridges.jl")
+include("nl_to_polynomial.jl")
 
 # JuMP extension
 
@@ -35,5 +34,7 @@ include("constraint.jl")
 
 include("data.jl")
 include("default.jl")
+
+include("KKT/KKT.jl")
 
 end # module

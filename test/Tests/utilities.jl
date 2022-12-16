@@ -1,6 +1,4 @@
 using Test, JuMP
-const MOIT = MOI.Test
-const MOIB = MOI.Bridges
 
 function _model(optimizer::MOI.AbstractOptimizer)
     MOI.empty!(optimizer)
@@ -21,41 +19,48 @@ end
 #is passed as it can also contains test to be excluded from these subsets of
 #tests.
 #"""
-macro test_suite(setname, subsets=false)
+macro test_suite(setname, subsets = false)
     testname = Symbol(string(setname) * "_test")
     testdict = Symbol(string(testname) * "s")
     if subsets
-        runtest = :( f(model, config, exclude) )
+        runtest = :(f(model, config, exclude))
     else
-        runtest = :( f(model, config) )
+        runtest = :(f(model, config))
     end
-    esc(:(
-      function $testname(model, # could be ModelLike or an optimizer constructor
-                         config::$MOI.Test.Config,
-                         exclude::Vector{String} = String[])
-            for (name,f) in $testdict
-                if name in exclude
-                    continue
-                end
-                @testset "$name" begin
-                    $runtest
+    return esc(
+        :(
+            function $testname(
+                model, # could be ModelLike or an optimizer constructor
+                config::$MOI.Test.Config,
+                exclude::Vector{String} = String[],
+            )
+                for (name, f) in $testdict
+                    if name in exclude
+                        continue
+                    end
+                    @testset "$name" begin
+                        $runtest
+                    end
                 end
             end
-        end
-    ))
+        ),
+    )
 end
 
 function test_noc(model, F, S, n)
-    @test MOI.get(model, MOI.NumberOfConstraints{F, S}()) == n
-    @test length(MOI.get(model, MOI.ListOfConstraintIndices{F, S}())) == n
-    @test ((F, S) in MOI.get(model, MOI.ListOfConstraintTypesPresent())) == !iszero(n)
+    @test MOI.get(model, MOI.NumberOfConstraints{F,S}()) == n
+    @test length(MOI.get(model, MOI.ListOfConstraintIndices{F,S}())) == n
+    @test ((F, S) in MOI.get(model, MOI.ListOfConstraintTypesPresent())) ==
+          !iszero(n)
 end
 
 # Test deletion of bridge
-function test_delete_bridge(model::Model,
-                            cref::ConstraintRef{Model,
-                                                MOI.ConstraintIndex{F, S}},
-                            nvars::Int, nocs::Tuple) where {F, S}
+function test_delete_bridge(
+    model::Model,
+    cref::ConstraintRef{Model,MOI.ConstraintIndex{F,S}},
+    nvars::Int,
+    nocs::Tuple,
+) where {F,S}
     @test num_variables(model) == nvars
     @test length(all_variables(model)) == nvars
     test_noc(model, F, S, 1)

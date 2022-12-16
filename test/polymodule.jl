@@ -13,12 +13,22 @@ function test_PolyModule()
     @test PolyJuMP.getpolydata(m).nonnegpoly_default === nothing
     @test_throws ErrorException PolyJuMP.getdefault(m, PolyJuMP.NonNegPoly)
     @test PolyJuMP.getpolydata(m).posdefpolymatrix_default === nothing
-    @test_throws ErrorException PolyJuMP.getdefault(m, PolyJuMP.PosDefPolyMatrix)
+    @test_throws ErrorException PolyJuMP.getdefault(
+        m,
+        PolyJuMP.PosDefPolyMatrix,
+    )
     setpolymodule!(m, DummyPolyModule)
-    @test PolyJuMP.getdefault(m, PolyJuMP.NonNegPoly) == DummyPolyModule.DummyNonNeg
-    @test PolyJuMP.getdefault(m, PolyJuMP.PosDefPolyMatrix) == DummyPolyModule.DummyPosDefMatrix
-    PolyJuMP.setdefault!(m, PolyJuMP.PosDefPolyMatrix, DummyPolyModule.DummyNonNeg)
-    @test PolyJuMP.getdefault(m, PolyJuMP.PosDefPolyMatrix) == DummyPolyModule.DummyNonNeg
+    @test PolyJuMP.getdefault(m, PolyJuMP.NonNegPoly) ==
+          DummyPolyModule.DummyNonNeg
+    @test PolyJuMP.getdefault(m, PolyJuMP.PosDefPolyMatrix) ==
+          DummyPolyModule.DummyPosDefMatrix
+    PolyJuMP.setdefault!(
+        m,
+        PolyJuMP.PosDefPolyMatrix,
+        DummyPolyModule.DummyNonNeg,
+    )
+    @test PolyJuMP.getdefault(m, PolyJuMP.PosDefPolyMatrix) ==
+          DummyPolyModule.DummyNonNeg
 end
 
 function runtests()

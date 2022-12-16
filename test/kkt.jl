@@ -203,7 +203,6 @@ function test_MOI_runtests(var, T, solver)
     return
 end
 
-
 const SOLVERS = Any[SemialgebraicSets.defaultalgebraicsolver(Float64),]
 
 @static if Sys.WORD_SIZE == 64 # Issue with 32 bits, see https://github.com/JuliaHomotopyContinuation/HomotopyContinuation.jl/issues/476

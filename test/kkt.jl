@@ -205,10 +205,14 @@ end
 
 import HomotopyContinuation
 
-const SOLVERS = [
-    SemialgebraicSets.defaultalgebraicsolver(Float64),
-    HomotopyContinuation.SemialgebraicSetsHCSolver(; compile = false),
-]
+const SOLVERS = Any[SemialgebraicSets.defaultalgebraicsolver(Float64),]
+
+if Sys.WORD_SIZE == 64 # Issue with 32 bits, see https://github.com/JuliaHomotopyContinuation/HomotopyContinuation.jl/issues/476
+    push!(
+        Solvers,
+        HomotopyContinuation.SemialgebraicSetsHCSolver(; compile = false),
+    )
+end
 
 function runtests(var, T)
     for name in names(@__MODULE__; all = true)

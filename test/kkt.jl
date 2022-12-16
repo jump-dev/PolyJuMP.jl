@@ -203,11 +203,11 @@ function test_MOI_runtests(var, T, solver)
     return
 end
 
-import HomotopyContinuation
 
 const SOLVERS = Any[SemialgebraicSets.defaultalgebraicsolver(Float64),]
 
-if Sys.WORD_SIZE == 64 # Issue with 32 bits, see https://github.com/JuliaHomotopyContinuation/HomotopyContinuation.jl/issues/476
+@static if Sys.WORD_SIZE == 64 # Issue with 32 bits, see https://github.com/JuliaHomotopyContinuation/HomotopyContinuation.jl/issues/476
+    import HomotopyContinuation
     push!(
         SOLVERS,
         HomotopyContinuation.SemialgebraicSetsHCSolver(; compile = false),

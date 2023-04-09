@@ -10,7 +10,7 @@ These problems can then be solved using [SumOfSquares.jl](https://github.com/jum
 
 ## License
 
-`PolyJuMP.jl` is licensed under the [MPL 2.0 license](https://github.com/jump-dev/PolyJuMP.jl/blob/master/LICENSE.md).
+`PolyJuMP.jl` is licensed under the [MIT license](https://github.com/jump-dev/PolyJuMP.jl/blob/master/LICENSE.md).
 
 ## Installation
 

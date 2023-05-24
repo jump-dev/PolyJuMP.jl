@@ -24,14 +24,21 @@ function MOI.Bridges.Constraint.bridge_constraint(
 ) where {T,F,BT,DT,MT,MVT}
     p = polynomial(MOI.Utilities.scalarize(f), s.monomials)
     # As `*(::MOI.ScalarAffineFunction{T}, ::S)` is only defined if `S == T`, we
-    # need to call `changecoefficienttype`. This is critical since `T` is
+    # need to call `similar`. This is critical since `T` is
     # `Float64` when used with JuMP and the coefficient type is often `Int` with
     # `FixedVariablesSet`.
     # FIXME convert needed because the coefficient type of `r` is `Any` otherwise if `domain` is `AlgebraicSet`
+    display(s.domain)
+    @show s.domain.I.gröbner_basis
+    @show T
+    @show p
     r = convert(
         typeof(p),
-        rem(p, SS.ideal(MP.changecoefficienttype(s.domain, T))),
+        rem(p, SS.ideal(similar(s.domain, T))),
     )
+    @show s.domain.I.gröbner_basis
+    display(s.domain)
+    @show r
     zero_constraint = MOI.add_constraint(
         model,
         MOI.Utilities.vectorize(MP.coefficients(r)),

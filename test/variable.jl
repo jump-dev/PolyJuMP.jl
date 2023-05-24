@@ -16,8 +16,8 @@ using JuMP
 using PolyJuMP
 
 function test_variable_macro_with_Poly(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     X = [1, y, x^2, x, y^2]
 
     m = Model()
@@ -47,12 +47,12 @@ function _test_variable(
     vars = true,
     use_y = true,
 )
-    PT = polynomialtype(
+    PT = polynomial_type(
         use_y ? first(monos) : first(variables(first(monos))),
         vars ? JuMP.VariableRef : JuMP.AffExpr,
     )
     @test isa(p, PT)
-    @test monomials(p) == monovec(monos)
+    @test monomials(p) == monomial_vector(monos)
     if vars
         @test all(α -> JuMP.is_binary(α) == binary, coefficients(p))
         @test all(α -> JuMP.is_integer(α) == integer, coefficients(p))
@@ -69,12 +69,12 @@ function _test_variable(
 end
 
 function test_MonomialBasis(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     X = [1, y, x^2, x, y^2]
     m = Model()
     @variable m p1[1:3] Poly(X)
-    PT = polynomialtype(x * y, JuMP.VariableRef)
+    PT = polynomial_type(x * y, JuMP.VariableRef)
     @test isa(p1, Vector{PT})
     _test_variable(m, p1[1], X)
     @variable(m, p2, Poly(X), integer = true)
@@ -94,13 +94,13 @@ function test_MonomialBasis(var)
 end
 
 function test_ScaledMonomialBasis(var)
-    x = MP.similarvariable(var, Val{:x})
+    x = MP.similar_variable(var, Val{:x})
     m = Model()
     @variable(m, p1, Poly(MB.ScaledMonomialBasis([1, x, x^2])), Int)
     return _test_variable(
         m,
         p1,
-        monovec([1, x, x^2]),
+        monomial_vector([1, x, x^2]),
         false,
         true,
         false,
@@ -109,19 +109,19 @@ function test_ScaledMonomialBasis(var)
 end
 
 function test_FixedPolynomialBasis(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     m = Model()
     @variable(m, p1, Poly(MB.FixedPolynomialBasis([1 - x^2, x^2 + 2])), Bin)
-    _test_variable(m, p1, monovec([x^2, 1]), true, false, false, false)
+    _test_variable(m, p1, monomial_vector([x^2, 1]), true, false, false, false)
     @variable(m, p2[1:2], Poly(MB.FixedPolynomialBasis([1 - x^2, x^2 + 2])))
-    _test_variable(m, p2[1], monovec([x^2, 1]), false, false, false, false)
+    _test_variable(m, p2[1], monomial_vector([x^2, 1]), false, false, false, false)
     # Elements of the basis have type monomial
     @variable(m, p3[2:3], Poly(MB.FixedPolynomialBasis([x, x^2])))
-    _test_variable(m, p3[2], monovec([x^2, x]), false, false, false, false)
+    _test_variable(m, p3[2], monomial_vector([x^2, x]), false, false, false, false)
     # Elements of the basis have type term
     @variable(m, p4[1:2], Poly(MB.FixedPolynomialBasis([1, x, x^2])), Int)
-    _test_variable(m, p4[1], monovec([x^2, x, 1]), false, true, false, false)
+    _test_variable(m, p4[1], monomial_vector([x^2, x, 1]), false, true, false, false)
     # Elements of the basis have type variable
     @variable(
         m,
@@ -129,14 +129,14 @@ function test_FixedPolynomialBasis(var)
         Poly(MB.FixedPolynomialBasis([x, y])),
         integer = true
     )
-    _test_variable(m, p5[0], monovec([x, y]), false, true, false)
+    _test_variable(m, p5[0], monomial_vector([x, y]), false, true, false)
     @variable(m, p6[-1:1], Poly(MB.FixedPolynomialBasis([x])), integer = true)
-    return _test_variable(m, p6[0], monovec([x]), false, true, true, false)
+    return _test_variable(m, p6[0], monomial_vector([x]), false, true, true, false)
 end
 
 function test_value_function(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     m = Model()
     @variable m α
     @variable m β

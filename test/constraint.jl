@@ -109,8 +109,8 @@ function _test_constraint(
 end
 
 function test_errors(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     m = Model()
     setpolymodule!(m, DummyPolyModule)
     @variable m α
@@ -132,8 +132,8 @@ function test_errors(var)
 end
 
 function test_printing(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     m = Model()
     setpolymodule!(m, DummyPolyModule)
     @variable m α
@@ -160,8 +160,8 @@ function test_printing(var)
 end
 
 function test_NonNeg(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     m = Model()
     setpolymodule!(m, DummyPolyModule)
     @variable m α
@@ -227,8 +227,8 @@ function test_NonNeg(var)
 end
 
 function test_ZeroPolynomialSet(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     m = Model()
     setpolymodule!(m, DummyPolyModule)
     @variable m α
@@ -305,8 +305,8 @@ function test_PosDefMatrix(var)
     setpolymodule!(m, DummyPolyModule)
     @variable m α
     @variable m β
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     p = α * x * y + β * x^2
     q = α * x^2 + β * x * y + α * y^2
 

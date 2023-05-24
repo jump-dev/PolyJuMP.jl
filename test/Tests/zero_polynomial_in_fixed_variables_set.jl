@@ -52,8 +52,8 @@ function zero_polynomial_in_fixed_variables_set_test(
     S = PolyJuMP.ZeroPolynomialSet{
         typeof(@set x == 1),
         MB.MonomialBasis,
-        monomialtype(x),
-        monovectype(x),
+        monomial_type(x),
+        monomial_vector_type(x),
     }
     @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
           [(MOI.VariableIndex, MOI.LessThan{Float64}), (F, S)]

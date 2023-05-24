@@ -1,7 +1,7 @@
 # This will be refactored into a constraint bridge once https://github.com/jump-dev/MathOptInterface.jl/issues/846 is done
 
 import DynamicPolynomials
-const VarType = DynamicPolynomials.PolyVar{true}
+const VarType = DynamicPolynomials.Variable{true}
 const PolyType{T} = DynamicPolynomials.Polynomial{true,T}
 const FuncType{T} = ScalarPolynomialFunction{T,PolyType{T}}
 
@@ -31,31 +31,31 @@ end
 _to_polynomial!(d, ::Type{T}, x::T) where {T} = x
 
 function _to_polynomial!(d, ::Type{T}, expr::Expr) where {T}
-    if Base.isexpr(expr, :call) && expr.args[1] === :+
+    if Base.Meta.isexpr(expr, :call) && expr.args[1] === :+
         return sum(
             _to_polynomial!.(Ref(d), T, expr.args[2:end]),
             init = zero(PolyType{T}),
         )
-    elseif Base.isexpr(expr, :call) && expr.args[1] === :*
+    elseif Base.Meta.isexpr(expr, :call) && expr.args[1] === :*
         return prod(
             _to_polynomial!.(Ref(d), T, expr.args[2:end]),
             init = one(PolyType{T}),
         )
-    elseif Base.isexpr(expr, :call) &&
+    elseif Base.Meta.isexpr(expr, :call) &&
            expr.args[1] === :- &&
            length(expr.args) == 2
         return -_to_polynomial!(d, T, expr.args[2])
-    elseif Base.isexpr(expr, :call) &&
+    elseif Base.Meta.isexpr(expr, :call) &&
            expr.args[1] === :- &&
            length(expr.args) == 3
         a, b = _to_polynomial!.(Ref(d), T, expr.args[2:end])
         return a - b
-    elseif Base.isexpr(expr, :ref) &&
+    elseif Base.Meta.isexpr(expr, :ref) &&
            expr.args[1] === :x &&
            expr.args[2] isa MOI.VariableIndex
         vi = expr.args[2]
         if !haskey(d, vi)
-            d[vi] = MP.similarvariable(VarType, Symbol("x[$(vi.value)]"))
+            d[vi] = MP.similar_variable(VarType, Symbol("x[$(vi.value)]"))
         end
         return d[vi]
     else

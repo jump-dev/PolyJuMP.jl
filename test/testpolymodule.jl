@@ -94,7 +94,7 @@ function JuMP.reshape_vector(
     shape::MatrixPolynomialShape{MT},
 ) where {MT}
     n = shape.side_dimension
-    p = Matrix{polynomialtype(MT, eltype(x))}(undef, n, n)
+    p = Matrix{polynomial_type(MT, eltype(x))}(undef, n, n)
     k = 0
     for j in 1:n
         for i in 1:n
@@ -144,7 +144,7 @@ function JuMP.build_constraint(
 )
     n = LinearAlgebra.checksquare(p)
     # TODO we should use `non_constant_coefficients_type` once it exists
-    coefs = coefficienttype(p[1, 1])[]
+    coefs = coefficient_type(p[1, 1])[]
     for j in 1:n
         for i in 1:n
             append!(coefs, coefficients(p[i, j]))

@@ -10,8 +10,8 @@ using PolyJuMP
 const NonNeg = DummyPolyModule.NonNeg{
     MB.MonomialBasis,
     typeof(@set x^2 ≤ 0),
-    monomialtype(x),
-    monovectype(x),
+    monomial_type(x),
+    monomial_vector_type(x),
 }
 
 MOI.Utilities.@model(

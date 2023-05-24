@@ -14,8 +14,7 @@ using SemialgebraicSets
 
 # MOI extension
 
-using MathOptInterface
-const MOI = MathOptInterface
+import MathOptInterface as MOI
 
 include("attributes.jl")
 include("zero_polynomial.jl")

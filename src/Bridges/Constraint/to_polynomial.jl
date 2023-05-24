@@ -1,6 +1,6 @@
 import DynamicPolynomials
 
-const VarType = DynamicPolynomials.PolyVar{true}
+const VarType = DynamicPolynomials.Variable{true}
 const PolyType{T} = DynamicPolynomials.Polynomial{true,T}
 const FuncType{T} = PolyJuMP.ScalarPolynomialFunction{T,PolyType{T}}
 

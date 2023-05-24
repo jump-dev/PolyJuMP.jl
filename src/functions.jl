@@ -14,7 +14,10 @@ struct ScalarPolynomialFunction{T,P<:AbstractPolynomial{T}} <:
 end
 
 function MOI.constant(func::ScalarPolynomialFunction)
-    return MP.coefficient(func.polynomial, MP.constant_monomial(func.polynomial))
+    return MP.coefficient(
+        func.polynomial,
+        MP.constant_monomial(func.polynomial),
+    )
 end
 
 function _polynomial_variable(::Type{P}, vi::MOI.VariableIndex) where {P}

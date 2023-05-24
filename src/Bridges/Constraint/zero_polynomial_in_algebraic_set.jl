@@ -32,10 +32,7 @@ function MOI.Bridges.Constraint.bridge_constraint(
     @show s.domain.I.gröbner_basis
     @show T
     @show p
-    r = convert(
-        typeof(p),
-        rem(p, SS.ideal(similar(s.domain, T))),
-    )
+    r = convert(typeof(p), rem(p, SS.ideal(similar(s.domain, T))))
     @show s.domain.I.gröbner_basis
     display(s.domain)
     @show r

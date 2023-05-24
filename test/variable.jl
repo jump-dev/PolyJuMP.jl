@@ -115,13 +115,37 @@ function test_FixedPolynomialBasis(var)
     @variable(m, p1, Poly(MB.FixedPolynomialBasis([1 - x^2, x^2 + 2])), Bin)
     _test_variable(m, p1, monomial_vector([x^2, 1]), true, false, false, false)
     @variable(m, p2[1:2], Poly(MB.FixedPolynomialBasis([1 - x^2, x^2 + 2])))
-    _test_variable(m, p2[1], monomial_vector([x^2, 1]), false, false, false, false)
+    _test_variable(
+        m,
+        p2[1],
+        monomial_vector([x^2, 1]),
+        false,
+        false,
+        false,
+        false,
+    )
     # Elements of the basis have type monomial
     @variable(m, p3[2:3], Poly(MB.FixedPolynomialBasis([x, x^2])))
-    _test_variable(m, p3[2], monomial_vector([x^2, x]), false, false, false, false)
+    _test_variable(
+        m,
+        p3[2],
+        monomial_vector([x^2, x]),
+        false,
+        false,
+        false,
+        false,
+    )
     # Elements of the basis have type term
     @variable(m, p4[1:2], Poly(MB.FixedPolynomialBasis([1, x, x^2])), Int)
-    _test_variable(m, p4[1], monomial_vector([x^2, x, 1]), false, true, false, false)
+    _test_variable(
+        m,
+        p4[1],
+        monomial_vector([x^2, x, 1]),
+        false,
+        true,
+        false,
+        false,
+    )
     # Elements of the basis have type variable
     @variable(
         m,
@@ -131,7 +155,15 @@ function test_FixedPolynomialBasis(var)
     )
     _test_variable(m, p5[0], monomial_vector([x, y]), false, true, false)
     @variable(m, p6[-1:1], Poly(MB.FixedPolynomialBasis([x])), integer = true)
-    return _test_variable(m, p6[0], monomial_vector([x]), false, true, true, false)
+    return _test_variable(
+        m,
+        p6[0],
+        monomial_vector([x]),
+        false,
+        true,
+        true,
+        false,
+    )
 end
 
 function test_value_function(var)

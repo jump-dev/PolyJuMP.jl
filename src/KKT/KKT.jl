@@ -117,7 +117,7 @@ end
 function MOI.add_variable(model::Optimizer)
     i = length(model.variables) + 1
     vi = MOI.VariableIndex(i)
-    var = VarType("x[$i]")
+    var = DynamicPolynomials.Variable("x[$i]", VariableOrder, MonomialOrder)
     model.variables[vi] = var
     model.termination_status = MOI.OPTIMIZE_NOT_CALLED
     return vi

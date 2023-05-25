@@ -38,9 +38,9 @@ function zero_polynomial_in_algebraic_set_test(
     @test μ isa AbstractMeasure{Float64}
     @test length(moments(μ)) == 2
     @test moment_value(moments(μ)[1]) ≈ -1.0 atol = atol rtol = rtol
-    @test monomial(moments(μ)[1]) == x
+    @test monomial(moments(μ)[1]) == y
     @test moment_value(moments(μ)[2]) ≈ -1.0 atol = atol rtol = rtol
-    @test monomial(moments(μ)[2]) == y
+    @test monomial(moments(μ)[2]) == x
 
     μ = moments(cref)
     @test μ isa AbstractMeasure{Float64}
@@ -61,8 +61,8 @@ function zero_polynomial_in_algebraic_set_test(
         ST = PolyJuMP.ZeroPolynomialSet{
             FullSpace,
             MB.MonomialBasis,
-            Monomial{true},
-            MonomialVector{true},
+            monomial_type(x),
+            monomial_vector_type(x),
         }
         test_delete_bridge(model, cref, 2, ((F, MOI.Zeros, 0), (F, ST, 0)))
     end

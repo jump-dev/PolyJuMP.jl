@@ -203,7 +203,7 @@ function test_MOI_runtests(var, T, solver)
     return
 end
 
-const SOLVERS = Any[SemialgebraicSets.projective_algebraic_set(Float64),]
+const SOLVERS = Any[SemialgebraicSets.default_algebraic_solver(Float64),]
 
 @static if Sys.WORD_SIZE == 64 # Issue with 32 bits, see https://github.com/JuliaHomotopyContinuation/HomotopyContinuation.jl/issues/476
     import HomotopyContinuation

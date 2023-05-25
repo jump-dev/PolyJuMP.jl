@@ -15,7 +15,8 @@ import DynamicPolynomials
 
 import PolyJuMP
 
-const VariableOrder = DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
+const VariableOrder =
+    DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
 const MonomialOrder = DynamicPolynomials.Graded{MP.LexOrder}
 const VarType = DynamicPolynomials.Variable{VariableOrder,MonomialOrder}
 const PolyType{T} = DynamicPolynomials.Polynomial{VariableOrder,MonomialOrder,T}

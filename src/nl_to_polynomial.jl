@@ -1,7 +1,8 @@
 # This will be refactored into a constraint bridge once https://github.com/jump-dev/MathOptInterface.jl/issues/846 is done
 
 import DynamicPolynomials
-const VariableOrder = DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
+const VariableOrder =
+    DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
 const MonomialOrder = Graded{LexOrder}
 const VarType = DynamicPolynomials.Variable{VariableOrder,MonomialOrder}
 const PolyType{T} = DynamicPolynomials.Polynomial{VariableOrder,MonomialOrder,T}

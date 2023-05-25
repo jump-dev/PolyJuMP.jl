@@ -1,6 +1,7 @@
 import DynamicPolynomials
 
-const VariableOrder = DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
+const VariableOrder =
+    DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
 const MonomialOrder = Graded{LexOrder}
 const VarType = DynamicPolynomials.Variable{VariableOrder,MonomialOrder}
 const PolyType{T} = DynamicPolynomials.Polynomial{VariableOrder,MonomialOrder,T}

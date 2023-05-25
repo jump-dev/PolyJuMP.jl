@@ -149,9 +149,9 @@ function test_printing(var)
           "\$\$ (-α)y^{2} + (α - β)xy + (-α + β)x^{2} \\in PolyJuMP.ZeroPoly() \$\$"
     sdref = @constraint(m, [p q; q p] in PSDCone())
     @test sprint(show, MIME"text/plain"(), sdref) ==
-            "[(β)x² + (α)xy          (α)x² + (β)xy + (α)y²;\n (α)x² + (β)xy + (α)y²  (β)x² + (α)xy] $in_sym $DummyPolyModule.DummyPosDefMatrix()"
+            "[(α)xy + (β)x²          (α)y² + (β)xy + (α)x²;\n (α)y² + (β)xy + (α)x²  (α)xy + (β)x²] $in_sym $DummyPolyModule.DummyPosDefMatrix()"
     @test sprint(show, MIME"text/latex"(), sdref) ==
-          "\$\$ \\begin{bmatrix}\n(β)x^{2} + (α)xy & (α)x^{2} + (β)xy + (α)y^{2}\\\\\n(α)x^{2} + (β)xy + (α)y^{2} & (β)x^{2} + (α)xy\\\\\n\\end{bmatrix} \\in $DummyPolyModule.DummyPosDefMatrix() \$\$"
+          "\$\$ \\begin{bmatrix}\n(α)xy + (β)x^{2} & (α)y^{2} + (β)xy + (α)x^{2}\\\\\n(α)y^{2} + (β)xy + (α)x^{2} & (α)xy + (β)x^{2}\\\\\n\\end{bmatrix} \\in $DummyPolyModule.DummyPosDefMatrix() \$\$"
 end
 
 function test_NonNeg(var)

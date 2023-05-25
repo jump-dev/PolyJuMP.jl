@@ -30,7 +30,7 @@ end
 function MOI.Bridges.added_constrained_variable_types(
     ::Type{<:ZeroPolynomialBridge},
 )
-    return Tuple{DataType}[]
+    return Tuple{Type}[]
 end
 function MOI.Bridges.added_constraint_types(
     ::Type{<:ZeroPolynomialBridge{T,F}},
@@ -90,6 +90,6 @@ function MOI.get(
     attr::PolyJuMP.MomentsAttribute,
     bridge::ZeroPolynomialBridge,
 )
-    values = MOI.get(model, MOI.ConstraintDual(attr.N), bridge)
+    values = MOI.get(model, MOI.ConstraintDual(attr.result_index), bridge)
     return MM.measure(values, bridge.monomials)
 end

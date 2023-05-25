@@ -177,11 +177,17 @@ end
 
 ### @constraint macro ###
 
-non_constant(a::Vector{<:Real}) = convert(Vector{AffExpr}, a)
-function non_constant(a::Vector{<:Complex})
-    return convert(Vector{GenericAffExpr{ComplexF64,VariableRef}}, a)
+_vec(v::Vector) = v
+_vec(v::AbstractVector) = collect(v)
+
+non_constant_type(::Type{<:Real}) = AffExpr
+non_constant_type(::Type{<:Complex}) = GenericAffExpr{ComplexF64,VariableRef}
+non_constant_type(::Type{T}) where {T<:AbstractJuMPScalar} = T
+function non_constant(a::AbstractVector{T}) where {T}
+    # `coefficients` may return a `MP.LazyMap` and the `convert`
+    # also take care of `collect`ing into a `Vector`
+    return convert(Vector{non_constant_type(T)}, a)
 end
-non_constant(a::Vector{<:JuMP.AbstractJuMPScalar}) = a
 non_constant_coefficients(p) = non_constant(coefficients(p))
 
 ## ZeroPoly

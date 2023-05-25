@@ -27,7 +27,7 @@ function MOI.supports_constraint(
     return true
 end
 function MOI.Bridges.added_constrained_variable_types(::Type{<:PlusMinusBridge})
-    return Tuple{DataType}[]
+    return Tuple{Type}[]
 end
 function MOI.Bridges.added_constraint_types(
     ::Type{<:PlusMinusBridge{T,F,F,ST}},

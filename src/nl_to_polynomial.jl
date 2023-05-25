@@ -1,8 +1,10 @@
 # This will be refactored into a constraint bridge once https://github.com/jump-dev/MathOptInterface.jl/issues/846 is done
 
 import DynamicPolynomials
-const VarType = DynamicPolynomials.Variable{true}
-const PolyType{T} = DynamicPolynomials.Polynomial{true,T}
+const VariableOrder = DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
+const MonomialOrder = Graded{LexOrder}
+const VarType = DynamicPolynomials.Variable{VariableOrder,MonomialOrder}
+const PolyType{T} = DynamicPolynomials.Polynomial{VariableOrder,MonomialOrder,T}
 const FuncType{T} = ScalarPolynomialFunction{T,PolyType{T}}
 
 mutable struct NLToPolynomial{T,M<:MOI.ModelLike} <: MOI.AbstractOptimizer

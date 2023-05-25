@@ -15,8 +15,10 @@ import DynamicPolynomials
 
 import PolyJuMP
 
-const VarType = DynamicPolynomials.Variable{true}
-const PolyType{T} = DynamicPolynomials.Polynomial{true,T}
+const VariableOrder = DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
+const MonomialOrder = DynamicPolynomials.Graded{MP.LexOrder}
+const VarType = DynamicPolynomials.Variable{VariableOrder,MonomialOrder}
+const PolyType{T} = DynamicPolynomials.Polynomial{VariableOrder,MonomialOrder,T}
 
 mutable struct Optimizer{T} <: MOI.AbstractOptimizer
     # Model

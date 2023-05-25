@@ -9,7 +9,7 @@ using JuMP
 using PolyJuMP
 
 function test_functions(var)
-    x = MP.similarvariable(var, Val{:x})
+    x = MP.similar_variable(var, Val{:x})
     α = MOI.VariableIndex(1)
     @test α * x isa AbstractTerm{MOI.VariableIndex}
     @test x * α isa AbstractTerm{MOI.VariableIndex}
@@ -30,9 +30,9 @@ function test_functions(var)
 end
 
 function test_scalar_polynomial_function(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
-    z = MP.similarvariable(var, Val{:z})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
+    z = MP.similar_variable(var, Val{:z})
     α = MOI.VariableIndex(1)
     β = MOI.VariableIndex(2)
     γ = MOI.VariableIndex(3)

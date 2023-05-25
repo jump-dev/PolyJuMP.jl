@@ -27,9 +27,9 @@ end
 function test_algebraic(var, T, solver)
     model = PolyJuMP.KKT.Optimizer{T}()
     MOI.set(model, MOI.RawOptimizerAttribute("algebraic_solver"), solver)
-    t = MP.similarvariable(var, Val{:t})
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    t = MP.similar_variable(var, Val{:t})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     z = zero(T)
     o = one(T)
     vars = MOI.add_variables(model, 3)
@@ -81,7 +81,7 @@ function _test_linquad(T, F1, O, solver)
 end
 
 function test_linquad(var, T, solver)
-    if !(var isa DynamicPolynomials.PolyVar)
+    if !(var isa DynamicPolynomials.Variable)
         return # Avoid running the same thing several times
     end
     for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction]
@@ -124,7 +124,7 @@ function _test_JuMP(F1, O, solver)
 end
 
 function test_JuMP(var, T, solver)
-    if !(var isa DynamicPolynomials.PolyVar) || T != Float64
+    if !(var isa DynamicPolynomials.Variable) || T != Float64
         return # Avoid running the same thing several times
     end
     for F1 in [MOI.VariableIndex, MOI.ScalarAffineFunction, 1, 2]
@@ -136,7 +136,7 @@ function test_JuMP(var, T, solver)
 end
 
 function test_MOI_runtests(var, T, solver)
-    if !(var isa DynamicPolynomials.PolyVar) || T != Float64
+    if !(var isa DynamicPolynomials.Variable) || T != Float64
         return # Avoid running the same thing several times
     end
     config = MOI.Test.Config(
@@ -203,7 +203,7 @@ function test_MOI_runtests(var, T, solver)
     return
 end
 
-const SOLVERS = Any[SemialgebraicSets.defaultalgebraicsolver(Float64),]
+const SOLVERS = Any[SemialgebraicSets.default_algebraic_solver(Float64),]
 
 @static if Sys.WORD_SIZE == 64 # Issue with 32 bits, see https://github.com/JuliaHomotopyContinuation/HomotopyContinuation.jl/issues/476
     import HomotopyContinuation

@@ -14,11 +14,14 @@ struct ScalarPolynomialFunction{T,P<:AbstractPolynomial{T}} <:
 end
 
 function MOI.constant(func::ScalarPolynomialFunction)
-    return MP.coefficient(func.polynomial, MP.constantmonomial(func.polynomial))
+    return MP.coefficient(
+        func.polynomial,
+        MP.constant_monomial(func.polynomial),
+    )
 end
 
 function _polynomial_variable(::Type{P}, vi::MOI.VariableIndex) where {P}
-    return MP.similarvariable(P, Symbol("x[$(vi.value)]"))
+    return MP.similar_variable(P, Symbol("x[$(vi.value)]"))
 end
 
 function Base.convert(
@@ -70,7 +73,7 @@ function Base.convert(
     quad_variables_2 = [t.variable_2 for t in func.quadratic_terms]
     variables = [linear_variables; quad_variables_1; quad_variables_2]
     x, d = _polynomial_variables!(P, variables)
-    terms = MP.termtype(P)[MOI.constant(func)]
+    terms = MP.term_type(P)[MOI.constant(func)]
     for t in func.affine_terms
         push!(terms, MP.term(t.coefficient, d[t.variable]))
     end

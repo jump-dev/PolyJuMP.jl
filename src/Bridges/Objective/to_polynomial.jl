@@ -1,7 +1,11 @@
+import MultivariatePolynomials as MP
 import DynamicPolynomials
 
-const VarType = DynamicPolynomials.PolyVar{true}
-const PolyType{T} = DynamicPolynomials.Polynomial{true,T}
+const VariableOrder =
+    DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
+const MonomialOrder = DynamicPolynomials.Graded{MP.LexOrder}
+const VarType = DynamicPolynomials.Variable{VariableOrder,MonomialOrder}
+const PolyType{T} = DynamicPolynomials.Polynomial{VariableOrder,MonomialOrder,T}
 const FuncType{T} = PolyJuMP.ScalarPolynomialFunction{T,PolyType{T}}
 
 """

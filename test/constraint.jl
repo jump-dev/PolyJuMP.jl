@@ -109,8 +109,8 @@ function _test_constraint(
 end
 
 function test_errors(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     m = Model()
     setpolymodule!(m, DummyPolyModule)
     @variable m α
@@ -132,8 +132,8 @@ function test_errors(var)
 end
 
 function test_printing(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     m = Model()
     setpolymodule!(m, DummyPolyModule)
     @variable m α
@@ -144,24 +144,19 @@ function test_printing(var)
     in_sym = Sys.iswindows() ? "in" : "∈"
     eqref = @constraint(m, p == q)
     @test sprint(show, MIME"text/plain"(), eqref) ==
-          "(-α + β)x² + (α - β)xy + (-α)y² $in_sym PolyJuMP.ZeroPoly()"
+          "(-α)y² + (α - β)xy + (-α + β)x² $in_sym PolyJuMP.ZeroPoly()"
     @test sprint(show, MIME"text/latex"(), eqref) ==
-          "\$\$ (-α + β)x^{2} + (α - β)xy + (-α)y^{2} \\in PolyJuMP.ZeroPoly() \$\$"
+          "\$\$ (-α)y^{2} + (α - β)xy + (-α + β)x^{2} \\in PolyJuMP.ZeroPoly() \$\$"
     sdref = @constraint(m, [p q; q p] in PSDCone())
-    if VERSION < v"1.4-"
-        @test sprint(show, MIME"text/plain"(), sdref) ==
-              "[(β)x² + (α)xy          (α)x² + (β)xy + (α)y²;\n (α)x² + (β)xy + (α)y²  (β)x² + (α)xy        ] $in_sym $DummyPolyModule.DummyPosDefMatrix()"
-    else
-        @test sprint(show, MIME"text/plain"(), sdref) ==
-              "[(β)x² + (α)xy          (α)x² + (β)xy + (α)y²;\n (α)x² + (β)xy + (α)y²  (β)x² + (α)xy] $in_sym $DummyPolyModule.DummyPosDefMatrix()"
-    end
+    @test sprint(show, MIME"text/plain"(), sdref) ==
+          "[(α)xy + (β)x²          (α)y² + (β)xy + (α)x²;\n (α)y² + (β)xy + (α)x²  (α)xy + (β)x²] $in_sym $DummyPolyModule.DummyPosDefMatrix()"
     @test sprint(show, MIME"text/latex"(), sdref) ==
-          "\$\$ \\begin{bmatrix}\n(β)x^{2} + (α)xy & (α)x^{2} + (β)xy + (α)y^{2}\\\\\n(α)x^{2} + (β)xy + (α)y^{2} & (β)x^{2} + (α)xy\\\\\n\\end{bmatrix} \\in $DummyPolyModule.DummyPosDefMatrix() \$\$"
+          "\$\$ \\begin{bmatrix}\n(α)xy + (β)x^{2} & (α)y^{2} + (β)xy + (α)x^{2}\\\\\n(α)y^{2} + (β)xy + (α)x^{2} & (α)xy + (β)x^{2}\\\\\n\\end{bmatrix} \\in $DummyPolyModule.DummyPosDefMatrix() \$\$"
 end
 
 function test_NonNeg(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     m = Model()
     setpolymodule!(m, DummyPolyModule)
     @variable m α
@@ -227,8 +222,8 @@ function test_NonNeg(var)
 end
 
 function test_ZeroPolynomialSet(var)
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     m = Model()
     setpolymodule!(m, DummyPolyModule)
     @variable m α
@@ -305,8 +300,8 @@ function test_PosDefMatrix(var)
     setpolymodule!(m, DummyPolyModule)
     @variable m α
     @variable m β
-    x = MP.similarvariable(var, Val{:x})
-    y = MP.similarvariable(var, Val{:y})
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
     p = α * x * y + β * x^2
     q = α * x^2 + β * x * y + α * y^2
 

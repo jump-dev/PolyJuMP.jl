@@ -15,8 +15,11 @@ import DynamicPolynomials
 
 import PolyJuMP
 
-const VarType = DynamicPolynomials.PolyVar{true}
-const PolyType{T} = DynamicPolynomials.Polynomial{true,T}
+const VariableOrder =
+    DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
+const MonomialOrder = DynamicPolynomials.Graded{MP.LexOrder}
+const VarType = DynamicPolynomials.Variable{VariableOrder,MonomialOrder}
+const PolyType{T} = DynamicPolynomials.Polynomial{VariableOrder,MonomialOrder,T}
 
 mutable struct Optimizer{T} <: MOI.AbstractOptimizer
     # Model
@@ -115,7 +118,7 @@ end
 function MOI.add_variable(model::Optimizer)
     i = length(model.variables) + 1
     vi = MOI.VariableIndex(i)
-    var = VarType("x[$i]")
+    var = DynamicPolynomials.Variable("x[$i]", VariableOrder, MonomialOrder)
     model.variables[vi] = var
     model.termination_status = MOI.OPTIMIZE_NOT_CALLED
     return vi
@@ -220,7 +223,7 @@ function _add_to_system(
     DynamicPolynomials.@polyvar λ[1:n]
     for i in eachindex(λ)
         p = SemialgebraicSets.equalities(set)[i]
-        SemialgebraicSets.addequality!(system, p)
+        SemialgebraicSets.add_equality!(system, p)
         if maximization
             lagrangian = MA.add_mul!!(lagrangian, λ[i], p)
         else
@@ -240,7 +243,7 @@ function _add_to_system(
     DynamicPolynomials.@polyvar σ[1:_nineq(set)]
     for i in eachindex(σ)
         p = SemialgebraicSets.inequalities(set)[i]
-        SemialgebraicSets.addequality!(system, σ[i] * p)
+        SemialgebraicSets.add_equality!(system, σ[i] * p)
         if maximization
             lagrangian = MA.add_mul!!(lagrangian, σ[i]^2, p)
         else
@@ -305,10 +308,10 @@ function _optimize!(model::Optimizer{T}) where {T}
     end
     ∇x = MP.differentiate(lagrangian, x)
     for p in ∇x
-        SemialgebraicSets.addequality!(system, p)
+        SemialgebraicSets.add_equality!(system, p)
     end
     solutions = nothing
-    try # We could check `SemialgebraicSets.iszerodimensional(system)` but that would only work for Gröbner basis based
+    try # We could check `SemialgebraicSets.is_zero_dimensional(system)` but that would only work for Gröbner basis based
         solutions = collect(system)
     catch err
         model.extrema = Vector{T}[]

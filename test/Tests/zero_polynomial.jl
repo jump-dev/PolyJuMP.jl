@@ -3,6 +3,7 @@ using JuMP
 using MultivariateMoments
 using PolyJuMP
 using DynamicPolynomials
+import MultivariatePolynomials as MP
 
 function _zero_polynomial_test(
     optimizer::MOI.AbstractOptimizer,
@@ -50,16 +51,22 @@ function _zero_polynomial_test(
     end
 
     F = MOI.VectorAffineFunction{Float64}
-    S = PolyJuMP.ZeroPolynomialSet{
+    ST = PolyJuMP.ZeroPolynomialSet{
         FullSpace,
         MB.MonomialBasis,
-        Monomial{true},
-        MonomialVector{true},
+        monomial_type(x),
+        MP.OneOrZeroElementVector{monomial_type(x)},
+    }
+    SP = PolyJuMP.ZeroPolynomialSet{
+        FullSpace,
+        MB.MonomialBasis,
+        monomial_type(x),
+        monomial_vector_type(x),
     }
     @test Set(MOI.get(model, MOI.ListOfConstraintTypesPresent())) == Set([
         (MOI.VariableIndex, MOI.LessThan{Float64}),
-        (F, S),
-        (MOI.VectorOfVariables, S),
+        (F, SP),
+        (MOI.VectorOfVariables, ST),
     ])
     @testset "Delete" begin
         test_delete_bridge(model, cref, 3, ((F, MOI.Zeros, 0),))

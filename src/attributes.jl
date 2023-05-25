@@ -29,7 +29,7 @@ This is the result of `moments(cref)`. However, the dual of `cref` obtained by
 of value `-1`.
 """
 struct MomentsAttribute <: MOI.AbstractConstraintAttribute
-    N::Int
+    result_index::Int
 end
 MomentsAttribute() = MomentsAttribute(1)
 

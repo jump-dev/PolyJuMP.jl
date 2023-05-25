@@ -64,7 +64,10 @@ function JuMP.moi_set(
     basis = MB.MonomialBasis,
     kwargs...,
 )
-    return NonNeg(basis, domain, monos, kwargs)
+    # For terms, `monomials` return a `OneOrZeroElementVector`
+    # which would create a `NonNeg` of different type which would
+    # make some complications in testing so let's convert it here
+    return NonNeg(basis, domain, monomial_vector(monos), kwargs)
 end
 
 function JuMP.build_constraint(

@@ -25,7 +25,7 @@ _con_constant(a) = a
 
 # `MOI.Utilities.Model` canonicalizes the constraints so we need to
 # canonicalize them as well for the printing tests.
-function _canon(model, p::MP.APL)
+function _canon(model, p::MP.AbstractPolynomialLike)
     return MP.polynomial(
         map(MP.terms(p)) do t
             coef = _con_constant(MP.coefficient(t))

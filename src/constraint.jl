@@ -13,16 +13,10 @@ struct ZeroPoly <: PolynomialSet end
 struct NonNegPoly <: PolynomialSet end
 struct PosDefPolyMatrix <: PolynomialSet end
 
-function JuMP.function_string(
-    ::MIME"text/plain",
-    p::MultivariatePolynomials.APL,
-)
+function JuMP.function_string(::MIME"text/plain", p::MP.AbstractPolynomialLike)
     return sprint(show, MIME"text/plain"(), p)
 end
-function JuMP.function_string(
-    ::MIME"text/latex",
-    p::MultivariatePolynomials.APL,
-)
+function JuMP.function_string(::MIME"text/latex", p::MP.AbstractPolynomialLike)
     # `show` prints `$$` around what `_show` prints.
     return sprint(MultivariatePolynomials._show, MIME"text/latex"(), p)
 end

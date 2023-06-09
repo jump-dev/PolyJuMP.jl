@@ -55,7 +55,7 @@ function _zero_polynomial_test(
         FullSpace,
         MB.MonomialBasis,
         monomial_type(x),
-        MP.OneOrZeroElementVector{monomial_type(x)},
+        monomial_vector_type(x),
     }
     SP = PolyJuMP.ZeroPolynomialSet{
         FullSpace,

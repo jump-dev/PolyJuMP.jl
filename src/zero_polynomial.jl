@@ -28,18 +28,12 @@ function ZeroPolynomialSet(
     # so we convert it with `monomial_vector`
     # Later, we'll use `MP.MonomialBasis` which is going to do that anyway
     vec = _lazy_monomial_vector(monomials)
-    return ZeroPolynomialSet{
-        typeof(domain),
-        BT,
-        MT,
-        typeof(vec),
-    }(
+    return ZeroPolynomialSet{typeof(domain),BT,MT,typeof(vec)}(
         domain,
         basis,
         vec,
     )
 end
-
 
 MOI.dimension(set::ZeroPolynomialSet) = length(set.basis)
 Base.copy(set::ZeroPolynomialSet) = set

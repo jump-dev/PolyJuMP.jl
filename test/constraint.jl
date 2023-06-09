@@ -56,6 +56,9 @@ function _test_constraint(
     c = JuMP.constraint_object(cref)
     set = JuMP.moi_set(c)
     @test set isa S
+    if set isa PolyJuMP.ZeroPolynomialSet
+        @test typeof(set.monomials) == MP.monomial_vector_type(typeof(set.monomials))
+    end
     if set isa PolyJuMP.PlusMinusSet
         set = set.set
     end
@@ -228,6 +231,7 @@ function test_ZeroPolynomialSet(var)
     setpolymodule!(m, DummyPolyModule)
     @variable m α
     @variable m β
+    t = (α + β) * x^2
     p = α * x * y + β * x^2
     q = α * x^2 + β * x * y + α * y^2
     f(x, y) = @set x + y == 2
@@ -235,6 +239,7 @@ function test_ZeroPolynomialSet(var)
     jump_set = PolyJuMP.ZeroPoly()
     @testset "ZeroPolynomialSet{FullSpace}" begin
         S = PolyJuMP.ZeroPolynomialSet{FullSpace}
+        _test_constraint(m, @constraint(m, t in jump_set), S, jump_set, t, [], [])
         _test_constraint(m, @constraint(m, p == q), S, jump_set, p - q, [], [])
         @test PolyJuMP.Bridges.Constraint.ZeroPolynomialBridge in m.bridge_types
         _test_constraint(

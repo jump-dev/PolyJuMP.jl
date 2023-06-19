@@ -84,6 +84,13 @@ function Base.convert(
     return ScalarPolynomialFunction{T,P}(polynomial(terms), variables)
 end
 
+function Base.convert(
+    ::Type{ScalarPolynomialFunction{T,P}},
+    func::MOI.ScalarNonlinearFunction,
+) where {T,P}
+    return _to_polynomial(func, T)
+end
+
 function Base.copy(func::ScalarPolynomialFunction)
     return ScalarPolynomialFunction(
         MA.copy_if_mutable(func.polynomial),

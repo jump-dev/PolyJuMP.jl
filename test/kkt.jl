@@ -204,7 +204,7 @@ function test_MOI_runtests(var, T, solver)
         r"test_nonlinear_expression_hs071$",
         r"test_nonlinear_expression_hs071_epigraph$",
     ]
-    if solver isa typeof(SemialgebraicSets.default_algebraic_solver(Float64)) 
+    if solver isa typeof(SemialgebraicSets.default_algebraic_solver(Float64))
     else
         # FIXME
         # test_nonlinear_expression_quartic: Test Failed at /home/blegat/.julia/packages/MathOptInterface/BlCD1/src/Test/test_nonlinear.jl:1378

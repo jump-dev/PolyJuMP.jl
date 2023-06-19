@@ -26,43 +26,68 @@ end
 function _to_polynomial!(d, ::Type, expr)
     throw(
         InvalidNLExpression(
-            "Unexpected expression type `$(typeof(expr))`` of `$expr`",
+            "Unexpected expression type `$(typeof(expr))` of `$expr`",
         ),
     )
 end
 
 _to_polynomial!(d, ::Type{T}, x::T) where {T} = x
+_to_polynomial!(d, ::Type, x::Number) = x
 
-function _to_polynomial!(d, ::Type{T}, expr::Expr) where {T}
-    if Base.Meta.isexpr(expr, :call) && expr.args[1] === :+
+function _is_operator(expr::Expr, sym)
+    return Base.Meta.isexpr(expr, :call) && expr.args[1] === sym
+end
+_operands(expr::Expr) = expr.args[2:end]
+function _is_variable(expr::Expr)
+    return Base.Meta.isexpr(expr, :ref) &&
+        expr.args[1] === :x &&
+        expr.args[2] isa MOI.VariableIndex
+end
+
+function _is_operator(func::MOI.ScalarNonlinearFunction, sym)
+    return func.head === sym
+end
+_operands(func::MOI.ScalarNonlinearFunction) = func.args
+_is_variable(expr::MOI.ScalarNonlinearFunction) = false
+
+function _to_polynomial!(d, ::Type{T}, vi::MOI.VariableIndex) where {T}
+    if !haskey(d, vi)
+        d[vi] = MP.similar_variable(VarType, Symbol("x[$(vi.value)]"))
+    end
+    return d[vi]
+end
+
+function _to_polynomial!(
+    d,
+    ::Type{T},
+    expr::Union{Expr,MOI.ScalarNonlinearFunction},
+) where {T}
+    operands = _operands(expr)
+    if _is_operator(expr, :+)
         return sum(
-            _to_polynomial!.(Ref(d), T, expr.args[2:end]),
+            _to_polynomial!.(Ref(d), T, operands),
             init = zero(PolyType{T}),
         )
-    elseif Base.Meta.isexpr(expr, :call) && expr.args[1] === :*
+    elseif _is_operator(expr, :*)
         return prod(
-            _to_polynomial!.(Ref(d), T, expr.args[2:end]),
+            _to_polynomial!.(Ref(d), T, operands),
             init = one(PolyType{T}),
         )
-    elseif Base.Meta.isexpr(expr, :call) &&
-           expr.args[1] === :- &&
-           length(expr.args) == 2
-        return -_to_polynomial!(d, T, expr.args[2])
-    elseif Base.Meta.isexpr(expr, :call) &&
-           expr.args[1] === :- &&
-           length(expr.args) == 3
-        a, b = _to_polynomial!.(Ref(d), T, expr.args[2:end])
+    elseif _is_operator(expr, :-) && length(operands) == 1
+        return -_to_polynomial!(d, T, operands[1])
+    elseif _is_operator(expr, :-) && length(operands) == 2
+        a, b = _to_polynomial!.(Ref(d), T, operands)
         return a - b
-    elseif Base.Meta.isexpr(expr, :ref) &&
-           expr.args[1] === :x &&
-           expr.args[2] isa MOI.VariableIndex
-        vi = expr.args[2]
-        if !haskey(d, vi)
-            d[vi] = MP.similar_variable(VarType, Symbol("x[$(vi.value)]"))
-        end
-        return d[vi]
+    elseif _is_operator(expr, :^) && length(operands) == 2
+        a, b = _to_polynomial!.(Ref(d), T, operands)
+        return a^b
+    elseif _is_operator(expr, :/) && length(operands) == 2
+        a, b = _to_polynomial!.(Ref(d), T, operands)
+        return a / b
+    elseif _is_variable(expr)
+        return _to_polynomial!(d, T, operands[1])
     else
-        throw(InvalidNLExpression("Unrecognized expression `$(expr)`"))
+        throw(InvalidNLExpression("Cannot convert `$(expr)` into a polynomial"))
     end
 end
 

@@ -16,11 +16,7 @@ struct ZeroPolynomialSet{
         # so we convert it with `monomial_vector`
         # Later, we'll use `MP.MonomialBasis` which is going to do that anyway
         vec = _lazy_monomial_vector(monomials)
-        return new{typeof(domain),BT,MT,typeof(vec)}(
-            domain,
-            basis,
-            vec,
-        )
+        return new{typeof(domain),BT,MT,typeof(vec)}(domain, basis, vec)
     end
 end
 

@@ -85,7 +85,7 @@ function Base.convert(
 end
 
 function Base.convert(
-    ::Type{FuncType{T}},
+    ::Type{ScalarPolynomialFunction{T,P}},
     func::MOI.ScalarNonlinearFunction,
 ) where {T,P}
     return _to_polynomial(func, T)

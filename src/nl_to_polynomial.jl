@@ -40,8 +40,8 @@ end
 _operands(expr::Expr) = expr.args[2:end]
 function _is_variable(expr::Expr)
     return Base.Meta.isexpr(expr, :ref) &&
-        expr.args[1] === :x &&
-        expr.args[2] isa MOI.VariableIndex
+           expr.args[1] === :x &&
+           expr.args[2] isa MOI.VariableIndex
 end
 
 function _is_operator(func::MOI.ScalarNonlinearFunction, sym)

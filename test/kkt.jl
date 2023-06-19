@@ -211,11 +211,7 @@ function test_MOI_runtests(var, T, solver)
         #    Evaluated: MathOptInterface.INFEASIBLE_OR_UNBOUNDED == MathOptInterface.LOCALLY_SOLVED
         push!(exclude, "test_nonlinear_expression_quartic")
     end
-    MOI.Test.runtests(
-        cached,
-        config;
-        exclude,
-    )
+    MOI.Test.runtests(cached, config; exclude)
     return
 end
 

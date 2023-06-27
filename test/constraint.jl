@@ -250,7 +250,7 @@ function test_ZeroPolynomialSet(var)
             [],
         )
         _test_constraint(m, @constraint(m, p == q), S, jump_set, p - q, [], [])
-        @test PolyJuMP.Bridges.Constraint.ZeroPolynomialBridge in m.bridge_types
+        @test PolyJuMP.Bridges.Constraint.ZeroPolynomialBridge{Float64} in m.bridge_types
         _test_constraint(
             m,
             @constraint(m, p - q in PolyJuMP.ZeroPoly()),
@@ -282,7 +282,7 @@ function test_ZeroPolynomialSet(var)
         [],
         [x + y - 2, x - 1],
     )
-    @test PolyJuMP.Bridges.Constraint.ZeroPolynomialInAlgebraicSetBridge in
+    @test PolyJuMP.Bridges.Constraint.ZeroPolynomialInAlgebraicSetBridge{Float64} in
           m.bridge_types
     _test_constraint(
         m,

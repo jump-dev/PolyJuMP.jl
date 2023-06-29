@@ -40,7 +40,7 @@ function test_algebraic(var, T, solver)
     )
     c2 = MOI.add_constraint(
         model,
-        PolyJuMP.ScalarPolynomialFunction(o * x^2 + o * y^2 - o * t^2, vars),
+        PolyJuMP.ScalarPolynomialFunction(o * x^2 + o * y^2 - o * t^(2.0), vars),
         MOI.LessThan(z),
     )
     MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)

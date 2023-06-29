@@ -318,7 +318,6 @@ function _optimize!(model::Optimizer{T}) where {T}
         model.objective_values = zeros(T, 0)
         model.termination_status = MOI.OTHER_ERROR
         model.raw_status = "KKT system solver failed with : $(sprint(showerror, err))."
-        @show model.raw_status
         return
     end
     model.extrema = Vector{T}[

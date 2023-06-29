@@ -41,7 +41,7 @@ function test_algebraic(var, T, solver)
     c2 = MOI.add_constraint(
         model,
         PolyJuMP.ScalarPolynomialFunction(
-            o * x^2 + o * y^2 - o * t^(2.0),
+            o * x^2 + o * y^2 - o * t^(2),
             vars,
         ),
         MOI.LessThan(z),
@@ -121,7 +121,7 @@ function _test_JuMP(F1, O, solver)
     elseif O == 3
         @NLobjective(model, Max, -(-x) + y)
     else
-        @NLobjective(model, Max, 1 * x + 1 * y)
+        @NLobjective(model, Max, 1 * x + 1 * y^(1.0))
     end
     return _test_solution(model, [t, x, y], c1, c2)
 end

@@ -15,6 +15,7 @@ MutableArithmetics = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
 SemialgebraicSets = "8e049039-38e8-557d-ae3a-bc521ccf6204"
 
 [compat]
+DynamicPolynomials = "0.5"
 JuMP = "1"
 MathOptInterface = "1"
 MultivariateBases = "0.2"

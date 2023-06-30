@@ -172,6 +172,7 @@ function test_NonNeg(var)
     S = DummyPolyModule.NonNeg
     jump_set = DummyPolyModule.DummyNonNeg()
     _test_constraint(m, @constraint(m, x >= y), S, jump_set, x - y, [], [])
+    @test DummyPolyModule.DummyNonNegBridge{Float64} in m.bridge_types
     _test_constraint(
         m,
         @constraint(m, im * x >= y),
@@ -182,6 +183,7 @@ function test_NonNeg(var)
         [],
         T = ComplexF64,
     )
+    @test DummyPolyModule.DummyNonNegBridge{ComplexF64} in m.bridge_types
     _test_constraint(
         m,
         @constraint(m, p >= q + 1, domain = @set y >= 1 && dom),

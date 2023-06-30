@@ -30,10 +30,10 @@ JuMP.reshape_set(::NonNeg, ::PolyJuMP.PolynomialShape) = DummyNonNeg()
 
 struct DummyNonNegBridge{T,F} <: MOI.Bridges.Constraint.AbstractBridge end
 function PolyJuMP.bridges(
-    ::Type{<:MOI.AbstractVectorFunction},
+    F::Type{<:MOI.AbstractVectorFunction},
     ::Type{<:NonNeg},
 )
-    return [DummyNonNegBridge]
+    return [(DummyNonNegBridge, PolyJuMP._coef_type(F))]
 end
 function MOI.Bridges.added_constrained_variable_types(
     ::Type{<:DummyNonNegBridge},

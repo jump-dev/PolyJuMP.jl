@@ -78,21 +78,21 @@ by the bridges.
 bridges(S::Type{<:MOI.AbstractSet}) = bridges(MOI.VectorOfVariables, S)
 
 function bridges(
-    ::Type{<:MOI.AbstractVectorFunction},
+    F::Type{<:MOI.AbstractVectorFunction},
     ::Type{<:ZeroPolynomialSet{FullSpace}},
 )
-    return [Bridges.Constraint.ZeroPolynomialBridge]
+    return [(Bridges.Constraint.ZeroPolynomialBridge, _coef_type(F))]
 end
 
 function bridges(
-    ::Type{<:MOI.AbstractVectorFunction},
+    F::Type{<:MOI.AbstractVectorFunction},
     ::Type{<:ZeroPolynomialSet{<:AbstractAlgebraicSet}},
 )
-    return [Bridges.Constraint.ZeroPolynomialInAlgebraicSetBridge]
+    return [(Bridges.Constraint.ZeroPolynomialInAlgebraicSetBridge, _coef_type(F))]
 end
 
-function bridges(::Type{<:MOI.AbstractVectorFunction}, ::Type{<:PlusMinusSet})
-    return [Bridges.Constraint.PlusMinusBridge]
+function bridges(F::Type{<:MOI.AbstractVectorFunction}, ::Type{<:PlusMinusSet})
+    return [(Bridges.Constraint.PlusMinusBridge, _coef_type(F))]
 end
 
 """
@@ -128,8 +128,9 @@ end
 function bridgeable(c::JuMP.AbstractConstraint, S::Type{<:MOI.AbstractSet})
     bridge_types = bridges(S)
     for bridge_type in bridge_types
-        c = BridgeableConstraint(c, bridge_type)
-        concrete_bridge_type = _concrete(bridge_type{Float64}, S)
+        BT, T = bridge_type
+        c = BridgeableConstraint(c, BT; coefficient_type = T)
+        concrete_bridge_type = _concrete(BT{T}, S)
         for (ST,) in
             MOI.Bridges.added_constrained_variable_types(concrete_bridge_type)
             c = bridgeable(c, ST)
@@ -151,9 +152,10 @@ function bridgeable(
 )
     bridge_types = bridges(F, S)
     for bridge_type in bridge_types
-        c = BridgeableConstraint(c, bridge_type)
+        BT, T = bridge_type
+        c = BridgeableConstraint(c, BT, coefficient_type = T)
         concrete_bridge_type = MOI.Bridges.Constraint.concrete_bridge_type(
-            bridge_type{_coef_type(F)},
+            BT{T},
             F,
             S,
         )

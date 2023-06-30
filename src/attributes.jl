@@ -52,9 +52,7 @@ const ObjectWithoutIndex = Union{
     MP.AbstractTerm{<:MOI.Utilities.ObjectWithoutIndex},
     MP.AbstractPolynomial{<:MOI.Utilities.ObjectWithoutIndex},
     MB.AbstractPolynomialBasis,
-    MM.AbstractMomentMatrix{
-        <:MOI.Utilities.ObjectWithoutIndex,
-    },
+    MM.AbstractMomentMatrix{<:MOI.Utilities.ObjectWithoutIndex},
     MM.AbstractMeasure{<:MOI.Utilities.ObjectWithoutIndex},
 }
 const ObjectOrTupleWithoutIndex =

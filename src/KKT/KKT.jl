@@ -1,13 +1,10 @@
 module KKT
 
-import MutableArithmetics
-const MA = MutableArithmetics
+import MutableArithmetics as MA
 
-import MathOptInterface
-const MOI = MathOptInterface
+import MathOptInterface as MOI
 
-import MultivariatePolynomials
-const MP = MultivariatePolynomials
+import MultivariatePolynomials as MP
 
 import SemialgebraicSets
 

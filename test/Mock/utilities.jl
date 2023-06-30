@@ -1,5 +1,4 @@
 using JuMP
-const MOIT = MOI.Test
 
 MOI.Utilities.@model(
     NoFreeVariable,

@@ -1,19 +1,17 @@
 module DummyPolyModule
 
 using LinearAlgebra
-using MathOptInterface
-const MOI = MathOptInterface
+import MathOptInterface as MOI
 using JuMP
 using PolyJuMP
 using MultivariatePolynomials
-import MultivariateBases
-const MB = MultivariateBases
+import MultivariateBases as MB
 using SemialgebraicSets
 
 struct NonNeg{
     BT<:MB.AbstractPolynomialBasis,
     DT<:SemialgebraicSets.AbstractSemialgebraicSet,
-    MT<:MultivariatePolynomials.AbstractMonomial,
+    MT<:AbstractMonomial,
     MVT<:AbstractVector{MT},
 } <: MOI.AbstractVectorSet
     basis::Type{BT}
@@ -113,7 +111,7 @@ end
 struct PosDefMatrix{
     BT<:MB.AbstractPolynomialBasis,
     DT<:SemialgebraicSets.AbstractSemialgebraicSet,
-    MT<:MultivariatePolynomials.AbstractMonomial,
+    MT<:AbstractMonomial,
     MVT<:AbstractVector{MT},
 } <: MOI.AbstractVectorSet
     basis::Type{BT}

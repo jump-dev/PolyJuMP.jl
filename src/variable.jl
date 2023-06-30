@@ -1,24 +1,21 @@
 export Poly
 
-function JuMP.value(f::Function, t::AbstractTerm{<:JuMP.AbstractJuMPScalar})
-    return JuMP.value(f, MultivariatePolynomials.coefficient(t)) * monomial(t)
+function JuMP.value(f::Function, t::MP.AbstractTerm{<:JuMP.AbstractJuMPScalar})
+    return JuMP.value(f, MP.coefficient(t)) * MP.monomial(t)
 end
 
-function JuMP.value(t::AbstractTerm{<:JuMP.AbstractJuMPScalar})
+function JuMP.value(t::MP.AbstractTerm{<:JuMP.AbstractJuMPScalar})
     return JuMP.value(JuMP.value, t)
 end
 
 function JuMP.value(
     f::Function,
-    p::AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar},
+    p::MP.AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar},
 )
-    return polynomial(
-        JuMP.value.(f, terms(p)),
-        MultivariatePolynomials.SortedUniqState(),
-    )
+    return MP.polynomial(JuMP.value.(f, MP.terms(p)), MP.SortedUniqState())
 end
 
-function JuMP.value(p::AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
+function JuMP.value(p::MP.AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
     return JuMP.value(JuMP.value, p)
 end
 
@@ -34,9 +31,7 @@ Polynomial variable ``v^\\top p`` where ``v`` is a vector of new decision variab
 struct Poly{PB<:MB.AbstractPolynomialBasis} <: AbstractPoly
     polynomial_basis::PB
 end
-function Poly(
-    x::AbstractVector{<:MultivariatePolynomials.AbstractPolynomialLike},
-)
+function Poly(x::AbstractVector{<:MP.AbstractPolynomialLike})
     return Poly(MB.MonomialBasis(x))
 end
 
@@ -112,5 +107,5 @@ function JuMP.add_variable(
         end
         return vref
     end
-    return polynomial(_newvar, v.p.polynomial_basis)
+    return MP.polynomial(_newvar, v.p.polynomial_basis)
 end

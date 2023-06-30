@@ -48,14 +48,12 @@ end
 
 # This is type piracy but we tolerate it.
 const ObjectWithoutIndex = Union{
-    AbstractMonomial,
-    AbstractTerm{<:MOI.Utilities.ObjectWithoutIndex},
-    AbstractPolynomial{<:MOI.Utilities.ObjectWithoutIndex},
+    MP.AbstractMonomial,
+    MP.AbstractTerm{<:MOI.Utilities.ObjectWithoutIndex},
+    MP.AbstractPolynomial{<:MOI.Utilities.ObjectWithoutIndex},
     MB.AbstractPolynomialBasis,
-    MultivariateMoments.AbstractMomentMatrix{
-        <:MOI.Utilities.ObjectWithoutIndex,
-    },
-    MultivariateMoments.AbstractMeasure{<:MOI.Utilities.ObjectWithoutIndex},
+    MM.AbstractMomentMatrix{<:MOI.Utilities.ObjectWithoutIndex},
+    MM.AbstractMeasure{<:MOI.Utilities.ObjectWithoutIndex},
 }
 const ObjectOrTupleWithoutIndex =
     Union{ObjectWithoutIndex,Tuple{Vararg{ObjectWithoutIndex}}}

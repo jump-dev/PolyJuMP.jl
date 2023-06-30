@@ -1,15 +1,10 @@
 module Constraint
 
-using MultivariatePolynomials
-const MP = MultivariatePolynomials
-import MultivariateBases
-const MB = MultivariateBases
-import SemialgebraicSets
-const SS = SemialgebraicSets
-import MultivariateMoments
-const MM = MultivariateMoments
-import MathOptInterface
-const MOI = MathOptInterface
+import MultivariatePolynomials as MP
+import MultivariateBases as MB
+import SemialgebraicSets as SS
+import MultivariateMoments as MM
+import MathOptInterface as MOI
 
 using PolyJuMP
 

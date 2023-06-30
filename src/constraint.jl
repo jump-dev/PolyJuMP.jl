@@ -227,7 +227,7 @@ function JuMP.build_constraint(
     return JuMP.build_constraint(_error, p - s.value, ZeroPoly(); kws...)
 end
 
-## NonNegPoly and PosDefPolyMatrix
+# # `NonNegPoly` and `PosDefPolyMatrix`
 # The `model` is not given in `JuMP.build_constraint` so we create a custom
 # `Constraint` object and transform the `set` in `JuMP.add_constraint`.
 struct Constraint{FT,PT,ST<:PolynomialSet,KWT<:Iterators.Pairs} <:
@@ -282,7 +282,7 @@ function JuMP.add_constraint(
     return JuMP.add_constraint(model, new_constraint, name)
 end
 
-# NonNegPoly
+# `NonNegPoly`
 function JuMP.build_constraint(
     _error::Function,
     p::AbstractPolynomialLike,
@@ -300,9 +300,9 @@ function JuMP.build_constraint(
     return JuMP.build_constraint(_error, s.upper - p, NonNegPoly(); kws...)
 end
 
-# PosDefPolyMatrix
-# there is already a method for AbstractMatrix in PSDCone in JuMP so we need a
-# more specific here to avoid ambiguity
+# `PosDefPolyMatrix`
+# There is already a method for `AbstractMatrix` in `PSDCone` in `JuMP` so we
+# need a more specific here to avoid ambiguity
 function JuMP.build_constraint(
     _error::Function,
     p::AbstractMatrix{<:AbstractPolynomialLike},

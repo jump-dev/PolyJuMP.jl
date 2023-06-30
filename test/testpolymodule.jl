@@ -1,13 +1,11 @@
 module DummyPolyModule
 
 using LinearAlgebra
-using MathOptInterface
-const MOI = MathOptInterface
+import MathOptInterface as MOI
 using JuMP
 using PolyJuMP
 using MultivariatePolynomials
-import MultivariateBases
-const MB = MultivariateBases
+import MultivariateBases as MB
 using SemialgebraicSets
 
 struct NonNeg{

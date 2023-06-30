@@ -1,16 +1,13 @@
 module PolyJuMP
 
-import MutableArithmetics
-const MA = MutableArithmetics
+import MutableArithmetics as MA
 
 # MultivariatePolynomials extension
 
-using MultivariatePolynomials
-const MP = MultivariatePolynomials
-import MultivariateBases
-const MB = MultivariateBases
-using MultivariateMoments
-using SemialgebraicSets
+import MultivariatePolynomials as MP
+import MultivariateBases as MB
+import MultivariateMoments as MM
+import SemialgebraicSets as SS
 
 # MOI extension
 

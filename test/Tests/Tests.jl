@@ -4,8 +4,7 @@ include("utilities.jl")
 
 const linear_tests = Dict{String,Function}()
 
-import MultivariateBases
-const MB = MultivariateBases
+import MultivariateBases as MB
 
 include("zero_polynomial.jl")
 include("zero_polynomial_in_fixed_variables_set.jl")

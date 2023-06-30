@@ -2,13 +2,11 @@ module TestVariable
 
 using Test
 
-import MutableArithmetics
-const MA = MutableArithmetics
+import MutableArithmetics as MA
 
 using MultivariatePolynomials
 const MP = MultivariatePolynomials
-import MultivariateBases
-const MB = MultivariateBases
+import MultivariateBases as MB
 using DynamicPolynomials
 #using TypedPolynomials
 

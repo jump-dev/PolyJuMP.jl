@@ -22,7 +22,7 @@ function MOI.Bridges.Constraint.bridge_constraint(
     f::MOI.AbstractVectorFunction,
     s::PolyJuMP.ZeroPolynomialSet{<:SS.AbstractAlgebraicSet},
 ) where {T,F,BT,DT,MT,MVT}
-    p = polynomial(MOI.Utilities.scalarize(f), s.monomials)
+    p = MP.polynomial(MOI.Utilities.scalarize(f), s.monomials)
     # As `*(::MOI.ScalarAffineFunction{T}, ::S)` is only defined if `S == T`, we
     # need to call `similar`. This is critical since `T` is
     # `Float64` when used with JuMP and the coefficient type is often `Int` with

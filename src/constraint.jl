@@ -36,7 +36,7 @@ struct MomentsShape{MT<:MP.AbstractMonomial,MVT<:AbstractVector{MT}} <:
     monomials::MVT
 end
 function JuMP.reshape_vector(x::Vector, shape::MomentsShape)
-    return measure(x, shape.monomials)
+    return MM.measure(x, shape.monomials)
 end
 JuMP.dual_shape(shape::PolynomialShape) = MomentsShape(shape.monomials)
 JuMP.dual_shape(shape::MomentsShape) = PolynomialShape(shape.monomials)

@@ -1,14 +1,14 @@
 struct ZeroPolynomialSet{
-    DT<:AbstractSemialgebraicSet,
+    DT<:SS.AbstractSemialgebraicSet,
     BT<:MB.AbstractPolynomialBasis,
-    MT<:AbstractMonomial,
+    MT<:MP.AbstractMonomial,
     MVT<:AbstractVector{MT},
 } <: MOI.AbstractVectorSet
     domain::DT
     basis::Type{BT}
     monomials::MVT
     function ZeroPolynomialSet(
-        domain::AbstractSemialgebraicSet,
+        domain::SS.AbstractSemialgebraicSet,
         basis::Type{BT},
         monomials::AbstractVector{MT},
     ) where {BT<:MB.AbstractPolynomialBasis,MT<:MP.AbstractMonomial}

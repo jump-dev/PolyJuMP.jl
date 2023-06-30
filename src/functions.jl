@@ -7,7 +7,7 @@
 Defines the polynomial function of the variables `variables` where the variable
 `variables(p)[i]` corresponds to `variables[i]`.
 """
-struct ScalarPolynomialFunction{T,P<:AbstractPolynomial{T}} <:
+struct ScalarPolynomialFunction{T,P<:MP.AbstractPolynomial{T}} <:
        MOI.AbstractScalarFunction
     polynomial::P
     variables::Vector{MOI.VariableIndex}
@@ -29,7 +29,7 @@ function Base.convert(
     vi::MOI.VariableIndex,
 ) where {T,P}
     x = _polynomial_variable(P, vi)
-    return ScalarPolynomialFunction{T,P}(polynomial(x, T), [vi])
+    return ScalarPolynomialFunction{T,P}(MP.polynomial(x, T), [vi])
 end
 
 function _polynomial_variables!(::Type{P}, variables) where {P}
@@ -59,7 +59,7 @@ function Base.convert(
     func::MOI.ScalarAffineFunction{T},
 ) where {T,P}
     variables = [t.variable for t in func.terms]
-    x, d = _polynomial_variables!(P, variables)
+    _, d = _polynomial_variables!(P, variables)
     poly = _polynomial_with_variables(P, func, d)
     return ScalarPolynomialFunction{T,P}(poly, variables)
 end
@@ -72,7 +72,7 @@ function Base.convert(
     quad_variables_1 = [t.variable_1 for t in func.quadratic_terms]
     quad_variables_2 = [t.variable_2 for t in func.quadratic_terms]
     variables = [linear_variables; quad_variables_1; quad_variables_2]
-    x, d = _polynomial_variables!(P, variables)
+    _, d = _polynomial_variables!(P, variables)
     terms = MP.term_type(P)[MOI.constant(func)]
     for t in func.affine_terms
         push!(terms, MP.term(t.coefficient, d[t.variable]))
@@ -81,7 +81,7 @@ function Base.convert(
         coef = t.variable_1 == t.variable_2 ? t.coefficient / 2 : t.coefficient
         push!(terms, MP.term(coef, d[t.variable_1] * d[t.variable_2]))
     end
-    return ScalarPolynomialFunction{T,P}(polynomial(terms), variables)
+    return ScalarPolynomialFunction{T,P}(MP.polynomial(terms), variables)
 end
 
 function Base.convert(
@@ -111,7 +111,7 @@ function MOI.Utilities.substitute_variables(
     new_aff =
         MOI.ScalarAffineFunction{T}[variable_map(var) for var in func.variables]
     variables = collect(Iterators.flatten(_variables(aff) for aff in new_aff))
-    x, d = _polynomial_variables!(P, variables)
+    _, d = _polynomial_variables!(P, variables)
     new_polys = [_polynomial_with_variables(P, aff, d) for aff in new_aff]
     new_poly = func.polynomial(MP.variables(func.polynomial) => new_polys)
     return ScalarPolynomialFunction{T,typeof(new_poly)}(new_poly, variables)

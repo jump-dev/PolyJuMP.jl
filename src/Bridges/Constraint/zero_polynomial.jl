@@ -1,7 +1,7 @@
 struct ZeroPolynomialBridge{
     T,
     F<:MOI.AbstractVectorFunction,
-    MT<:AbstractMonomial,
+    MT<:MP.AbstractMonomial,
     MVT<:AbstractVector{MT},
 } <: MOI.Bridges.Constraint.AbstractBridge
     zero_constraint::MOI.ConstraintIndex{F,MOI.Zeros}

@@ -36,7 +36,7 @@ function _zero_polynomial_test(
     @test value(β) ≈ 1.0 atol = atol rtol = rtol
     @test value(γ) ≈ 0.0 atol = atol rtol = rtol
     @test value(UpperBoundRef(β)) ≈ 1.0 atol = atol rtol = rtol
-    @test value(cref) isa MultivariatePolynomials.AbstractPolynomial{Float64}
+    @test value(cref) isa MP.AbstractPolynomial{Float64}
     @test value(cref) ≈ 0.0 * x * y atol = atol rtol = rtol
     @test value(cγ) ≈ 0.0 * x * y atol = atol rtol = rtol
 

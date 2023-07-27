@@ -1,48 +1,28 @@
 module KKT
 
 import MutableArithmetics as MA
-
 import MathOptInterface as MOI
-
 import MultivariatePolynomials as MP
-
-import SemialgebraicSets
-
+import SemialgebraicSets as SS
 import DynamicPolynomials
-
 import PolyJuMP
 
-const VariableOrder =
-    DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
-const MonomialOrder = DynamicPolynomials.Graded{MP.LexOrder}
-const VarType = DynamicPolynomials.Variable{VariableOrder,MonomialOrder}
-const PolyType{T} = DynamicPolynomials.Polynomial{VariableOrder,MonomialOrder,T}
-
-mutable struct Optimizer{T} <: PolyJuMP.AbstractOptimizer
+mutable struct Optimizer{T} <: MOI.AbstractOptimizer
     # Model
-    variables::Dict{MOI.VariableIndex,VarType}
-    objective_sense::MOI.OptimizationSense
-    objective_function::Union{Nothing,PolyType{T}}
-    set::Any
+    model::PolyJuMP.Model{T}
     # Result
-    extrema::Vector{Vector{T}}
-    objective_values::Vector{T}
+    solutions::Vector{Vector{T}}
     solve_time::Float64
     termination_status::MOI.TerminationStatusCode
     raw_status::String
     # Optimizer attributes
-    algebraic_solver::Union{Nothing,SemialgebraicSets.AbstractAlgebraicSolver}
+    algebraic_solver::Union{Nothing,SS.AbstractAlgebraicSolver}
     feasibility_tolerance::T
-    optimality_tolerance::T
 end
 function Optimizer{T}() where {T}
     optimizer = Optimizer{T}(
-        Dict{MOI.VariableIndex,VarType}(),
-        MOI.FEASIBILITY_SENSE,
-        nothing,
-        SemialgebraicSets.FullSpace(),
-        Vector{T}[],
-        T[],
+        PolyJuMP.Model{T}(),
+        Solution{T}[],
         NaN,
         MOI.OPTIMIZE_NOT_CALLED,
         "",
@@ -57,10 +37,32 @@ Optimizer() = Optimizer{Float64}()
 
 MOI.get(::Optimizer, ::MOI.SolverName) = "PolyJuMP.KKT"
 
+MOI.is_empty(model::Optimizer) = MOI.is_empty(model.model)
+
+function MOI.empty!(model::Optimizer)
+    MOI.empty!(model.model)
+    invalidate_solutions!(model)
+    return
+end
+
+function MOI.support(model::Optimizer, attr::MOI.AbstractModelAttribute)
+    return MOI.support(model.model, attr)
+end
+
+function MOI.set(model::Optimizer, attr::MOI.AbstractModelAttribute, value)
+    MOI.set(model.model, attr, value)
+    invalidate_solutions!(model)
+    return
+end
+
+function MOI.get(model::Optimizer, attr::MOI.AbstractModelAttribute)
+    return MOI.get(model.model, attr)
+end
+
 function MOI.set(
     model::Optimizer,
     attr::MOI.RawOptimizerAttribute,
-    solver::SemialgebraicSets.AbstractAlgebraicSolver,
+    solver::SS.AbstractAlgebraicSolver,
 )
     if attr.name != "algebraic_solver"
         throw(MOI.UnsupportedAttribute(attr))
@@ -71,26 +73,45 @@ end
 function MOI.set(model::Optimizer, attr::MOI.RawOptimizerAttribute, tol)
     if attr.name == "feasibility_tolerance"
         model.feasibility_tolerance = tol
-    elseif attr.name != "optimality_tolerance"
-        model.optimality_tolerance = tol
     else
         throw(MOI.UnsupportedAttribute(attr))
     end
 end
 
-function PolyJuMP.invalidate_solution!(model::Optimizer)
-    empty!(model.extrema)
-    empty!(model.objective_values)
+function invalidate_solutions!(model::Optimizer)
+    empty!(model.solution)
     model.solve_time = NaN
     model.termination_status = MOI.OPTIMIZE_NOT_CALLED
     model.raw_status = ""
     return
 end
 
+MOI.is_valid(model::Optimizer, i) = MOI.is_valid(model.model, i)
+
+function MOI.add_variable(model::Optimizer)
+    invalidate_solutions!(model)
+    return MOI.add_variable(model.model)
+end
+
+function MOI.supports_constraint(model::Optimizer, ::Type{F}, ::Type{S}) where {F,S}
+    return MOI.supports_constraint(model.model, F, S)
+end
+
+function MOI.add_constraint(model::Optimizer, func, set)
+    ci = MOI.add_constraint(model.model, func, set)
+    invalidate_solutions!(model)
+    return ci
+end
+
+MOI.supports_incremental_interface(::Optimizer) = true
+function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
+    return MOI.Utilities.default_copy_to(dest, src)
+end
+
 function _add_to_system(
     system,
     lagrangian,
-    set::SemialgebraicSets.FullSpace,
+    ::SS.FullSpace,
     ::Bool,
 )
     return lagrangian
@@ -99,7 +120,7 @@ end
 function _add_to_system(
     system,
     lagrangian,
-    set::SemialgebraicSets.AlgebraicSet,
+    set::SS.AlgebraicSet,
     maximization::Bool,
 )
     n = SemialgebraicSets.nequalities(set)
@@ -108,8 +129,8 @@ function _add_to_system(
     end
     DynamicPolynomials.@polyvar λ[1:n]
     for i in eachindex(λ)
-        p = SemialgebraicSets.equalities(set)[i]
-        SemialgebraicSets.add_equality!(system, p)
+        p = SS.equalities(set)[i]
+        SS.add_equality!(system, p)
         if maximization
             lagrangian = MA.add_mul!!(lagrangian, λ[i], p)
         else
@@ -122,14 +143,14 @@ end
 function _add_to_system(
     system,
     lagrangian,
-    set::SemialgebraicSets.BasicSemialgebraicSet,
+    set::SS.BasicSemialgebraicSet,
     maximization::Bool,
 )
     lagrangian = _add_to_system(system, lagrangian, set.V, maximization)
     DynamicPolynomials.@polyvar σ[1:_nineq(set)]
     for i in eachindex(σ)
-        p = SemialgebraicSets.inequalities(set)[i]
-        SemialgebraicSets.add_equality!(system, σ[i] * p)
+        p = SS.inequalities(set)[i]
+        SS.add_equality!(system, σ[i] * p)
         if maximization
             lagrangian = MA.add_mul!!(lagrangian, σ[i]^2, p)
         else
@@ -139,34 +160,16 @@ function _add_to_system(
     return lagrangian
 end
 
-function _violates_inequalities(
-    set::Union{SemialgebraicSets.FullSpace,SemialgebraicSets.AlgebraicSet},
-    x,
-    sol,
-    tol,
-)
-    return false
-end
-
-function _violates_inequalities(
-    set::SemialgebraicSets.BasicSemialgebraicSet,
-    x,
-    sol,
-    tol,
-)
-    return any(p -> p(x => sol) < -tol, SemialgebraicSets.inequalities(set))
-end
-
 function _square(x::Vector{T}, n) where {T}
     return T[(i + n in eachindex(x)) ? x[i] : x[i]^2 for i in eachindex(x)]
 end
 
 function _optimize!(model::Optimizer{T}) where {T}
     if isnothing(model.algebraic_solver)
-        system = SemialgebraicSets.AlgebraicSet{T,PolyType{T}}()
+        system = SS.AlgebraicSet{T,PolyType{T}}()
     else
-        I = SemialgebraicSets.PolynomialIdeal{T,PolyType{T}}()
-        system = SemialgebraicSets.AlgebraicSet(I, model.algebraic_solver)
+        I = SS.PolynomialIdeal{T,PolyType{T}}()
+        system = SS.AlgebraicSet(I, model.algebraic_solver)
     end
     if model.objective_sense == MOI.FEASIBILITY_SENSE
         lagrangian = MA.Zero()
@@ -179,7 +182,7 @@ function _optimize!(model::Optimizer{T}) where {T}
         model.set,
         model.objective_sense == MOI.MAX_SENSE,
     )
-    x = sort!(collect(values(model.variables)), rev = true)
+    x = MP.variables(model.model)
     if lagrangian isa MA.Zero
         model.extrema = [zeros(T, length(x))]
         model.objective_values = zeros(T, 1)
@@ -189,10 +192,10 @@ function _optimize!(model::Optimizer{T}) where {T}
     end
     ∇x = MP.differentiate(lagrangian, x)
     for p in ∇x
-        SemialgebraicSets.add_equality!(system, p)
+        SS.add_equality!(system, p)
     end
     solutions = nothing
-    try # We could check `SemialgebraicSets.is_zero_dimensional(system)` but that would only work for Gröbner basis based
+    try # We could check `SS.is_zero_dimensional(system)` but that would only work for Gröbner basis based
         solutions = collect(system)
     catch err
         model.extrema = Vector{T}[]
@@ -201,41 +204,15 @@ function _optimize!(model::Optimizer{T}) where {T}
         model.raw_status = "KKT system solver failed with : $(sprint(showerror, err))."
         return
     end
-    model.extrema = Vector{T}[
-        _square(sol, _nineq(model.set)) for
-        sol in solutions if !_violates_inequalities(
-            model.set,
-            x,
-            sol,
+    model.solutions = [
+        PolyJuMP.Solution(
+            _square(sol, _nineq(model.set)),
+            model.model,
             model.feasibility_tolerance,
         )
+        for sol in solutions
     ]
-    if model.objective_sense != MOI.FEASIBILITY_SENSE
-        model.objective_values = T[
-            model.objective_function(x => sol[eachindex(x)]) for
-            sol in model.extrema
-        ]
-        I = sortperm(
-            model.objective_values,
-            rev = model.objective_sense == MOI.MAX_SENSE,
-        )
-        model.extrema = model.extrema[I]
-        model.objective_values = model.objective_values[I]
-        # Even if SemialgebraicSets remove duplicates, we may have solution with different `σ` but same `σ^2`
-        J = Int[
-            i for i in eachindex(model.extrema) if
-            i == 1 || !isapprox(model.extrema[i], model.extrema[i-1])
-        ]
-        model.extrema = model.extrema[J]
-        model.objective_values = model.objective_values[J]
-        i = findfirst(eachindex(model.objective_values)) do i
-            return abs(model.objective_values[i] - first(model.objective_values)) > model.optimality_tolerance
-        end
-        if !isnothing(i)
-            model.extrema = model.extrema[1:(i-1)]
-            model.objective_values = model.objective_values[1:(i-1)]
-        end
-    end
+    sort_unique!(solutions, model)
     if isempty(model.extrema)
         model.termination_status = MOI.INFEASIBLE_OR_UNBOUNDED
         model.raw_status = "The KKT system is infeasible so the polynomial optimization problem is either infeasible or unbounded."
@@ -303,9 +280,7 @@ function _index(
         <:Union{MOI.LessThan,MOI.GreaterThan},
     },
 )
-    return length(model.variables) +
-           SemialgebraicSets.nequalities(model.set) +
-           ci.value
+    return length(model.variables) + SS.nequalities(model.set) + ci.value
 end
 
 function MOI.get(model::Optimizer, attr::MOI.DualStatus)

@@ -58,7 +58,13 @@ function MOI.set(model::Optimizer, attr::MOI.AbstractModelAttribute, value)
     return
 end
 
-function MOI.get(model::Optimizer, attr::Union{MOI.AbstractModelAttribute,MOI.Bridges.ListOfNonstandardBridges})
+function MOI.get(
+    model::Optimizer,
+    attr::Union{
+        MOI.AbstractModelAttribute,
+        MOI.Bridges.ListOfNonstandardBridges,
+    },
+)
     return MOI.get(model.model, attr)
 end
 
@@ -104,7 +110,11 @@ function MOI.supports_constraint(
     return MOI.supports_constraint(model.model, F, S)
 end
 
-function MOI.add_constraint(model::Optimizer, func::MOI.AbstractFunction, set::MOI.AbstractSet)
+function MOI.add_constraint(
+    model::Optimizer,
+    func::MOI.AbstractFunction,
+    set::MOI.AbstractSet,
+)
     ci = MOI.add_constraint(model.model, func, set)
     invalidate_solutions!(model)
     return ci
@@ -115,12 +125,7 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
     return MOI.Utilities.default_copy_to(dest, src)
 end
 
-function _add_to_system(
-    system,
-    lagrangian,
-    ::SS.FullSpace,
-    ::Bool,
-)
+function _add_to_system(system, lagrangian, ::SS.FullSpace, ::Bool)
     return lagrangian
 end
 
@@ -191,7 +196,13 @@ function _optimize!(model::Optimizer{T}) where {T}
     )
     x = MP.variables(model.model)
     if lagrangian isa MA.Zero
-        model.solutions = [PolyJuMP.Solution(zeros(T, length(x)), model.model, model.options.feasibility_tolerance)]
+        model.solutions = [
+            PolyJuMP.Solution(
+                zeros(T, length(x)),
+                model.model,
+                model.options.feasibility_tolerance,
+            ),
+        ]
         model.termination_status = MOI.LOCALLY_SOLVED # We could use `OPTIMAL` here but it would then make MOI tests fail as they expect `LOCALLY_SOLVED`
         model.raw_status = "Lagrangian function is zero so any solution is optimal even if the solver reports a unique solution `0`."
         return
@@ -215,10 +226,13 @@ function _optimize!(model::Optimizer{T}) where {T}
             _square(sol, PolyJuMP._nineq(model.model.set)),
             model.model,
             model.options.feasibility_tolerance,
-        )
-        for sol in solutions
+        ) for sol in solutions
     ]
-    PolyJuMP.postprocess!(model.solutions, model.model, model.options.optimality_tolerance)
+    PolyJuMP.postprocess!(
+        model.solutions,
+        model.model,
+        model.options.optimality_tolerance,
+    )
     if isempty(model.solutions)
         model.termination_status = MOI.INFEASIBLE_OR_UNBOUNDED
         model.raw_status = "The KKT system is infeasible so the polynomial optimization problem is either infeasible or unbounded."
@@ -286,7 +300,9 @@ function _index(
         <:Union{MOI.LessThan,MOI.GreaterThan},
     },
 )
-    return length(model.model.variables) + SS.nequalities(model.model.set) + ci.value
+    return length(model.model.variables) +
+           SS.nequalities(model.model.set) +
+           ci.value
 end
 
 function MOI.get(model::Optimizer, attr::MOI.DualStatus)

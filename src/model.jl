@@ -24,7 +24,11 @@ struct Solution{T}
     status::MOI.ResultStatusCode
 end
 
-function Solution(values::Vector{T}, model::Model{T}, feasibility_tolerance::T) where {T}
+function Solution(
+    values::Vector{T},
+    model::Model{T},
+    feasibility_tolerance::T,
+) where {T}
     ε = _max_constraint_violation(model.set, MP.variables(model), values)
     x = MP.variables(model)
     obj = if isnothing(model.objective_function)
@@ -50,19 +54,11 @@ function _max_constraint_violation(
     return zero(T)
 end
 
-function _max_constraint_violation(
-    set::SS.AlgebraicSet,
-    x,
-    sol,
-)
+function _max_constraint_violation(set::SS.AlgebraicSet, x, sol)
     return maximum(p -> abs(p(x => sol)), SS.equalities(set))
 end
 
-function _max_constraint_violation(
-    set::SS.BasicSemialgebraicSet,
-    x,
-    sol,
-)
+function _max_constraint_violation(set::SS.BasicSemialgebraicSet, x, sol)
     return max(
         _max_constraint_violation(set.V, x, sol),
         maximum(p -> -p(x => sol), SS.inequalities(set)),
@@ -88,7 +84,11 @@ function _priority(r::Solution, sense::MOI.OptimizationSense)
     return (_status_priority(r.status), obj)
 end
 
-function postprocess!(solutions::Vector{<:Solution}, model::Model, optimality_tolerance)
+function postprocess!(
+    solutions::Vector{<:Solution},
+    model::Model,
+    optimality_tolerance,
+)
     sort!(solutions; by = Base.Fix2(_priority, model.objective_sense))
     # Even if SemialgebraicSets remove duplicates, we may have solution with different `σ` but same `σ^2`
     J = Int[

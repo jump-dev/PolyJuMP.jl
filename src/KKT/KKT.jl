@@ -7,32 +7,35 @@ import SemialgebraicSets as SS
 import DynamicPolynomials
 import PolyJuMP
 
+Base.@kwdef mutable struct Options{T}
+    solver::Union{Nothing,SS.AbstractAlgebraicSolver} = nothing
+    optimality_tolerance::Union{Nothing,T} = nothing
+    feasibility_tolerance::T = Base.rtoldefault(T)
+end
+
 mutable struct Optimizer{T} <: MOI.AbstractOptimizer
-    # Model
     model::PolyJuMP.Model{T}
+    options::Options{T}
     # Result
-    solutions::Vector{Vector{T}}
+    solutions::Vector{PolyJuMP.Solution{T}}
     solve_time::Float64
     termination_status::MOI.TerminationStatusCode
     raw_status::String
-    # Optimizer attributes
-    algebraic_solver::Union{Nothing,SS.AbstractAlgebraicSolver}
-    feasibility_tolerance::T
 end
+
 function Optimizer{T}() where {T}
     optimizer = Optimizer{T}(
         PolyJuMP.Model{T}(),
-        Solution{T}[],
+        Options{T}(),
+        PolyJuMP.Solution{T}[],
         NaN,
         MOI.OPTIMIZE_NOT_CALLED,
         "",
-        nothing,
-        Base.rtoldefault(T),
-        Base.rtoldefault(T),
     )
     # This can be replaced by `ListOfNonstandardBridges` once https://github.com/jump-dev/MathOptInterface.jl/issues/846 is done
     return PolyJuMP.NLToPolynomial{T}(optimizer)
 end
+
 Optimizer() = Optimizer{Float64}()
 
 MOI.get(::Optimizer, ::MOI.SolverName) = "PolyJuMP.KKT"
@@ -45,8 +48,8 @@ function MOI.empty!(model::Optimizer)
     return
 end
 
-function MOI.support(model::Optimizer, attr::MOI.AbstractModelAttribute)
-    return MOI.support(model.model, attr)
+function MOI.supports(model::Optimizer, attr::MOI.AbstractModelAttribute)
+    return MOI.supports(model.model, attr)
 end
 
 function MOI.set(model::Optimizer, attr::MOI.AbstractModelAttribute, value)
@@ -55,49 +58,53 @@ function MOI.set(model::Optimizer, attr::MOI.AbstractModelAttribute, value)
     return
 end
 
-function MOI.get(model::Optimizer, attr::MOI.AbstractModelAttribute)
+function MOI.get(model::Optimizer, attr::Union{MOI.AbstractModelAttribute,MOI.Bridges.ListOfNonstandardBridges})
     return MOI.get(model.model, attr)
 end
 
-function MOI.set(
-    model::Optimizer,
-    attr::MOI.RawOptimizerAttribute,
-    solver::SS.AbstractAlgebraicSolver,
-)
-    if attr.name != "algebraic_solver"
-        throw(MOI.UnsupportedAttribute(attr))
-    end
-    return model.algebraic_solver = solver
+function MOI.supports(::Optimizer{T}, attr::MOI.RawOptimizerAttribute) where {T}
+    return hasfield(Options{T}, Symbol(attr.name))
 end
 
-function MOI.set(model::Optimizer, attr::MOI.RawOptimizerAttribute, tol)
-    if attr.name == "feasibility_tolerance"
-        model.feasibility_tolerance = tol
-    else
+function MOI.set(model::Optimizer, attr::MOI.RawOptimizerAttribute, value)
+    if !MOI.supports(model, attr)
         throw(MOI.UnsupportedAttribute(attr))
     end
+    setfield!(model.options, Symbol(attr.name), value)
+    return
+end
+
+function MOI.get(model::Optimizer, attr::MOI.RawOptimizerAttribute)
+    if !MOI.supports(model, attr)
+        throw(MOI.UnsupportedAttribute(attr))
+    end
+    return getfield(model.options, Symbol(attr.name))
 end
 
 function invalidate_solutions!(model::Optimizer)
-    empty!(model.solution)
+    empty!(model.solutions)
     model.solve_time = NaN
     model.termination_status = MOI.OPTIMIZE_NOT_CALLED
     model.raw_status = ""
     return
 end
 
-MOI.is_valid(model::Optimizer, i) = MOI.is_valid(model.model, i)
+MOI.is_valid(model::Optimizer, i::MOI.Index) = MOI.is_valid(model.model, i)
 
 function MOI.add_variable(model::Optimizer)
     invalidate_solutions!(model)
     return MOI.add_variable(model.model)
 end
 
-function MOI.supports_constraint(model::Optimizer, ::Type{F}, ::Type{S}) where {F,S}
+function MOI.supports_constraint(
+    model::Optimizer,
+    ::Type{F},
+    ::Type{S},
+) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     return MOI.supports_constraint(model.model, F, S)
 end
 
-function MOI.add_constraint(model::Optimizer, func, set)
+function MOI.add_constraint(model::Optimizer, func::MOI.AbstractFunction, set::MOI.AbstractSet)
     ci = MOI.add_constraint(model.model, func, set)
     invalidate_solutions!(model)
     return ci
@@ -123,7 +130,7 @@ function _add_to_system(
     set::SS.AlgebraicSet,
     maximization::Bool,
 )
-    n = SemialgebraicSets.nequalities(set)
+    n = SS.nequalities(set)
     if iszero(n)
         return
     end
@@ -147,7 +154,7 @@ function _add_to_system(
     maximization::Bool,
 )
     lagrangian = _add_to_system(system, lagrangian, set.V, maximization)
-    DynamicPolynomials.@polyvar σ[1:_nineq(set)]
+    DynamicPolynomials.@polyvar σ[1:PolyJuMP._nineq(set)]
     for i in eachindex(σ)
         p = SS.inequalities(set)[i]
         SS.add_equality!(system, σ[i] * p)
@@ -165,27 +172,26 @@ function _square(x::Vector{T}, n) where {T}
 end
 
 function _optimize!(model::Optimizer{T}) where {T}
-    if isnothing(model.algebraic_solver)
-        system = SS.AlgebraicSet{T,PolyType{T}}()
+    if isnothing(model.options.solver)
+        system = SS.AlgebraicSet{T,PolyJuMP.PolyType{T}}()
     else
-        I = SS.PolynomialIdeal{T,PolyType{T}}()
-        system = SS.AlgebraicSet(I, model.algebraic_solver)
+        I = SS.PolynomialIdeal{T,PolyJuMP.PolyType{T}}()
+        system = SS.AlgebraicSet(I, model.options.solver)
     end
-    if model.objective_sense == MOI.FEASIBILITY_SENSE
+    if model.model.objective_sense == MOI.FEASIBILITY_SENSE
         lagrangian = MA.Zero()
     else
-        lagrangian = MA.mutable_copy(model.objective_function)
+        lagrangian = MA.mutable_copy(model.model.objective_function)
     end
     lagrangian = _add_to_system(
         system,
         lagrangian,
-        model.set,
-        model.objective_sense == MOI.MAX_SENSE,
+        model.model.set,
+        model.model.objective_sense == MOI.MAX_SENSE,
     )
     x = MP.variables(model.model)
     if lagrangian isa MA.Zero
-        model.extrema = [zeros(T, length(x))]
-        model.objective_values = zeros(T, 1)
+        model.solutions = [PolyJuMP.Solution(zeros(T, length(x)), model.model, model.options.feasibility_tolerance)]
         model.termination_status = MOI.LOCALLY_SOLVED # We could use `OPTIMAL` here but it would then make MOI tests fail as they expect `LOCALLY_SOLVED`
         model.raw_status = "Lagrangian function is zero so any solution is optimal even if the solver reports a unique solution `0`."
         return
@@ -206,19 +212,19 @@ function _optimize!(model::Optimizer{T}) where {T}
     end
     model.solutions = [
         PolyJuMP.Solution(
-            _square(sol, _nineq(model.set)),
+            _square(sol, PolyJuMP._nineq(model.model.set)),
             model.model,
-            model.feasibility_tolerance,
+            model.options.feasibility_tolerance,
         )
         for sol in solutions
     ]
-    sort_unique!(solutions, model)
-    if isempty(model.extrema)
+    PolyJuMP.postprocess!(model.solutions, model.model, model.options.optimality_tolerance)
+    if isempty(model.solutions)
         model.termination_status = MOI.INFEASIBLE_OR_UNBOUNDED
         model.raw_status = "The KKT system is infeasible so the polynomial optimization problem is either infeasible or unbounded."
     else
         model.termination_status = MOI.LOCALLY_SOLVED
-        model.raw_status = "Unless the problem is unbounded, the $(length(model.extrema)) solutions reported by the solver are optimal. The termination status is `LOCALLY_SOLVED` instead of `OPTIMAL` to leave the possibility that the problem may be unbounded."
+        model.raw_status = "Unless the problem is unbounded, the first of the `$(length(model.solutions))` solutions reported by the solver is optimal. The termination status is `LOCALLY_SOLVED` instead of `OPTIMAL` to leave the possibility that the problem may be unbounded."
     end
     return
 end
@@ -241,11 +247,11 @@ function MOI.get(model::Optimizer, ::MOI.TerminationStatus)
     return model.termination_status
 end
 
-MOI.get(model::Optimizer, ::MOI.ResultCount) = length(model.extrema)
+MOI.get(model::Optimizer, ::MOI.ResultCount) = length(model.solutions)
 
 function MOI.get(model::Optimizer, attr::MOI.ObjectiveValue)
     MOI.check_result_index_bounds(model, attr)
-    return model.objective_values[attr.result_index]
+    return model.solutions[attr.result_index].objective_value
 end
 
 function MOI.get(model::Optimizer, attr::MOI.PrimalStatus)
@@ -263,14 +269,14 @@ function MOI.get(
 )
     MOI.throw_if_not_valid(model, vi)
     MOI.check_result_index_bounds(model, attr)
-    return model.extrema[attr.result_index][vi.value]
+    return model.solutions[attr.result_index].values[vi.value]
 end
 
 function _index(
     model,
     ci::MOI.ConstraintIndex{<:PolyJuMP.ScalarPolynomialFunction,<:MOI.EqualTo},
 )
-    return length(model.variables) + ci.value
+    return length(model.model.variables) + ci.value
 end
 
 function _index(
@@ -280,7 +286,7 @@ function _index(
         <:Union{MOI.LessThan,MOI.GreaterThan},
     },
 )
-    return length(model.variables) + SS.nequalities(model.set) + ci.value
+    return length(model.model.variables) + SS.nequalities(model.model.set) + ci.value
 end
 
 function MOI.get(model::Optimizer, attr::MOI.DualStatus)
@@ -298,7 +304,7 @@ function MOI.get(
 ) where {F,S}
     MOI.throw_if_not_valid(model, ci)
     MOI.check_result_index_bounds(model, attr)
-    value = model.extrema[attr.result_index][_index(model, ci)]
+    value = model.solutions[attr.result_index].values[_index(model, ci)]
     if S <: MOI.LessThan
         value = -value
     end

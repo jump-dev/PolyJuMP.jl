@@ -3,7 +3,7 @@ mutable struct Model{T} <: MOI.ModelLike
     objective_sense::MOI.OptimizationSense
     objective_function::Union{Nothing,PolyType{T}}
     set::Any
-    function Model{T}()
+    function Model{T}() where {T}
         return new{T}(
             Dict{MOI.VariableIndex,VarType}(),
             MOI.FEASIBILITY_SENSE,
@@ -24,27 +24,29 @@ struct Solution{T}
     status::MOI.ResultStatusCode
 end
 
-function Solution(values::Vector{T}, model::Model{T}, feasibility_tolerance::T)
+function Solution(values::Vector{T}, model::Model{T}, feasibility_tolerance::T) where {T}
     ε = _max_constraint_violation(model.set, MP.variables(model), values)
-    return Solution{T}(
-        values,
-        model.objective_function(x => sol[eachindex(x)]),
-        ε,
-        if ε < feasibility_tolerance
-            MOI.FEASIBLE_POINT
-        elseif ε < 100feasibility_tolerance
-            MOI.NEARLY_FEASIBLE_POINT
-        else
-            MOI.INFEASIBLE_POINT
-        end,
-    )
+    x = MP.variables(model)
+    obj = if isnothing(model.objective_function)
+        zero(T)
+    else
+        model.objective_function(x => values[eachindex(x)])
+    end
+    status = if ε < feasibility_tolerance
+        MOI.FEASIBLE_POINT
+    elseif ε < 100feasibility_tolerance
+        MOI.NEARLY_FEASIBLE_POINT
+    else
+        MOI.INFEASIBLE_POINT
+    end
+    return Solution{T}(values, obj, ε, status)
 end
 
 function _max_constraint_violation(
     ::SS.FullSpace,
     x,
     sol::AbstractVector{T},
-)
+) where {T}
     return zero(T)
 end
 
@@ -67,7 +69,7 @@ function _max_constraint_violation(
     )
 end
 
-function _status_score(r::MOI.ResultStatusCode)
+function _status_priority(r::MOI.ResultStatusCode)
     if r == MOI.FEASIBLE_POINT
         return 0
     elseif r == MOI.NEARLY_FEASIBLE_POINT
@@ -78,22 +80,29 @@ function _status_score(r::MOI.ResultStatusCode)
     end
 end
 
-function _score(r::MOI.Solution, sense::MOI.OptimizationSense)
+function _priority(r::Solution, sense::MOI.OptimizationSense)
     obj = r.objective_value
     if sense == MOI.MAX_SENSE
-        return obj
+        obj = -obj
     end
-    return (_status_score(r.status), obj)
+    return (_status_priority(r.status), obj)
 end
 
-function sort_unique!(solutions::Vector{Solution}, model::Model)
-    sort!(solutions; by = Base.Fix2(_score, model.objective_sense))
+function postprocess!(solutions::Vector{<:Solution}, model::Model, optimality_tolerance)
+    sort!(solutions; by = Base.Fix2(_priority, model.objective_sense))
     # Even if SemialgebraicSets remove duplicates, we may have solution with different `σ` but same `σ^2`
     J = Int[
         i for i in eachindex(solutions) if
         i != 1 && isapprox(solutions[i].values, solutions[i-1].values)
     ]
     deleteat!(solutions, J)
+    if !isempty(solutions) && !isnothing(optimality_tolerance)
+        sign = model.objective_sense == MOI.MAX_SENSE ? -1 : 1
+        best = first(solution).objective_value
+        filter!(solutions) do sol
+            return sign(sol.objective_value - best) <= optimality_tolerance
+        end
+    end
     return
 end
 

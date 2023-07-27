@@ -18,7 +18,7 @@ const MonomialOrder = DynamicPolynomials.Graded{MP.LexOrder}
 const VarType = DynamicPolynomials.Variable{VariableOrder,MonomialOrder}
 const PolyType{T} = DynamicPolynomials.Polynomial{VariableOrder,MonomialOrder,T}
 
-mutable struct Optimizer{T} <: MOI.AbstractOptimizer
+mutable struct Optimizer{T} <: PolyJuMP.AbstractOptimizer
     # Model
     variables::Dict{MOI.VariableIndex,VarType}
     objective_sense::MOI.OptimizationSense
@@ -57,16 +57,6 @@ Optimizer() = Optimizer{Float64}()
 
 MOI.get(::Optimizer, ::MOI.SolverName) = "PolyJuMP.KKT"
 
-function MOI.get(
-    ::Optimizer{T},
-    ::MOI.Bridges.ListOfNonstandardBridges{T},
-) where {T}
-    return [
-        PolyJuMP.Bridges.Constraint.ToPolynomialBridge{T},
-        PolyJuMP.Bridges.Objective.ToPolynomialBridge{T},
-    ]
-end
-
 function MOI.set(
     model::Optimizer,
     attr::MOI.RawOptimizerAttribute,
@@ -88,113 +78,12 @@ function MOI.set(model::Optimizer, attr::MOI.RawOptimizerAttribute, tol)
     end
 end
 
-function MOI.is_empty(model::Optimizer)
-    return isempty(model.variables) &&
-           model.objective_sense == MOI.FEASIBILITY_SENSE &&
-           isnothing(model.objective_function) &&
-           model.set isa SemialgebraicSets.FullSpace
-end
-
-function MOI.empty!(model::Optimizer)
-    empty!(model.variables)
-    model.objective_sense = MOI.FEASIBILITY_SENSE
-    model.objective_function = nothing
-    model.set = SemialgebraicSets.FullSpace()
+function PolyJuMP.invalidate_solution!(model::Optimizer)
     empty!(model.extrema)
     empty!(model.objective_values)
     model.solve_time = NaN
     model.termination_status = MOI.OPTIMIZE_NOT_CALLED
     model.raw_status = ""
-    return
-end
-
-function MOI.is_valid(model::Optimizer, vi::MOI.VariableIndex)
-    return in(vi.value, 1:length(model.variables))
-end
-
-function MOI.add_variable(model::Optimizer)
-    i = length(model.variables) + 1
-    vi = MOI.VariableIndex(i)
-    var = DynamicPolynomials.Variable("x[$i]", VariableOrder, MonomialOrder)
-    model.variables[vi] = var
-    model.termination_status = MOI.OPTIMIZE_NOT_CALLED
-    return vi
-end
-
-function _polynomial(variables, func::PolyJuMP.ScalarPolynomialFunction)
-    new_variables = VarType[variables[vi] for vi in func.variables]
-    return func.polynomial(MP.variables(func.polynomial) => new_variables)
-end
-
-function _set(poly::MP.AbstractPolynomialLike, set::MOI.EqualTo)
-    return SemialgebraicSets.equality(poly, MOI.constant(set))
-end
-
-function _set(poly::MP.AbstractPolynomialLike, set::MOI.GreaterThan)
-    return SemialgebraicSets.PolynomialInequality(poly - MOI.constant(set))
-end
-
-function _set(poly::MP.AbstractPolynomialLike, set::MOI.LessThan)
-    return SemialgebraicSets.PolynomialInequality(MOI.constant(set) - poly)
-end
-
-_nineq(::SemialgebraicSets.AbstractAlgebraicSet) = 0
-_nineq(set) = SemialgebraicSets.ninequalities(set)
-
-_num(set, ::Type{<:MOI.EqualTo}) = SemialgebraicSets.nequalities(set)
-function _num(set, ::Type{<:Union{MOI.LessThan,MOI.GreaterThan}})
-    return _nineq(set)
-end
-
-function MOI.supports_constraint(
-    ::Optimizer{T},
-    ::Type{<:PolyJuMP.ScalarPolynomialFunction{T}},
-    ::Type{<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}}},
-) where {T}
-    return true
-end
-
-function MOI.is_valid(
-    model::Optimizer,
-    ci::MOI.ConstraintIndex{<:PolyJuMP.ScalarPolynomialFunction,S},
-) where {S}
-    return ci.value in 1:_num(model.set, S)
-end
-
-function MOI.add_constraint(
-    model::Optimizer{T},
-    func::PolyJuMP.ScalarPolynomialFunction{T},
-    set::MOI.AbstractScalarSet,
-) where {T}
-    model.set = model.set ∩ _set(_polynomial(model.variables, func), set)
-    i = _num(model.set, typeof(set))
-    model.termination_status = MOI.OPTIMIZE_NOT_CALLED
-    return MOI.ConstraintIndex{typeof(func),typeof(set)}(i)
-end
-
-function MOI.set(
-    model::Optimizer,
-    ::MOI.ObjectiveSense,
-    sense::MOI.OptimizationSense,
-)
-    model.objective_sense = sense
-    model.termination_status = MOI.OPTIMIZE_NOT_CALLED
-    return
-end
-
-function MOI.supports(
-    ::Optimizer{T},
-    ::MOI.ObjectiveFunction{<:PolyJuMP.ScalarPolynomialFunction{T}},
-) where {T}
-    return true
-end
-function MOI.set(
-    model::Optimizer{T},
-    ::MOI.ObjectiveFunction,
-    func::PolyJuMP.ScalarPolynomialFunction{T},
-) where {T}
-    model.objective_function = _polynomial(model.variables, func)
-    model.termination_status = MOI.OPTIMIZE_NOT_CALLED
     return
 end
 
@@ -270,11 +159,6 @@ end
 
 function _square(x::Vector{T}, n) where {T}
     return T[(i + n in eachindex(x)) ? x[i] : x[i]^2 for i in eachindex(x)]
-end
-
-MOI.supports_incremental_interface(::Optimizer) = true
-function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
-    return MOI.Utilities.default_copy_to(dest, src)
 end
 
 function _optimize!(model::Optimizer{T}) where {T}

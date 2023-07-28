@@ -26,7 +26,7 @@ end
 
 function test_algebraic(var, T, solver)
     model = PolyJuMP.KKT.Optimizer{T}()
-    MOI.set(model, MOI.RawOptimizerAttribute("algebraic_solver"), solver)
+    MOI.set(model, MOI.RawOptimizerAttribute("solver"), solver)
     t = MP.similar_variable(var, Val{:t})
     x = MP.similar_variable(var, Val{:x})
     y = MP.similar_variable(var, Val{:y})
@@ -53,7 +53,7 @@ function _test_linquad(T, F1, O, solver)
     model = MOI.instantiate(
         optimizer_with_attributes(
             PolyJuMP.KKT.Optimizer{T},
-            "algebraic_solver" => solver,
+            "solver" => solver,
         ),
         with_bridge_type = T,
     )
@@ -93,7 +93,7 @@ end
 
 function _test_JuMP(F1, O, solver)
     model = Model(PolyJuMP.KKT.Optimizer)
-    set_optimizer_attribute(model, "algebraic_solver", solver)
+    set_optimizer_attribute(model, "solver", solver)
     @variable(model, t)
     @variable(model, x)
     @variable(model, y)
@@ -147,7 +147,7 @@ function test_MOI_runtests(var, T, solver)
     )
     optimizer = MOI.instantiate(PolyJuMP.KKT.Optimizer{T}, with_bridge_type = T)
     @test MOI.get(optimizer, MOI.SolverName()) == "PolyJuMP.KKT"
-    MOI.set(optimizer, MOI.RawOptimizerAttribute("algebraic_solver"), solver)
+    MOI.set(optimizer, MOI.RawOptimizerAttribute("solver"), solver)
     # Remove `ZerosBridge` otherwise querying `ConstraintDual` won't work in `test_quadratic_constraint_GreaterThan`
     MOI.Bridges.remove_bridge(optimizer, MOI.Bridges.Variable.ZerosBridge{T})
     cache = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{T}())

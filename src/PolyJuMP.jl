@@ -31,6 +31,7 @@ include("constraint.jl")
 include("data.jl")
 include("default.jl")
 
+include("model.jl")
 include("KKT/KKT.jl")
 
 end # module

@@ -22,7 +22,11 @@ function MOI.Bridges.Constraint.bridge_constraint(
                 MA.add_mul!!(f, convert(T, set.α[i, var]), ν[j])
             end
         end
-        MOI.Utilities.normalize_and_add_constraint(model, f, MOI.EqualTo(zero(T)))
+        return MOI.Utilities.normalize_and_add_constraint(
+            model,
+            f,
+            MOI.EqualTo(zero(T)),
+        )
     end
     scalars = MOI.Utilities.eachscalar(func)
     f = MOI.Utilities.operate(
@@ -30,9 +34,10 @@ function MOI.Bridges.Constraint.bridge_constraint(
         T,
         scalars[set.k] + sumν,
         scalars[setdiff(1:m, set.k)],
-        MOI.VectorOfVariables(ν)
+        MOI.VectorOfVariables(ν),
     )
-    relative_entropy_constraint = MOI.add_constraint(model, f, MOI.RelativeEntropyCone(2m - 1))
+    relative_entropy_constraint =
+        MOI.add_constraint(model, f, MOI.RelativeEntropyCone(2m - 1))
     return AGEBridge{T,F,G,H}(set.k, ceq, relative_entropy_constraint)
 end
 
@@ -48,7 +53,9 @@ function MOI.Bridges.added_constrained_variable_types(::Type{<:AGEBridge})
     return Tuple{Type}[]
 end
 
-function MOI.Bridges.added_constraint_types(::Type{<:AGEBridge{T,F,G}}) where {T,F,G}
+function MOI.Bridges.added_constraint_types(
+    ::Type{<:AGEBridge{T,F,G}},
+) where {T,F,G}
     return [(F, MOI.EqualTo{T}), (G, MOI.RelativeEntropyCone)]
 end
 
@@ -58,7 +65,12 @@ function MOI.Bridges.Constraint.concrete_bridge_type(
     ::Type{<:AGECone},
 ) where {T}
     S = MOI.Utilities.scalar_type(H)
-    F = MOI.Utilities.promote_operation(+, T, S, MOI.ScalarAffineFunction{Float64})
+    F = MOI.Utilities.promote_operation(
+        +,
+        T,
+        S,
+        MOI.ScalarAffineFunction{Float64},
+    )
     G = MOI.Utilities.promote_operation(vcat, T, S, F)
     return AGEBridge{T,F,G,H}
 end

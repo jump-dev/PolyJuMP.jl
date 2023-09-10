@@ -40,7 +40,7 @@ end
 MOI.dimension(set::AGECone) = size(set.α, 1)
 Base.copy(set::AGECone) = set
 
-struct AGESet{MT <: MP.AbstractMonomial} <: PolyJuMP.PolynomialSet
+struct AGESet{MT<:MP.AbstractMonomial} <: PolyJuMP.PolynomialSet
     monomial::MT
 end
 function JuMP.reshape_set(set::AGECone, shape::PolyJuMP.PolynomialShape)
@@ -56,7 +56,12 @@ function setdefaults!(data::PolyJuMP.Data)
     return
 end
 
-function JuMP.build_constraint(_error::Function, p, set::Union{SAGESet,AGESet}; kws...)
+function JuMP.build_constraint(
+    _error::Function,
+    p,
+    set::Union{SAGESet,AGESet};
+    kws...,
+)
     coefs = PolyJuMP.non_constant_coefficients(p)
     monos = MP.monomials(p)
     cone = JuMP.moi_set(set, monos)

@@ -33,5 +33,6 @@ include("default.jl")
 
 include("model.jl")
 include("KKT/KKT.jl")
+include("QCQP/QCQP.jl")
 
 end # module

@@ -3,13 +3,17 @@ module QCQP
 import MultivariatePolynomials as MP
 import DataStructures
 
+# TODO special case for squares ?
 function decompose(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
     vars = MP.variables(monos)
-    quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(var => var for var in vars)
+    quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
+        var => var for var in vars
+    )
     for mono in monos
         quad[mono] = nothing
     end
-    candidates = DataStructures.PriorityQueue{eltype(monos),Int}(Base.Order.Reverse)
+    candidates =
+        DataStructures.PriorityQueue{eltype(monos),Int}(Base.Order.Reverse)
     while any(mono -> isnothing(quad[mono]), keys(quad))
         empty!(candidates)
         for mono in keys(quad)

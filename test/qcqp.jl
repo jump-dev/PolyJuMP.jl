@@ -8,7 +8,9 @@ import PolyJuMP
 function _test_decompose(monos, exps)
     vars = MP.variables(monos)
     M = eltype(monos)
-    expected = PolyJuMP.QCQP.DataStructures.OrderedDict{M,M}(var => var for var in vars)
+    expected = PolyJuMP.QCQP.DataStructures.OrderedDict{M,M}(
+        var => var for var in vars
+    )
     for exp in exps
         expected[exp[1]] = exp[2]
     end
@@ -18,7 +20,10 @@ end
 
 function test_decompose(x, y, _)
     _test_decompose([x * y], [x * y => y])
-    _test_decompose([x^2, y^3, x^2 * y^3], [x^2 => x, y^2 => y, x^2 * y^3 => y^3, y^3 => y^2])
+    return _test_decompose(
+        [x^2, y^3, x^2 * y^3],
+        [x^2 => x, y^2 => y, x^2 * y^3 => y^3, y^3 => y^2],
+    )
 end
 
 function runtests(x, y, T)

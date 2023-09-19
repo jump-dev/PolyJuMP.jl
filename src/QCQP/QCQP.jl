@@ -2,6 +2,7 @@ module QCQP
 
 import MultivariatePolynomials as MP
 import DataStructures
+import PolyJuMP
 
 # TODO special case for squares ?
 function decompose(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
@@ -38,5 +39,7 @@ function decompose(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
     end
     return quad
 end
+
+include("MOI_wrapper.jl")
 
 end

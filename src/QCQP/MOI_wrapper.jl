@@ -22,15 +22,24 @@ MOI.empty!(model::Optimizer) = MOI.empty!(model.model)
 
 MOI.add_variable(model::Optimizer) = MOI.add_variable(model.model)
 
-function MOI.supports_add_constrained_variable(model::Optimizer, ::Type{S}) where {S<:MOI.AbstractScalarSet}
+function MOI.supports_add_constrained_variable(
+    model::Optimizer,
+    ::Type{S},
+) where {S<:MOI.AbstractScalarSet}
     return MOI.supports_add_constrained_variable(model.model, S)
 end
 
-function MOI.supports_add_constrained_variables(model::Optimizer, ::Type{MOI.Reals})
+function MOI.supports_add_constrained_variables(
+    model::Optimizer,
+    ::Type{MOI.Reals},
+)
     return MOI.supports_add_constrained_variables(model.model, MOI.Reals)
 end
 
-function MOI.supports_add_constrained_variables(model::Optimizer, ::Type{S}) where {S<:MOI.AbstractVectorSet}
+function MOI.supports_add_constrained_variables(
+    model::Optimizer,
+    ::Type{S},
+) where {S<:MOI.AbstractVectorSet}
     return MOI.supports_add_constrained_variables(model.model, S)
 end
 
@@ -38,7 +47,11 @@ function MOI.supports(model::Optimizer, attr::MOI.ObjectiveFunction)
     return MOI.supports(model.model, attr)
 end
 
-function MOI.supports_constraint(model::Optimizer, ::Type{F}, ::Type{S}) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+function MOI.supports_constraint(
+    model::Optimizer,
+    ::Type{F},
+    ::Type{S},
+) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     return MOI.supports_constraint(model.model, F, S)
 end
 

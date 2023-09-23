@@ -97,10 +97,15 @@ end
 function _to_polynomial(expr, ::Type{T}) where {T}
     d = Dict{MOI.VariableIndex,VarType}()
     poly = _to_polynomial!(d, T, expr)
+    return _scalar_polynomial(d, T, poly)
+end
+
+function _scalar_polynomial(d::Dict{K,V}, ::Type{T}, poly) where {T,K,V}
     variable_map = collect(d)
     sort!(variable_map, by = x -> x[2])
     variables = [x[1] for x in variable_map]
-    return FuncType{T}(poly, variables)
+    P = MP.polynomial_type(V, T)
+    return ScalarPolynomialFunction{T,P}(poly, variables)
 end
 
 function _to_polynomial(model::NLToPolynomial{T}, expr) where {T}

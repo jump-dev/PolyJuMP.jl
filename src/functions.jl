@@ -1,6 +1,6 @@
 """
     struct ScalarPolynomialFunction{P<:MP.AbstractPolynomialLike} <: MOI.AbstractScalarFunction
-        p::P
+        polynomial::P
         variables::Vector{MOI.VariableIndex}
     end
 
@@ -64,6 +64,22 @@ function Base.convert(
     return ScalarPolynomialFunction{T,P}(poly, variables)
 end
 
+function _to_polynomial!(
+    d::Dict{K,V},
+    ::Type{T},
+    func::MOI.ScalarQuadraticFunction{T},
+) where {K,V,T}
+    terms = MP.term_type(V, T)[MOI.constant(func)]
+    for t in func.affine_terms
+        push!(terms, MP.term(t.coefficient, _to_polynomial!(d, T, t.variable)))
+    end
+    for t in func.quadratic_terms
+        coef = t.variable_1 == t.variable_2 ? t.coefficient / 2 : t.coefficient
+        push!(terms, MP.term(coef, _to_polynomial!(d, T, t.variable_1) * _to_polynomial!(d, T, t.variable_2)))
+    end
+    return MP.polynomial(terms)
+end
+
 function Base.convert(
     ::Type{ScalarPolynomialFunction{T,P}},
     func::MOI.ScalarQuadraticFunction{T},
@@ -73,15 +89,8 @@ function Base.convert(
     quad_variables_2 = [t.variable_2 for t in func.quadratic_terms]
     variables = [linear_variables; quad_variables_1; quad_variables_2]
     _, d = _polynomial_variables!(P, variables)
-    terms = MP.term_type(P)[MOI.constant(func)]
-    for t in func.affine_terms
-        push!(terms, MP.term(t.coefficient, d[t.variable]))
-    end
-    for t in func.quadratic_terms
-        coef = t.variable_1 == t.variable_2 ? t.coefficient / 2 : t.coefficient
-        push!(terms, MP.term(coef, d[t.variable_1] * d[t.variable_2]))
-    end
-    return ScalarPolynomialFunction{T,P}(MP.polynomial(terms), variables)
+    poly = _to_polynomial!(d, T, func)
+    return ScalarPolynomialFunction{T,P}(poly, variables)
 end
 
 function Base.convert(
@@ -148,4 +157,15 @@ function MOI.Utilities.promote_operation(
     ::Type{ScalarPolynomialFunction{T,P}},
 ) where {T,P}
     return MOI.VectorQuadraticFunction{T}
+end
+
+function MOI.Utilities.operate(
+    op::Union{typeof(+),typeof(-)},
+    ::Type{T},
+    p::ScalarPolynomialFunction{T,P},
+    f::Union{T,MOI.AbstractScalarFunction},
+) where {T,P}
+    d = Dict(vi => v for (vi, v) in zip(p.variables, MP.variables(p.polynomial)))
+    poly = _to_polynomial!(d, T, f)
+    return _scalar_polynomial(d, T, op(p.polynomial, poly))
 end

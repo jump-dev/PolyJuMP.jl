@@ -43,9 +43,18 @@ function MOI.supports_add_constrained_variables(
     return MOI.supports_add_constrained_variables(model.model, S)
 end
 
-function MOI.supports(model::Optimizer, attr::MOI.ObjectiveFunction)
+function MOI.supports(model::Optimizer, attr::MOI.AbstractModelAttribute)
     return MOI.supports(model.model, attr)
 end
+
+function MOI.set(model::Optimizer, attr::MOI.AbstractModelAttribute, value)
+    MOI.set(model.model, attr, value)
+end
+
+function MOI.get(model::Optimizer, attr::MOI.AbstractModelAttribute)
+    return MOI.get(model.model, attr)
+end
+
 
 function MOI.supports_constraint(
     model::Optimizer,
@@ -53,6 +62,14 @@ function MOI.supports_constraint(
     ::Type{S},
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     return MOI.supports_constraint(model.model, F, S)
+end
+
+function MOI.add_constraint(
+    model::Optimizer,
+    func::MOI.AbstractFunction,
+    set::MOI.AbstractSet,
+)
+    return MOI.add_constraint(model.model, func, set)
 end
 
 function MOI.supports_incremental_interface(model::Optimizer)

@@ -1,5 +1,6 @@
 module QCQP
 
+import MutableArithmetics as MA
 import MultivariatePolynomials as MP
 import DataStructures
 import PolyJuMP

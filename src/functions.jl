@@ -1,5 +1,5 @@
 """
-    struct ScalarPolynomialFunction{P<:MP.AbstractPolynomialLike} <: MOI.AbstractScalarFunction
+    struct ScalarPolynomialFunction{T,P<:MP.AbstractPolynomial{T}} <: MOI.AbstractScalarFunction
         polynomial::P
         variables::Vector{MOI.VariableIndex}
     end
@@ -136,7 +136,7 @@ end
 function MOI.Utilities.promote_operation(
     ::typeof(-),
     ::Type{T},
-    F::Type{ScalarPolynomialFunction{T,P}},
+    F::Type{<:Union{ScalarPolynomialFunction{T,P},VectorPolynomialFunction{T,P}}},
 ) where {T,P}
     return F
 end
@@ -150,13 +150,34 @@ function MOI.Utilities.promote_operation(
     return F
 end
 
-# FIXME
+# Placeholder for `promote_operation`
+struct VectorPolynomialFunction{T,P<:MP.AbstractPolynomial{T}} <: MOI.AbstractVectorFunction
+end
+
+function MOI.Utilities.scalar_type(::Type{VectorPolynomialFunction{T,P}}) where {T,P}
+    return PolyJuMP.ScalarPolynomialFunction{T,P}
+end
+
+function MOI.Utilities.is_coefficient_type(
+    ::Type{<:VectorPolynomialFunction{T}},
+    ::Type{T},
+) where {T}
+    return true
+end
+
+function MOI.Utilities.is_coefficient_type(
+    ::Type{<:VectorPolynomialFunction},
+    ::Type,
+)
+    return false
+end
+
 function MOI.Utilities.promote_operation(
     ::typeof(vcat),
     ::Type{T},
     ::Type{ScalarPolynomialFunction{T,P}},
 ) where {T,P}
-    return MOI.VectorQuadraticFunction{T}
+    return VectorPolynomialFunction{T,P}
 end
 
 function MOI.Utilities.operate(

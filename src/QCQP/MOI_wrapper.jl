@@ -22,6 +22,16 @@ end
 MOI.is_empty(model::Optimizer) = MOI.is_empty(model.model)
 MOI.empty!(model::Optimizer) = MOI.empty!(model.model)
 
+MOI.is_valid(model::Optimizer, i::MOI.Index) = MOI.is_valid(model.model, i)
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.AbstractConstraintAttribute,
+    ci::MOI.ConstraintIndex,
+)
+    return MOI.get(model.model, attr, ci)
+end
+
 MOI.add_variable(model::Optimizer) = MOI.add_variable(model.model)
 
 function MOI.supports_add_constrained_variable(
@@ -100,7 +110,7 @@ end
 
 MOI.optimize!(model::Optimizer) = MOI.optimize!(model.model)
 
-function _quad_convert(index, p::MP.AbstractPolynomialLike{T}, div) where {T}
+function _quad_convert(p::MP.AbstractPolynomialLike{T}, index, div) where {T}
     q = zero(MOI.ScalarQuadraticFunction{T})
     for t in MP.terms(p)
         α = MP.coefficient(t)
@@ -108,23 +118,12 @@ function _quad_convert(index, p::MP.AbstractPolynomialLike{T}, div) where {T}
         if MP.degree(mono) == 0
             MA.operate!(+, q, α)
         else
-            vars = MP.effective_variables(mono)
-            if MP.degree(mono) == 1
-                @assert length(vars) == 1
-                MA.operate!(MA.add_mul, q, α, index(first(vars)))
-            elseif MP.degree(mono) == 2
-                x = first(vars)
-                if length(vars) == 1
-                    y = x
-                else
-                    @assert length(vars) == 2
-                    y = vars[2]
-                end
-                MA.operate!(MA.add_mul, q, α, index(x), index(y))
+            if haskey(index, mono)
+                MA.operate!(MA.add_mul, q, α, index[mono])
             else
                 x = div[mono]
                 y = MP.div_multiple(mono, x)
-                MA.operate!(MA.add_mul, q, α, index(x), index(y))
+                MA.operate!(MA.add_mul, q, α, index[x], index[y])
             end
         end
     end
@@ -140,11 +139,19 @@ end
 
 function monomial_variable_index(model::Optimizer{T}, d::Dict, div, mono::MP.AbstractMonomialLike) where {T}
     if !haskey(d, mono)
-        d[mono] = MOI.add_variable(model.model)
         x = div[mono]
         vx = monomial_variable_index(model, d, div, x)
         y = MP.div_multiple(mono, x)
         vy = monomial_variable_index(model, d, div, y)
+        lx, ux = MOI.Utilities.get_bounds(model, T, vx)
+        ly, uy = MOI.Utilities.get_bounds(model, T, vy)
+        bounds = (lx * ly, lx * uy, ux * ly, ux * uy)
+        l = min(bounds...)
+        if vx == vy
+            l = max(l, zero(T))
+        end
+        u = max(bounds...)
+        d[mono], _ = MOI.add_constrained_variable(model.model, MOI.Interval(l, u))
         MOI.add_constraint(model,
             MA.@rewrite(one(T) * d[mono] - one(T) * vx * vy),
             MOI.EqualTo(zero(T)),
@@ -159,10 +166,16 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
         p = model.objective.polynomial
         monos = MP.monomials(p)
         div = decompose(monos)
-        function index(mono)
-            return monomial_variable_index(model, d, div, mono)
+        for mono in sort(collect(keys(div)))
+            if haskey(d, mono)
+                continue
+            end
+            a = div[mono]
+            monomial_variable_index(model, d, div, a)
+            b = MP.div_multiple(mono, a)
+            monomial_variable_index(model, d, div, b)
         end
-        obj = _quad_convert(index, p, div)
+        obj = _quad_convert(p, d, div)
         MOI.set(model.model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
     end
     return

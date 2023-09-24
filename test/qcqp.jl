@@ -50,17 +50,30 @@ function test_objective(x, y, T)
     inner = Model{T}()
     optimizer = MOI.Utilities.MockOptimizer(inner)
     model = PolyJuMP.JuMP.GenericModel{T}(() -> PolyJuMP.QCQP.Optimizer(optimizer))
-    PolyJuMP.@variable(model, 0 <= a)
-    PolyJuMP.@variable(model, 0 <= b)
+    PolyJuMP.@variable(model, 1 <= a <= 2)
+    PolyJuMP.@variable(model, -5 <= b <= 3)
     PolyJuMP.@constraint(model, a + b >= 1)
     PolyJuMP.@objective(model, Min, a^3 - a^2 + 2a*b - b^2 + b^3)
     PolyJuMP.optimize!(model)
     vis = MOI.get(inner, MOI.ListOfVariableIndices())
     @test length(vis) == 4
+    a, b, b2, a2 = vis
+    @test MOI.Utilities.get_bounds(inner, T, a) == (1, 2)
+    @test MOI.Utilities.get_bounds(inner, T, b) == (-5, 3)
+    @test MOI.Utilities.get_bounds(inner, T, a2) == (1, 4)
+    @test MOI.Utilities.get_bounds(inner, T, b2) == (0, 25)
     F = MOI.ScalarQuadraticFunction{T}
     S = MOI.EqualTo{T}
     cis = MOI.get(inner, MOI.ListOfConstraintIndices{F,S}())
     @test length(cis) == 2
+    o = one(T)
+    @test MOI.get(inner, MOI.ConstraintFunction(), cis[1]) ≈ b2 - o * b * b
+    @test MOI.get(inner, MOI.ConstraintFunction(), cis[2]) ≈ a2 - o * a * a
+    for ci in cis
+        @test MOI.get(inner, MOI.ConstraintSet(), ci) == MOI.EqualTo(zero(T))
+    end
+    @test MOI.get(inner, MOI.ObjectiveFunction{F}()) ≈
+        -o * a2 + 2o * a * b - o * b2 + o * a * a2 + o * b * b2
 end
 
 function runtests(x, y, T)

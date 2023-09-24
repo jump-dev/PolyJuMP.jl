@@ -102,7 +102,7 @@ end
 
 function _scalar_polynomial(d::Dict{K,V}, ::Type{T}, poly) where {T,K,V}
     variable_map = collect(d)
-    sort!(variable_map, by = x -> x[2])
+    sort!(variable_map, by = x -> x[2], rev = true)
     variables = [x[1] for x in variable_map]
     P = MP.polynomial_type(V, T)
     return ScalarPolynomialFunction{T,P}(poly, variables)

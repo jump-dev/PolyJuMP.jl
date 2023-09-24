@@ -133,23 +133,6 @@ function MOI.Utilities.is_coefficient_type(
     return S === T
 end
 
-function MOI.Utilities.promote_operation(
-    ::typeof(-),
-    ::Type{T},
-    F::Type{<:Union{ScalarPolynomialFunction{T,P},VectorPolynomialFunction{T,P}}},
-) where {T,P}
-    return F
-end
-
-function MOI.Utilities.promote_operation(
-    ::typeof(-),
-    ::Type{T},
-    F::Type{ScalarPolynomialFunction{T,P}},
-    ::Type{<:Union{T,MOI.Utilities.ScalarLike{T}}},
-) where {T,P}
-    return F
-end
-
 # Placeholder for `promote_operation`
 struct VectorPolynomialFunction{T,P<:MP.AbstractPolynomial{T}} <: MOI.AbstractVectorFunction
 end
@@ -170,6 +153,32 @@ function MOI.Utilities.is_coefficient_type(
     ::Type,
 )
     return false
+end
+
+function MOI.Utilities.promote_operation(
+    ::typeof(-),
+    ::Type{T},
+    F::Type{<:Union{ScalarPolynomialFunction{T,P},VectorPolynomialFunction{T,P}}},
+) where {T,P}
+    return F
+end
+
+function MOI.Utilities.promote_operation(
+    ::typeof(-),
+    ::Type{T},
+    F::Type{ScalarPolynomialFunction{T,P}},
+    ::Type{<:Union{T,MOI.Utilities.ScalarLike{T}}},
+) where {T,P}
+    return F
+end
+
+function MOI.Utilities.promote_operation(
+    ::typeof(-),
+    ::Type{T},
+    F::Type{VectorPolynomialFunction{T,P}},
+    ::Type{<:Union{AbstractVector{T},MOI.Utilities.VectorLike{T}}},
+) where {T,P}
+    return F
 end
 
 function MOI.Utilities.promote_operation(

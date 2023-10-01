@@ -49,14 +49,16 @@ end
 function _test_objective_or_constraint(x, y, T, obj::Bool)
     inner = Model{T}()
     optimizer = MOI.Utilities.MockOptimizer(inner)
-    model = PolyJuMP.JuMP.GenericModel{T}(() -> PolyJuMP.QCQP.Optimizer{T}(optimizer))
+    model = PolyJuMP.JuMP.GenericModel{T}(
+        () -> PolyJuMP.QCQP.Optimizer{T}(optimizer),
+    )
     PolyJuMP.@variable(model, 1 <= a <= 2)
     PolyJuMP.@variable(model, -5 <= b <= 3)
     PolyJuMP.@constraint(model, a + b >= 1)
     if obj
-        PolyJuMP.@objective(model, Min, a^3 - a^2 + 2a*b - b^2 + b^3)
+        PolyJuMP.@objective(model, Min, a^3 - a^2 + 2a * b - b^2 + b^3)
     else
-        PolyJuMP.@constraint(model, 0 <= a^3 - a^2 + 2a*b - b^2 + b^3 <= 1)
+        PolyJuMP.@constraint(model, 0 <= a^3 - a^2 + 2a * b - b^2 + b^3 <= 1)
     end
     PolyJuMP.optimize!(model)
     vis = MOI.get(inner, MOI.ListOfVariableIndices())
@@ -98,7 +100,9 @@ end
 function test_objective_and_constraint(x, y, T)
     inner = Model{T}()
     optimizer = MOI.Utilities.MockOptimizer(inner)
-    model = PolyJuMP.JuMP.GenericModel{T}(() -> PolyJuMP.QCQP.Optimizer{T}(optimizer))
+    model = PolyJuMP.JuMP.GenericModel{T}(
+        () -> PolyJuMP.QCQP.Optimizer{T}(optimizer),
+    )
     PolyJuMP.@variable(model, -2 <= a <= 3)
     PolyJuMP.@variable(model, 5 <= b <= 7)
     PolyJuMP.@constraint(model, 0 <= a^3 <= 1)
@@ -136,7 +140,8 @@ function test_objective_and_constraint(x, y, T)
     @test length(cis) == 3
     @test MOI.get(inner, MOI.ConstraintFunction(), cis[1]) ≈ o * a3 + z * a * b
     @test MOI.get(inner, MOI.ConstraintFunction(), cis[2]) ≈ o * b3 + z * a * b
-    @test MOI.get(inner, MOI.ConstraintFunction(), cis[3]) ≈ o * a3 * b3 + o * a6
+    @test MOI.get(inner, MOI.ConstraintFunction(), cis[3]) ≈
+          o * a3 * b3 + o * a6
 end
 
 function runtests(x, y)

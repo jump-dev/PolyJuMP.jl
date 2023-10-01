@@ -75,7 +75,14 @@ function _to_polynomial!(
     end
     for t in func.quadratic_terms
         coef = t.variable_1 == t.variable_2 ? t.coefficient / 2 : t.coefficient
-        push!(terms, MP.term(coef, _to_polynomial!(d, T, t.variable_1) * _to_polynomial!(d, T, t.variable_2)))
+        push!(
+            terms,
+            MP.term(
+                coef,
+                _to_polynomial!(d, T, t.variable_1) *
+                _to_polynomial!(d, T, t.variable_2),
+            ),
+        )
     end
     return MP.polynomial(terms)
 end
@@ -134,10 +141,12 @@ function MOI.Utilities.is_coefficient_type(
 end
 
 # Placeholder for `promote_operation`
-struct VectorPolynomialFunction{T,P<:MP.AbstractPolynomial{T}} <: MOI.AbstractVectorFunction
-end
+struct VectorPolynomialFunction{T,P<:MP.AbstractPolynomial{T}} <:
+       MOI.AbstractVectorFunction end
 
-function MOI.Utilities.scalar_type(::Type{VectorPolynomialFunction{T,P}}) where {T,P}
+function MOI.Utilities.scalar_type(
+    ::Type{VectorPolynomialFunction{T,P}},
+) where {T,P}
     return PolyJuMP.ScalarPolynomialFunction{T,P}
 end
 
@@ -158,7 +167,9 @@ end
 function MOI.Utilities.promote_operation(
     ::typeof(-),
     ::Type{T},
-    F::Type{<:Union{ScalarPolynomialFunction{T,P},VectorPolynomialFunction{T,P}}},
+    F::Type{
+        <:Union{ScalarPolynomialFunction{T,P},VectorPolynomialFunction{T,P}},
+    },
 ) where {T,P}
     return F
 end
@@ -195,7 +206,9 @@ function MOI.Utilities.operate(
     p::ScalarPolynomialFunction{T,P},
     f::Union{T,MOI.AbstractScalarFunction},
 ) where {T,P}
-    d = Dict(vi => v for (vi, v) in zip(p.variables, MP.variables(p.polynomial)))
+    d = Dict(
+        vi => v for (vi, v) in zip(p.variables, MP.variables(p.polynomial))
+    )
     poly = _to_polynomial!(d, T, f)
     return _scalar_polynomial(d, T, op(p.polynomial, poly))
 end

@@ -12,7 +12,9 @@ function decompose(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
         var => var for var in vars
     )
     for mono in monos
-        quad[mono] = nothing
+        if MP.degree(mono) > 1
+            quad[mono] = nothing
+        end
     end
     candidates =
         DataStructures.PriorityQueue{eltype(monos),Int}(Base.Order.Reverse)

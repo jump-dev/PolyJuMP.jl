@@ -1,6 +1,6 @@
 """
-    struct ScalarPolynomialFunction{P<:MP.AbstractPolynomialLike} <: MOI.AbstractScalarFunction
-        p::P
+    struct ScalarPolynomialFunction{T,P<:MP.AbstractPolynomial{T}} <: MOI.AbstractScalarFunction
+        polynomial::P
         variables::Vector{MOI.VariableIndex}
     end
 
@@ -64,6 +64,29 @@ function Base.convert(
     return ScalarPolynomialFunction{T,P}(poly, variables)
 end
 
+function _to_polynomial!(
+    d::Dict{K,V},
+    ::Type{T},
+    func::MOI.ScalarQuadraticFunction{T},
+) where {K,V,T}
+    terms = MP.term_type(V, T)[MOI.constant(func)]
+    for t in func.affine_terms
+        push!(terms, MP.term(t.coefficient, _to_polynomial!(d, T, t.variable)))
+    end
+    for t in func.quadratic_terms
+        coef = t.variable_1 == t.variable_2 ? t.coefficient / 2 : t.coefficient
+        push!(
+            terms,
+            MP.term(
+                coef,
+                _to_polynomial!(d, T, t.variable_1) *
+                _to_polynomial!(d, T, t.variable_2),
+            ),
+        )
+    end
+    return MP.polynomial(terms)
+end
+
 function Base.convert(
     ::Type{ScalarPolynomialFunction{T,P}},
     func::MOI.ScalarQuadraticFunction{T},
@@ -73,15 +96,8 @@ function Base.convert(
     quad_variables_2 = [t.variable_2 for t in func.quadratic_terms]
     variables = [linear_variables; quad_variables_1; quad_variables_2]
     _, d = _polynomial_variables!(P, variables)
-    terms = MP.term_type(P)[MOI.constant(func)]
-    for t in func.affine_terms
-        push!(terms, MP.term(t.coefficient, d[t.variable]))
-    end
-    for t in func.quadratic_terms
-        coef = t.variable_1 == t.variable_2 ? t.coefficient / 2 : t.coefficient
-        push!(terms, MP.term(coef, d[t.variable_1] * d[t.variable_2]))
-    end
-    return ScalarPolynomialFunction{T,P}(MP.polynomial(terms), variables)
+    poly = _to_polynomial!(d, T, func)
+    return ScalarPolynomialFunction{T,P}(poly, variables)
 end
 
 function Base.convert(
@@ -124,10 +140,36 @@ function MOI.Utilities.is_coefficient_type(
     return S === T
 end
 
+# Placeholder for `promote_operation`
+struct VectorPolynomialFunction{T,P<:MP.AbstractPolynomial{T}} <:
+       MOI.AbstractVectorFunction end
+
+function MOI.Utilities.scalar_type(
+    ::Type{VectorPolynomialFunction{T,P}},
+) where {T,P}
+    return PolyJuMP.ScalarPolynomialFunction{T,P}
+end
+
+function MOI.Utilities.is_coefficient_type(
+    ::Type{<:VectorPolynomialFunction{T}},
+    ::Type{T},
+) where {T}
+    return true
+end
+
+function MOI.Utilities.is_coefficient_type(
+    ::Type{<:VectorPolynomialFunction},
+    ::Type,
+)
+    return false
+end
+
 function MOI.Utilities.promote_operation(
     ::typeof(-),
     ::Type{T},
-    F::Type{ScalarPolynomialFunction{T,P}},
+    F::Type{
+        <:Union{ScalarPolynomialFunction{T,P},VectorPolynomialFunction{T,P}},
+    },
 ) where {T,P}
     return F
 end
@@ -141,11 +183,32 @@ function MOI.Utilities.promote_operation(
     return F
 end
 
-# FIXME
+function MOI.Utilities.promote_operation(
+    ::typeof(-),
+    ::Type{T},
+    F::Type{VectorPolynomialFunction{T,P}},
+    ::Type{<:Union{AbstractVector{T},MOI.Utilities.VectorLike{T}}},
+) where {T,P}
+    return F
+end
+
 function MOI.Utilities.promote_operation(
     ::typeof(vcat),
     ::Type{T},
     ::Type{ScalarPolynomialFunction{T,P}},
 ) where {T,P}
-    return MOI.VectorQuadraticFunction{T}
+    return VectorPolynomialFunction{T,P}
+end
+
+function MOI.Utilities.operate(
+    op::Union{typeof(+),typeof(-)},
+    ::Type{T},
+    p::ScalarPolynomialFunction{T,P},
+    f::Union{T,MOI.AbstractScalarFunction},
+) where {T,P}
+    d = Dict(
+        vi => v for (vi, v) in zip(p.variables, MP.variables(p.polynomial))
+    )
+    poly = _to_polynomial!(d, T, f)
+    return _scalar_polynomial(d, T, op(p.polynomial, poly))
 end

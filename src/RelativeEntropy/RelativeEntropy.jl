@@ -6,21 +6,43 @@ import MathOptInterface as MOI
 import JuMP
 import PolyJuMP
 
+abstract type AbstractAGECone <: MOI.AbstractVectorSet end
+
 """
-    struct SAGECone <: MOI.AbstractVectorSet
+    struct SignomialSAGECone <: MOI.AbstractVectorSet
         α::Matrix{Int}
     end
 
-**S**ums of **A**M/**G**M **E**xponential.
+**S**ums of **A**M/**G**M **E**xponential for signomials.
 """
-struct SAGECone <: MOI.AbstractVectorSet
+struct SignomialSAGECone <: AbstractAGECone
     α::Matrix{Int}
 end
-MOI.dimension(set::SAGECone) = size(set.α, 1)
-Base.copy(set::SAGECone) = set
 
-struct SAGESet <: PolyJuMP.PolynomialSet end
-JuMP.reshape_set(::SAGECone, ::PolyJuMP.PolynomialShape) = SAGESet()
+"""
+    struct PolynomialSAGECone <: MOI.AbstractVectorSet
+        α::Matrix{Int}
+    end
+
+**S**ums of **A**M/**G**M **E**xponential for polynomials.
+"""
+struct PolynomialSAGECone <: AbstractAGECone
+    α::Matrix{Int}
+end
+
+struct SignomialAGECone <: AbstractAGECone
+    α::Matrix{Int}
+    k::Int
+end
+
+struct PolynomialAGECone <: AbstractAGECone
+    α::Matrix{Int}
+    k::Int
+end
+
+MOI.dimension(set::AbstractAGECone) = size(set.α, 1)
+Base.copy(set::AbstractAGECone) = set
+
 function _exponents_matrix(monos)
     α = Matrix{Int}(undef, length(monos), MP.nvariables(monos))
     for (i, mono) in enumerate(monos)
@@ -31,35 +53,51 @@ function _exponents_matrix(monos)
     end
     return α
 end
-JuMP.moi_set(::SAGESet, monos) = SAGECone(_exponents_matrix(monos))
 
-struct AGECone <: MOI.AbstractVectorSet
-    α::Matrix{Int}
-    k::Int
-end
-MOI.dimension(set::AGECone) = size(set.α, 1)
-Base.copy(set::AGECone) = set
+struct SignomialSAGESet <: PolyJuMP.PolynomialSet end
+JuMP.reshape_set(::SignomialSAGECone, ::PolyJuMP.PolynomialShape) = SignomialSAGESet()
+JuMP.moi_set(::SignomialSAGESet, monos) = SignomialSAGECone(_exponents_matrix(monos))
 
-struct AGESet{MT<:MP.AbstractMonomial} <: PolyJuMP.PolynomialSet
+struct PolynomialSAGESet <: PolyJuMP.PolynomialSet end
+JuMP.reshape_set(::PolynomialSAGECone, ::PolyJuMP.PolynomialShape) = PolynomialSAGESet()
+JuMP.moi_set(::PolynomialSAGESet, monos) = PolynomialSAGECone(_exponents_matrix(monos))
+
+struct SignomialAGESet{MT<:MP.AbstractMonomial} <: PolyJuMP.PolynomialSet
     monomial::MT
 end
-function JuMP.reshape_set(set::AGECone, shape::PolyJuMP.PolynomialShape)
-    return AGESet(shape.monomials[set.k])
+function JuMP.reshape_set(set::SignomialAGECone, shape::PolyJuMP.PolynomialShape)
+    return SignomialAGESet(shape.monomials[set.k])
 end
-function JuMP.moi_set(set::AGESet, monos)
+function JuMP.moi_set(set::SignomialAGESet, monos)
     k = findfirst(isequal(set.monomial), monos)
-    return AGECone(_exponents_matrix(monos), k)
+    return SignomialAGECone(_exponents_matrix(monos), k)
+end
+
+struct PolynomialAGESet{MT<:MP.AbstractMonomial} <: PolyJuMP.PolynomialSet
+    monomial::MT
+end
+function JuMP.reshape_set(set::PolynomialAGECone, shape::PolyJuMP.PolynomialShape)
+    return PolynomialAGESet(shape.monomials[set.k])
+end
+function JuMP.moi_set(set::PolynomialAGESet, monos)
+    k = findfirst(isequal(set.monomial), monos)
+    return PolynomialAGECone(_exponents_matrix(monos), k)
 end
 
 function setdefaults!(data::PolyJuMP.Data)
-    PolyJuMP.setdefault!(data, PolyJuMP.NonNegPoly, SAGESet)
+    PolyJuMP.setdefault!(data, PolyJuMP.NonNegPoly, PolynomialSAGESet)
     return
 end
 
 function JuMP.build_constraint(
     _error::Function,
     p,
-    set::Union{SAGESet,AGESet};
+    set::Union{
+        SignomialSAGESet,
+        PolynomialSAGESet,
+        SignomialAGESet,
+        PolynomialAGESet,
+    };
     kws...,
 )
     coefs = PolyJuMP.non_constant_coefficients(p)
@@ -77,7 +115,7 @@ include("bridges/sage.jl")
 
 function PolyJuMP.bridges(
     F::Type{<:MOI.AbstractVectorFunction},
-    ::Type{<:SAGECone},
+    ::Type{<:SignomialSAGECone},
 )
     return [(SAGEBridge, PolyJuMP._coef_type(F))]
 end
@@ -86,9 +124,19 @@ include("bridges/age.jl")
 
 function PolyJuMP.bridges(
     F::Type{<:MOI.AbstractVectorFunction},
-    ::Type{<:AGECone},
+    ::Type{<:SignomialAGECone},
 )
     return [(AGEBridge, PolyJuMP._coef_type(F))]
 end
+
+include("bridges/signomial.jl")
+
+function PolyJuMP.bridges(
+    F::Type{<:MOI.AbstractVectorFunction},
+    ::Type{<:Union{PolynomialSAGECone,PolynomialAGECone}},
+)
+    return [(SignomialBridge, PolyJuMP._coef_type(F))]
+end
+
 
 end

@@ -39,8 +39,6 @@ SIAM Journal on Optimization 26.2 (2016): 1147-1173.
 "Signomial and polynomial optimization via relative entropy and partial dualization."
 Mathematical Programming Computation 13 (2021): 257-295.
 https://arxiv.org/pdf/1907.00814.pdf
-
-
 """
 struct AGEBridge{T,F,G,H} <: MOI.Bridges.Constraint.AbstractBridge
     k::Int
@@ -51,8 +49,8 @@ end
 function MOI.Bridges.Constraint.bridge_constraint(
     ::Type{AGEBridge{T,F,G,H}},
     model,
-    func::G,
-    set::AGECone,
+    func::H,
+    set::SignomialAGECone,
 ) where {T,F,G,H}
     m = size(set.α, 1)
     ν = MOI.add_variables(model, m - 1)
@@ -86,7 +84,7 @@ end
 function MOI.supports_constraint(
     ::Type{<:AGEBridge{T}},
     ::Type{<:MOI.AbstractVectorFunction},
-    ::Type{<:AGECone},
+    ::Type{<:SignomialAGECone},
 ) where {T}
     return true
 end
@@ -104,7 +102,7 @@ end
 function MOI.Bridges.Constraint.concrete_bridge_type(
     ::Type{<:AGEBridge{T}},
     H::Type{<:MOI.AbstractVectorFunction},
-    ::Type{<:AGECone},
+    ::Type{<:SignomialAGECone},
 ) where {T}
     S = MOI.Utilities.scalar_type(H)
     F = MOI.Utilities.promote_operation(

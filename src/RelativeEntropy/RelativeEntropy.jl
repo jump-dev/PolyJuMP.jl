@@ -55,17 +55,28 @@ function _exponents_matrix(monos)
 end
 
 struct SignomialSAGESet <: PolyJuMP.PolynomialSet end
-JuMP.reshape_set(::SignomialSAGECone, ::PolyJuMP.PolynomialShape) = SignomialSAGESet()
-JuMP.moi_set(::SignomialSAGESet, monos) = SignomialSAGECone(_exponents_matrix(monos))
+function JuMP.reshape_set(::SignomialSAGECone, ::PolyJuMP.PolynomialShape)
+    return SignomialSAGESet()
+end
+function JuMP.moi_set(::SignomialSAGESet, monos)
+    return SignomialSAGECone(_exponents_matrix(monos))
+end
 
 struct PolynomialSAGESet <: PolyJuMP.PolynomialSet end
-JuMP.reshape_set(::PolynomialSAGECone, ::PolyJuMP.PolynomialShape) = PolynomialSAGESet()
-JuMP.moi_set(::PolynomialSAGESet, monos) = PolynomialSAGECone(_exponents_matrix(monos))
+function JuMP.reshape_set(::PolynomialSAGECone, ::PolyJuMP.PolynomialShape)
+    return PolynomialSAGESet()
+end
+function JuMP.moi_set(::PolynomialSAGESet, monos)
+    return PolynomialSAGECone(_exponents_matrix(monos))
+end
 
 struct SignomialAGESet{MT<:MP.AbstractMonomial} <: PolyJuMP.PolynomialSet
     monomial::MT
 end
-function JuMP.reshape_set(set::SignomialAGECone, shape::PolyJuMP.PolynomialShape)
+function JuMP.reshape_set(
+    set::SignomialAGECone,
+    shape::PolyJuMP.PolynomialShape,
+)
     return SignomialAGESet(shape.monomials[set.k])
 end
 function JuMP.moi_set(set::SignomialAGESet, monos)
@@ -76,7 +87,10 @@ end
 struct PolynomialAGESet{MT<:MP.AbstractMonomial} <: PolyJuMP.PolynomialSet
     monomial::MT
 end
-function JuMP.reshape_set(set::PolynomialAGECone, shape::PolyJuMP.PolynomialShape)
+function JuMP.reshape_set(
+    set::PolynomialAGECone,
+    shape::PolyJuMP.PolynomialShape,
+)
     return PolynomialAGESet(shape.monomials[set.k])
 end
 function JuMP.moi_set(set::PolynomialAGESet, monos)
@@ -137,6 +151,5 @@ function PolyJuMP.bridges(
 )
     return [(SignomialBridge, PolyJuMP._coef_type(F))]
 end
-
 
 end

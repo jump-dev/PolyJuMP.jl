@@ -22,8 +22,20 @@ function _test_motzkin(x, y, T, solver, set)
 end
 
 function test_motzkin(x, y, T, solver)
-    _test_motzkin(x, y, T, solver, PolyJuMP.RelativeEntropy.SignomialAGESet(x^2 * y^2))
-    _test_motzkin(x, y, T, solver, PolyJuMP.RelativeEntropy.SignomialSAGESet())
+    _test_motzkin(
+        x,
+        y,
+        T,
+        solver,
+        PolyJuMP.RelativeEntropy.SignomialAGESet(x^2 * y^2),
+    )
+    return _test_motzkin(
+        x,
+        y,
+        T,
+        solver,
+        PolyJuMP.RelativeEntropy.SignomialSAGESet(),
+    )
 end
 
 import ECOS

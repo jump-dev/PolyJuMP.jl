@@ -1,6 +1,8 @@
 struct SAGEBridge{T,F,G} <: MOI.Bridges.Constraint.AbstractBridge
     ν::Matrix{MOI.VariableIndex}
-    age_constraints::Vector{MOI.ConstraintIndex{MOI.VectorOfVariables,SignomialAGECone}}
+    age_constraints::Vector{
+        MOI.ConstraintIndex{MOI.VectorOfVariables,SignomialAGECone},
+    }
     equality_constraints::Vector{MOI.ConstraintIndex{F,MOI.EqualTo{T}}}
 end
 
@@ -13,7 +15,10 @@ function MOI.Bridges.Constraint.bridge_constraint(
     m = size(set.α, 1)
     ν = Matrix{MOI.VariableIndex}(undef, m, m)
     age_constraints =
-        Vector{MOI.ConstraintIndex{MOI.VectorOfVariables,SignomialAGECone}}(undef, m)
+        Vector{MOI.ConstraintIndex{MOI.VectorOfVariables,SignomialAGECone}}(
+            undef,
+            m,
+        )
     for k in 1:m
         ν[k, :], age_constraints[k] =
             MOI.add_constrained_variables(model, SignomialAGECone(set.α, k))

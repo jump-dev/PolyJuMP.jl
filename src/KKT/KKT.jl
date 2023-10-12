@@ -125,75 +125,12 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
     return MOI.Utilities.default_copy_to(dest, src)
 end
 
-function _add_to_system(system, lagrangian, ::SS.FullSpace, ::Bool)
-    return lagrangian
-end
-
-function _add_to_system(
-    system,
-    lagrangian,
-    set::SS.AlgebraicSet,
-    maximization::Bool,
-)
-    n = SS.nequalities(set)
-    if iszero(n)
-        return
-    end
-    DynamicPolynomials.@polyvar λ[1:n]
-    for i in eachindex(λ)
-        p = SS.equalities(set)[i]
-        SS.add_equality!(system, p)
-        if maximization
-            lagrangian = MA.add_mul!!(lagrangian, λ[i], p)
-        else
-            lagrangian = MA.sub_mul!!(lagrangian, λ[i], p)
-        end
-    end
-    return lagrangian
-end
-
-function _add_to_system(
-    system,
-    lagrangian,
-    set::SS.BasicSemialgebraicSet,
-    maximization::Bool,
-)
-    lagrangian = _add_to_system(system, lagrangian, set.V, maximization)
-    DynamicPolynomials.@polyvar σ[1:PolyJuMP._nineq(set)]
-    for i in eachindex(σ)
-        p = SS.inequalities(set)[i]
-        SS.add_equality!(system, σ[i] * p)
-        if maximization
-            lagrangian = MA.add_mul!!(lagrangian, σ[i]^2, p)
-        else
-            lagrangian = MA.sub_mul!!(lagrangian, σ[i]^2, p)
-        end
-    end
-    return lagrangian
-end
-
 function _square(x::Vector{T}, n) where {T}
     return T[(i + n in eachindex(x)) ? x[i] : x[i]^2 for i in eachindex(x)]
 end
 
 function _optimize!(model::Optimizer{T}) where {T}
-    if isnothing(model.options.solver)
-        system = SS.AlgebraicSet{T,PolyJuMP.PolyType{T}}()
-    else
-        I = SS.PolynomialIdeal{T,PolyJuMP.PolyType{T}}()
-        system = SS.AlgebraicSet(I, model.options.solver)
-    end
-    if model.model.objective_sense == MOI.FEASIBILITY_SENSE
-        lagrangian = MA.Zero()
-    else
-        lagrangian = MA.mutable_copy(model.model.objective_function)
-    end
-    lagrangian = _add_to_system(
-        system,
-        lagrangian,
-        model.model.set,
-        model.model.objective_sense == MOI.MAX_SENSE,
-    )
+    lagrangian, system = PolyJuMP.lagrangian_kkt(model.model, model.options.solver)
     x = MP.variables(model.model)
     if lagrangian isa MA.Zero
         model.solutions = [
@@ -206,10 +143,6 @@ function _optimize!(model::Optimizer{T}) where {T}
         model.termination_status = MOI.LOCALLY_SOLVED # We could use `OPTIMAL` here but it would then make MOI tests fail as they expect `LOCALLY_SOLVED`
         model.raw_status = "Lagrangian function is zero so any solution is optimal even if the solver reports a unique solution `0`."
         return
-    end
-    ∇x = MP.differentiate(lagrangian, x)
-    for p in ∇x
-        SS.add_equality!(system, p)
     end
     solutions = nothing
     try # We could check `SS.is_zero_dimensional(system)` but that would only work for Gröbner basis based

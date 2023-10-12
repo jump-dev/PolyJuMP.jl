@@ -130,7 +130,8 @@ function _square(x::Vector{T}, n) where {T}
 end
 
 function _optimize!(model::Optimizer{T}) where {T}
-    lagrangian, system = PolyJuMP.lagrangian_kkt(model.model, model.options.solver)
+    lagrangian, system =
+        PolyJuMP.lagrangian_kkt(model.model, model.options.solver)
     x = MP.variables(model.model)
     if lagrangian isa MA.Zero
         model.solutions = [

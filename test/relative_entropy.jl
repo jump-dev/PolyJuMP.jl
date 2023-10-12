@@ -11,31 +11,58 @@ import ECOS
 using JuMP
 using PolyJuMP
 
-function _test_motzkin(x, y, T, solver, set)
+function _test_motzkin(x, y, T, solver, set, feasible, square, neg)
     model = Model(solver)
+    a = square ? x^2 : x
+    b = square ? y^2 : y
     PolyJuMP.setpolymodule!(model, PolyJuMP.RelativeEntropy)
-    motzkin = x^4 * y^2 + x^2 * y^4 + one(T) - 3x^2 * y^2
+    if neg
+        motzkin = -a^2 * b - a * b^2 + one(T) - 3a * b
+    else
+        motzkin = a^2 * b + a * b^2 + one(T) - 3a * b
+    end
+    @show motzkin
     @constraint(model, motzkin in set)
     optimize!(model)
-    @test termination_status(model) == MOI.OPTIMAL
-    @test primal_status(model) == MOI.FEASIBLE_POINT
+    inner = model.moi_backend.optimizer.model
+    println(inner)
+    vis = MOI.get(inner, MOI.ListOfVariableIndices())
+    @show MOI.get(inner, MOI.VariablePrimal(), vis)
+    if feasible
+        @test termination_status(model) == MOI.OPTIMAL
+        @test primal_status(model) == MOI.FEASIBLE_POINT
+    else
+        @test termination_status(model) == MOI.INFEASIBLE
+    end
 end
 
 function test_motzkin(x, y, T, solver)
-    _test_motzkin(
-        x,
-        y,
-        T,
-        solver,
-        PolyJuMP.RelativeEntropy.SignomialAGESet(x^2 * y^2),
-    )
-    return _test_motzkin(
-        x,
-        y,
-        T,
-        solver,
-        PolyJuMP.RelativeEntropy.SignomialSAGESet(),
-    )
+    set = PolyJuMP.RelativeEntropy.SignomialAGESet(x^2 * y^2)
+    _test_motzkin(x, y, T, solver, set, true, true, false)
+    set = PolyJuMP.RelativeEntropy.SignomialAGESet(x * y)
+    _test_motzkin(x, y, T, solver, set, true, false, false)
+    set = PolyJuMP.RelativeEntropy.SignomialAGESet(x^4 * y^2)
+    _test_motzkin(x, y, T, solver, set, false, true, false)
+    set = PolyJuMP.RelativeEntropy.SignomialAGESet(x^2 * y)
+    _test_motzkin(x, y, T, solver, set, false, false, false)
+    set = PolyJuMP.RelativeEntropy.SignomialSAGESet()
+    _test_motzkin(x, y, T, solver, set, true, true, false)
+    _test_motzkin(x, y, T, solver, set, true, false, false)
+    _test_motzkin(x, y, T, solver, set, false, true, true)
+    _test_motzkin(x, y, T, solver, set, false, false, true)
+    set = PolyJuMP.RelativeEntropy.PolynomialAGESet(x^2 * y^2)
+    _test_motzkin(x, y, T, solver, set, true, true, false)
+    set = PolyJuMP.RelativeEntropy.PolynomialAGESet(x * y)
+    _test_motzkin(x, y, T, solver, set, false, false, false)
+    set = PolyJuMP.RelativeEntropy.PolynomialAGESet(x^4 * y^2)
+    _test_motzkin(x, y, T, solver, set, false, true, false)
+    set = PolyJuMP.RelativeEntropy.PolynomialAGESet(x^2 * y)
+    _test_motzkin(x, y, T, solver, set, false, false, false)
+    set = PolyJuMP.RelativeEntropy.PolynomialSAGESet()
+    _test_motzkin(x, y, T, solver, set, true, true, false)
+    set = PolyJuMP.RelativeEntropy.PolynomialSAGESet()
+    _test_motzkin(x, y, T, solver, set, false, false, false)
+    return
 end
 
 import ECOS

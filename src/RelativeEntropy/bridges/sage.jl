@@ -14,14 +14,10 @@ function MOI.Bridges.Constraint.bridge_constraint(
 ) where {T,F,G}
     m = size(set.α, 1)
     ν = Matrix{MOI.VariableIndex}(undef, m, m)
-    age_constraints =
-        Vector{MOI.ConstraintIndex{MOI.VectorOfVariables,SignomialAGECone}}(
-            undef,
-            m,
-        )
+    A = SignomialAGECone
+    c = Vector{MOI.ConstraintIndex{MOI.VectorOfVariables,A}}(undef, m)
     for k in 1:m
-        ν[k, :], age_constraints[k] =
-            MOI.add_constrained_variables(model, SignomialAGECone(set.α, k))
+        ν[k, :], c[k] = MOI.add_constrained_variables(model, A(set.α, k))
     end
     scalars = MOI.Utilities.eachscalar(func)
     n = size(set.α, 2)
@@ -36,7 +32,7 @@ function MOI.Bridges.Constraint.bridge_constraint(
             MOI.EqualTo(zero(T)),
         )
     end
-    return SAGEBridge{T,F,G}(ν, age_constraints, equality_constraints)
+    return SAGEBridge{T,F,G}(ν, c, equality_constraints)
 end
 
 function MOI.supports_constraint(

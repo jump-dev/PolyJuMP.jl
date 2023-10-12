@@ -1,5 +1,18 @@
+"""
+    SignomialBridge{T,S,P,F} <: MOI.Bridges.Constraint.AbstractBridge
+
+We use the Signomial Representative `SR` equation of [MCW21].
+
+[MCW20] Riley Murray, Venkat Chandrasekaran, Adam Wierman
+"Newton Polytopes and Relative Entropy Optimization"
+https://arxiv.org/abs/1810.01614
+[MCW21] Murray, Riley, Venkat Chandrasekaran, and Adam Wierman.
+"Signomial and polynomial optimization via relative entropy and partial dualization."
+Mathematical Programming Computation 13 (2021): 257-295.
+https://arxiv.org/pdf/1907.00814.pdf
+"""
 struct SignomialBridge{T,S,P,F} <: MOI.Bridges.Constraint.AbstractBridge
-    constraints::Vector{MOI.ConstraintIndex{F,S}}
+    constraints::MOI.ConstraintIndex{F,S}
 end
 
 _signomial(set::PolynomialSAGECone) = SignomialSAGECone(set.α)
@@ -13,17 +26,18 @@ function MOI.Bridges.Constraint.bridge_constraint(
     func::F,
     set,
 ) where {T,S,P,F}
-    g = MOI.scalarize(func)
+    g = MOI.Utilities.scalarize(func)
     for i in eachindex(g)
-        if isodd(sum(set.α[i, :]))
+        if any(isodd, set.α[i, :])
             vi = MOI.add_variable(model)
             # vi ≤ -|g[i]|
-            MOI.add_constraint(model, one(T) * vi - g[i], MOI.LessThan(zero(T)))
-            MOI.add_constraint(model, one(T) * vi + g[i], MOI.LessThan(zero(T)))
+            MOI.Utilities.normalize_and_add_constraint(model, one(T) * vi - g[i], MOI.LessThan(zero(T)))
+            MOI.Utilities.normalize_and_add_constraint(model, one(T) * vi + g[i], MOI.LessThan(zero(T)))
             g[i] = vi
         end
     end
-    constraint = MOI.add_constraint(model, g, _signomial(set))
+    @show g
+    constraint = MOI.add_constraint(model, MOI.Utilities.vectorize(g), _signomial(set))
     return SignomialBridge{T,S,P,F}(constraint)
 end
 

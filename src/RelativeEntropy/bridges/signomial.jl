@@ -12,7 +12,7 @@ Mathematical Programming Computation 13 (2021): 257-295.
 https://arxiv.org/pdf/1907.00814.pdf
 """
 struct SignomialBridge{T,S,P,F} <: MOI.Bridges.Constraint.AbstractBridge
-    constraints::MOI.ConstraintIndex{F,S}
+    constraint::MOI.ConstraintIndex{F,S}
 end
 
 _signomial(set::PolynomialSAGECone) = SignomialSAGECone(set.α)
@@ -36,7 +36,6 @@ function MOI.Bridges.Constraint.bridge_constraint(
             g[i] = vi
         end
     end
-    @show g
     constraint = MOI.add_constraint(model, MOI.Utilities.vectorize(g), _signomial(set))
     return SignomialBridge{T,S,P,F}(constraint)
 end
@@ -66,4 +65,12 @@ function MOI.Bridges.Constraint.concrete_bridge_type(
 ) where {T}
     S = _signomial(P)
     return SignomialBridge{T,S,P,F}
+end
+
+function MOI.get(
+    model::MOI.ModelLike,
+    attr::DecompositionAttribute,
+    bridge::SignomialBridge,
+)
+    return MOI.get(model, attr, bridge.constraint)
 end

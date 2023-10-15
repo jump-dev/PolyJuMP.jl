@@ -125,6 +125,61 @@ function JuMP.build_constraint(
     )
 end
 
+const APL{T} = MP.AbstractPolynomialLike{T}
+
+"""
+    struct Decomposition{T, PT}
+
+Represents a SAGE decomposition.
+"""
+struct Decomposition{T,P<:APL{T}} <: APL{T}
+    polynomials::Vector{P}
+    function Decomposition(ps::Vector{P}) where {T,P<:APL{T}}
+        return new{T,P}(ps)
+    end
+end
+
+function Base.show(io::IO, p::Decomposition)
+    for (i, q) in enumerate(p.polynomials)
+        print(io, "(")
+        print(io, q)
+        print(io, ")")
+        if i != length(p.polynomials)
+            print(io, " + ")
+        end
+    end
+end
+
+function MP.polynomial(d::Decomposition)
+    return sum(d.polynomials)
+end
+
+"""
+    struct DecompositionAttribute{T} <: MOI.AbstractConstraintAttribute
+        tol::T
+    end
+
+A constraint attribute for the [`Decomposition`](@ref) of a constraint.
+"""
+struct DecompositionAttribute{T} <: MOI.AbstractConstraintAttribute
+    tol::T
+    result_index::Int
+end
+function DecompositionAttribute(tol::Real)
+    return DecompositionAttribute(tol, 1)
+end
+
+function decomposition(con_ref::JuMP.ConstraintRef; tol::Real, result_index::Int = 1)
+    monos = con_ref.shape.monomials
+    attr = DecompositionAttribute(tol, result_index)
+    return Decomposition(
+        [MP.polynomial(a, monos)
+        for a in MOI.get(JuMP.owner_model(con_ref), attr, con_ref)]
+    )
+end
+
+MOI.is_set_by_optimize(::DecompositionAttribute) = true
+
 include("bridges/sage.jl")
 
 function PolyJuMP.bridges(

@@ -15,13 +15,14 @@ function MOI.Bridges.Constraint.bridge_constraint(
     m = size(set.α, 1)
     ν = Matrix{MOI.VariableIndex}(undef, m, m)
     A = SignomialAGECone
-    c = Vector{MOI.ConstraintIndex{MOI.VectorOfVariables,A}}(undef, m)
+    age_constraints =
+        Vector{MOI.ConstraintIndex{MOI.VectorOfVariables,A}}(undef, m)
     for k in 1:m
-        ν[k, :], c[k] = MOI.add_constrained_variables(model, A(set.α, k))
+        ν[k, :], age_constraints[k] =
+            MOI.add_constrained_variables(model, A(set.α, k))
     end
     scalars = MOI.Utilities.eachscalar(func)
-    n = size(set.α, 2)
-    equality_constraints = map(1:n) do i
+    equality_constraints = map(1:m) do i
         f = MOI.ScalarAffineFunction(
             MOI.ScalarAffineTerm.(one(T), ν[:, i]),
             zero(T),
@@ -32,7 +33,7 @@ function MOI.Bridges.Constraint.bridge_constraint(
             MOI.EqualTo(zero(T)),
         )
     end
-    return SAGEBridge{T,F,G}(ν, c, equality_constraints)
+    return SAGEBridge{T,F,G}(ν, age_constraints, equality_constraints)
 end
 
 function MOI.supports_constraint(
@@ -66,4 +67,21 @@ function MOI.Bridges.Constraint.concrete_bridge_type(
         S,
     )
     return SAGEBridge{T,F,G}
+end
+
+function MOI.get(
+    model::MOI.ModelLike,
+    attr::DecompositionAttribute,
+    bridge::SAGEBridge,
+)
+    return filter!(
+        !isempty,
+        [
+            filter(
+                x -> !isapprox(x, zero(x), atol=attr.tol),
+                MOI.get(model, MOI.VariablePrimal(attr.result_index), bridge.ν[k, :])
+            )
+            for k in axes(bridge.ν, 1)
+        ]
+    )
 end

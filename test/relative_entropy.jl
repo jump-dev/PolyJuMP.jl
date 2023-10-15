@@ -21,16 +21,23 @@ function _test_motzkin(x, y, T, solver, set, feasible, square, neg)
     else
         motzkin = a^2 * b + a * b^2 + one(T) - 3a * b
     end
-    @show motzkin
-    @constraint(model, motzkin in set)
+    con_ref = @constraint(model, motzkin in set)
     optimize!(model)
-    inner = model.moi_backend.optimizer.model
-    println(inner)
-    vis = MOI.get(inner, MOI.ListOfVariableIndices())
-    @show MOI.get(inner, MOI.VariablePrimal(), vis)
     if feasible
         @test termination_status(model) == MOI.OPTIMAL
         @test primal_status(model) == MOI.FEASIBLE_POINT
+        if set isa Union{PolyJuMP.RelativeEntropy.SignomialSAGESet,
+            PolyJuMP.RelativeEntropy.PolynomialSAGESet}
+            d = PolyJuMP.RelativeEntropy.decomposition(con_ref; tol = 1e-6)
+            p = MP.polynomial(d)
+            if set isa PolyJuMP.RelativeEntropy.SignomialSAGESet
+                @test p ≈ motzkin atol = 1e-6
+            else
+                for m in MP.monomials(p - motzkin)
+                    @test MP.coefficient(p, m) ≈ MP.coefficient(motzkin, m) atol = 1e-6
+                end
+            end
+        end
     else
         @test termination_status(model) == MOI.INFEASIBLE
     end

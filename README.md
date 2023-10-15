@@ -20,6 +20,26 @@ import Pkg
 Pkg.add("PolyJuMP")
 ```
 
+## Use with JuMP
+
+To use QCQP solver with JuMP, use a nonconvex QCQP solver, e.g., `Gurobi.Optimizer` and `PolyJuMP.QCQP.Optimizer`:
+
+```julia
+using JuMP, PolyJuMP, Gurobi
+model = Model(() -> PolyJuMP.QCQP.Optimizer(Gurobi.Optimizer))
+```
+
+To use KKT solver with JuMP, use solver of algebraic systems of equations implementing the [SemialgebraicSets interface](https://github.com/JuliaAlgebra/SemialgebraicSets.jl), e.g., `HomotopyContinuation.SemialgebraicSetsHCSolver` and `PolyJuMP.KKT.Optimizer`:
+
+```julia
+using JuMP, PolyJuMP, HomotopyContinuation
+model = Model(optimizer_with_attributes(
+    PolyJuMP.KKT.Optimizer,
+    "solver" => HomotopyContinuation.SemialgebraicSetsHCSolver(),
+))
+```
+
+
 ## Documentation
 
 Documentation for `PolyJuMP.jl` is included in the

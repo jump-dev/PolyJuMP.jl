@@ -1,4 +1,4 @@
-module RelativeEntropy
+module SAGE
 
 import MutableArithmetics as MA
 import MultivariatePolynomials as MP

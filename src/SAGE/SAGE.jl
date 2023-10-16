@@ -30,25 +30,25 @@ function _exponents_matrix(monos)
 end
 
 """
-    struct Signomials{M<:Union{Nothing,MP.AbstractMonomial}} <: PolyJuMP.PolynomialSet end
+    struct Signomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <: PolyJuMP.PolynomialSet
 
 **S**ums of **A**M/**G**M **E**xponential for signomials.
 """
-struct Signomials{M<:Union{Nothing,MP.AbstractMonomial}} <: PolyJuMP.PolynomialSet
+struct Signomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <: PolyJuMP.PolynomialSet
     monomial::M
 end
 _index(_, ::Nothing) = nothing
-_index(monos, mono) = findfirst(isequal(mono), monos)::Int
+_index(monos, mono::MP.AbstractMonomial) = findfirst(isequal(mono), monos)::Int
 function JuMP.moi_set(c::Signomials, monos)
     return Cone(Signomials(_index(monos, c.monomial)), _exponents_matrix(monos))
 end
 
 """
-    struct Polynomials{M<:Union{Nothing,MP.AbstractMonomial}} <: PolyJuMP.PolynomialsSet end
+    struct Polynomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <: PolyJuMP.PolynomialSet
 
 **S**ums of **A**M/**G**M **E**xponential for polynomials.
 """
-struct Polynomials{M<:Union{Nothing,MP.AbstractMonomial}} <: PolyJuMP.PolynomialsSet
+struct Polynomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <: PolyJuMP.PolynomialSet
     monomial::M
 end
 function JuMP.moi_set(c::Polynomials, monos)

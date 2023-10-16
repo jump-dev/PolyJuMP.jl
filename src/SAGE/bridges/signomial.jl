@@ -69,7 +69,7 @@ function MOI.Bridges.Constraint.concrete_bridge_type(
     ::Type{<:SignomialsBridge{T}},
     F::Type{<:MOI.AbstractVectorFunction},
     P::Type{Cone{Polynomials{M}}},
-) where {T}
+) where {T,M}
     return SignomialsBridge{T,Cone{Signomials{M}},P,F}
 end
 

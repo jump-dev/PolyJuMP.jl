@@ -40,7 +40,7 @@ function _test_constraint(
     m,
     cref,
     S::Type,
-    jump_set::PolyJuMP.PolynomialSet,
+    jump_set::PolyJuMP.PolynomialsSet,
     p,
     ineqs,
     eqs,

@@ -1,4 +1,4 @@
-module TestRelativeEntropy
+module TestSAGE
 
 using Test
 
@@ -15,7 +15,7 @@ function _test_motzkin(x, y, T, solver, set, feasible, square, neg)
     model = Model(solver)
     a = square ? x^2 : x
     b = square ? y^2 : y
-    PolyJuMP.setpolymodule!(model, PolyJuMP.RelativeEntropy)
+    PolyJuMP.setpolymodule!(model, PolyJuMP.SAGE)
     if neg
         motzkin = -a^2 * b - a * b^2 + one(T) - 3a * b
     else
@@ -27,12 +27,12 @@ function _test_motzkin(x, y, T, solver, set, feasible, square, neg)
         @test termination_status(model) == MOI.OPTIMAL
         @test primal_status(model) == MOI.FEASIBLE_POINT
         if set isa Union{
-            PolyJuMP.RelativeEntropy.SignomialSAGESet,
-            PolyJuMP.RelativeEntropy.PolynomialSAGESet,
+            PolyJuMP.SAGE.Signomials{Nothing},
+            PolyJuMP.SAGE.Polynomials{Nothing},
         }
-            d = PolyJuMP.RelativeEntropy.decomposition(con_ref; tol = 1e-6)
+            d = PolyJuMP.SAGE.decomposition(con_ref; tol = 1e-6)
             p = MP.polynomial(d)
-            if set isa PolyJuMP.RelativeEntropy.SignomialSAGESet
+            if set isa PolyJuMP.SAGE.Signomials
                 @test p ≈ motzkin atol = 1e-6
             else
                 for m in MP.monomials(p - motzkin)
@@ -47,30 +47,30 @@ function _test_motzkin(x, y, T, solver, set, feasible, square, neg)
 end
 
 function test_motzkin(x, y, T, solver)
-    set = PolyJuMP.RelativeEntropy.SignomialAGESet(x^2 * y^2)
+    set = PolyJuMP.SAGE.Signomials(x^2 * y^2)
     _test_motzkin(x, y, T, solver, set, true, true, false)
-    set = PolyJuMP.RelativeEntropy.SignomialAGESet(x * y)
+    set = PolyJuMP.SAGE.Signomials(x * y)
     _test_motzkin(x, y, T, solver, set, true, false, false)
-    set = PolyJuMP.RelativeEntropy.SignomialAGESet(x^4 * y^2)
+    set = PolyJuMP.SAGE.Signomials(x^4 * y^2)
     _test_motzkin(x, y, T, solver, set, false, true, false)
-    set = PolyJuMP.RelativeEntropy.SignomialAGESet(x^2 * y)
+    set = PolyJuMP.SAGE.Signomials(x^2 * y)
     _test_motzkin(x, y, T, solver, set, false, false, false)
-    set = PolyJuMP.RelativeEntropy.SignomialSAGESet()
+    set = PolyJuMP.SAGE.Signomials()
     _test_motzkin(x, y, T, solver, set, true, true, false)
     _test_motzkin(x, y, T, solver, set, true, false, false)
     _test_motzkin(x, y, T, solver, set, false, true, true)
     _test_motzkin(x, y, T, solver, set, false, false, true)
-    set = PolyJuMP.RelativeEntropy.PolynomialAGESet(x^2 * y^2)
+    set = PolyJuMP.SAGE.Polynomials(x^2 * y^2)
     _test_motzkin(x, y, T, solver, set, true, true, false)
-    set = PolyJuMP.RelativeEntropy.PolynomialAGESet(x * y)
+    set = PolyJuMP.SAGE.Polynomials(x * y)
     _test_motzkin(x, y, T, solver, set, false, false, false)
-    set = PolyJuMP.RelativeEntropy.PolynomialAGESet(x^4 * y^2)
+    set = PolyJuMP.SAGE.Polynomials(x^4 * y^2)
     _test_motzkin(x, y, T, solver, set, false, true, false)
-    set = PolyJuMP.RelativeEntropy.PolynomialAGESet(x^2 * y)
+    set = PolyJuMP.SAGE.Polynomials(x^2 * y)
     _test_motzkin(x, y, T, solver, set, false, false, false)
-    set = PolyJuMP.RelativeEntropy.PolynomialSAGESet()
+    set = PolyJuMP.SAGE.Polynomials()
     _test_motzkin(x, y, T, solver, set, true, true, false)
-    set = PolyJuMP.RelativeEntropy.PolynomialSAGESet()
+    set = PolyJuMP.SAGE.Polynomials()
     _test_motzkin(x, y, T, solver, set, false, false, false)
     return
 end
@@ -96,11 +96,11 @@ using Test
 import DynamicPolynomials
 @testset "DynamicPolynomials" begin
     DynamicPolynomials.@polyvar(x, y)
-    TestRelativeEntropy.runtests(x, y, Float64)
+    TestSAGE.runtests(x, y, Float64)
 end
 
 import TypedPolynomials
 @testset "DynamicPolynomials" begin
     TypedPolynomials.@polyvar(x, y)
-    TestRelativeEntropy.runtests(x, y, Float64)
+    TestSAGE.runtests(x, y, Float64)
 end

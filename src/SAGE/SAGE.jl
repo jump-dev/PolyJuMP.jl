@@ -34,7 +34,8 @@ end
 
 **S**ums of **A**M/**G**M **E**xponential for signomials.
 """
-struct Signomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <: PolyJuMP.PolynomialSet
+struct Signomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <:
+       PolyJuMP.PolynomialSet
     monomial::M
 end
 Signomials() = Signomials(nothing)
@@ -49,12 +50,16 @@ end
 
 **S**ums of **A**M/**G**M **E**xponential for polynomials.
 """
-struct Polynomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <: PolyJuMP.PolynomialSet
+struct Polynomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <:
+       PolyJuMP.PolynomialSet
     monomial::M
 end
 Polynomials() = Polynomials(nothing)
 function JuMP.moi_set(c::Polynomials, monos)
-    return Cone(Polynomials(_index(monos, c.monomial)), _exponents_matrix(monos))
+    return Cone(
+        Polynomials(_index(monos, c.monomial)),
+        _exponents_matrix(monos),
+    )
 end
 
 function setdefaults!(data::PolyJuMP.Data)
@@ -65,10 +70,7 @@ end
 function JuMP.build_constraint(
     _error::Function,
     p,
-    set::Union{
-        Signomials,
-        Polynomials,
-    };
+    set::Union{Signomials,Polynomials};
     kws...,
 )
     coefs = PolyJuMP.non_constant_coefficients(p)

@@ -78,7 +78,11 @@ function MOI.Bridges.Constraint.bridge_constraint(
     )
     relative_entropy_constraint =
         MOI.add_constraint(model, f, MOI.RelativeEntropyCone(2m - 1))
-    return AGEBridge{T,F,G,H}(set.cone.monomial, ceq, relative_entropy_constraint)
+    return AGEBridge{T,F,G,H}(
+        set.cone.monomial,
+        ceq,
+        relative_entropy_constraint,
+    )
 end
 
 function MOI.supports_constraint(

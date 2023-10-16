@@ -55,7 +55,9 @@ function MOI.supports_constraint(
     return true
 end
 
-function MOI.Bridges.added_constrained_variable_types(::Type{<:SignomialsBridge})
+function MOI.Bridges.added_constrained_variable_types(
+    ::Type{<:SignomialsBridge},
+)
     return Tuple{Type}[(MOI.Reals,)]
 end
 

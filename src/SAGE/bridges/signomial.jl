@@ -42,7 +42,7 @@ function MOI.Bridges.Constraint.bridge_constraint(
     constraint = MOI.add_constraint(
         model,
         MOI.Utilities.vectorize(g),
-        Cone(Signomials(set.monomial), set.α),
+        Cone(Signomials(set.cone.monomial), set.α),
     )
     return SignomialsBridge{T,S,P,F}(constraint)
 end
@@ -50,8 +50,8 @@ end
 function MOI.supports_constraint(
     ::Type{<:SignomialsBridge{T}},
     ::Type{<:MOI.AbstractVectorFunction},
-    ::Type{Cone{<:Polynomials}},
-) where {T}
+    ::Type{Cone{Polynomials{M}}},
+) where {T,M}
     return true
 end
 

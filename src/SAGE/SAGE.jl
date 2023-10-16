@@ -37,6 +37,7 @@ end
 struct Signomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <: PolyJuMP.PolynomialSet
     monomial::M
 end
+Signomials() = Signomials(nothing)
 _index(_, ::Nothing) = nothing
 _index(monos, mono::MP.AbstractMonomial) = findfirst(isequal(mono), monos)::Int
 function JuMP.moi_set(c::Signomials, monos)
@@ -51,6 +52,7 @@ end
 struct Polynomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <: PolyJuMP.PolynomialSet
     monomial::M
 end
+Polynomials() = Polynomials(nothing)
 function JuMP.moi_set(c::Polynomials, monos)
     return Cone(Polynomials(_index(monos, c.monomial)), _exponents_matrix(monos))
 end
@@ -161,8 +163,8 @@ include("bridges/signomial.jl")
 
 function PolyJuMP.bridges(
     F::Type{<:MOI.AbstractVectorFunction},
-    ::Type{Cone{<:Polynomials}},
-)
+    ::Type{Cone{Polynomials{M}}},
+) where {M}
     return [(SignomialsBridge, PolyJuMP._coef_type(F))]
 end
 

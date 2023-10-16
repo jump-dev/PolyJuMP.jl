@@ -19,7 +19,7 @@ function MOI.Bridges.Constraint.bridge_constraint(
         Vector{MOI.ConstraintIndex{MOI.VectorOfVariables,A}}(undef, m)
     for k in 1:m
         ν[k, :], age_constraints[k] =
-            MOI.add_constrained_variables(model, A(set.α, k))
+            MOI.add_constrained_variables(model, Cone(Signomials(k), set.α))
     end
     scalars = MOI.Utilities.eachscalar(func)
     equality_constraints = map(1:m) do i

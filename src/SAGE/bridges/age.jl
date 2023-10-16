@@ -59,7 +59,7 @@ function MOI.Bridges.Constraint.bridge_constraint(
         f = zero(typeof(sumν))
         j = 0
         for i in 1:m
-            if i == set.k
+            if i == set.cone.monomial
                 MA.sub_mul!!(f, convert(T, set.α[i, var]), sumν)
             else
                 j += 1
@@ -72,13 +72,13 @@ function MOI.Bridges.Constraint.bridge_constraint(
     f = MOI.Utilities.operate(
         vcat,
         T,
-        scalars[set.k] + sumν,
-        scalars[setdiff(1:m, set.k)],
+        scalars[set.cone.monomial] + sumν,
+        scalars[setdiff(1:m, set.cone.monomial)],
         MOI.VectorOfVariables(ν),
     )
     relative_entropy_constraint =
         MOI.add_constraint(model, f, MOI.RelativeEntropyCone(2m - 1))
-    return AGEBridge{T,F,G,H}(set.k, ceq, relative_entropy_constraint)
+    return AGEBridge{T,F,G,H}(set.cone.monomial, ceq, relative_entropy_constraint)
 end
 
 function MOI.supports_constraint(

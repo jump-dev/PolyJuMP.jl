@@ -169,13 +169,17 @@ function DecompositionAttribute(tol::Real)
     return DecompositionAttribute(tol, 1)
 end
 
-function decomposition(con_ref::JuMP.ConstraintRef; tol::Real, result_index::Int = 1)
+function decomposition(
+    con_ref::JuMP.ConstraintRef;
+    tol::Real,
+    result_index::Int = 1,
+)
     monos = con_ref.shape.monomials
     attr = DecompositionAttribute(tol, result_index)
-    return Decomposition(
-        [MP.polynomial(a, monos)
-        for a in MOI.get(JuMP.owner_model(con_ref), attr, con_ref)]
-    )
+    return Decomposition([
+        MP.polynomial(a, monos) for
+        a in MOI.get(JuMP.owner_model(con_ref), attr, con_ref)
+    ])
 end
 
 MOI.is_set_by_optimize(::DecompositionAttribute) = true

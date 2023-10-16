@@ -26,15 +26,18 @@ function _test_motzkin(x, y, T, solver, set, feasible, square, neg)
     if feasible
         @test termination_status(model) == MOI.OPTIMAL
         @test primal_status(model) == MOI.FEASIBLE_POINT
-        if set isa Union{PolyJuMP.RelativeEntropy.SignomialSAGESet,
-            PolyJuMP.RelativeEntropy.PolynomialSAGESet}
+        if set isa Union{
+            PolyJuMP.RelativeEntropy.SignomialSAGESet,
+            PolyJuMP.RelativeEntropy.PolynomialSAGESet,
+        }
             d = PolyJuMP.RelativeEntropy.decomposition(con_ref; tol = 1e-6)
             p = MP.polynomial(d)
             if set isa PolyJuMP.RelativeEntropy.SignomialSAGESet
                 @test p ≈ motzkin atol = 1e-6
             else
                 for m in MP.monomials(p - motzkin)
-                    @test MP.coefficient(p, m) ≈ MP.coefficient(motzkin, m) atol = 1e-6
+                    @test MP.coefficient(p, m) ≈ MP.coefficient(motzkin, m) atol =
+                        1e-6
                 end
             end
         end

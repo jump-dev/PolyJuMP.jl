@@ -31,12 +31,21 @@ function MOI.Bridges.Constraint.bridge_constraint(
         if any(isodd, set.α[i, :])
             vi = MOI.add_variable(model)
             # vi ≤ -|g[i]|
-            MOI.Utilities.normalize_and_add_constraint(model, one(T) * vi - g[i], MOI.LessThan(zero(T)))
-            MOI.Utilities.normalize_and_add_constraint(model, one(T) * vi + g[i], MOI.LessThan(zero(T)))
+            MOI.Utilities.normalize_and_add_constraint(
+                model,
+                one(T) * vi - g[i],
+                MOI.LessThan(zero(T)),
+            )
+            MOI.Utilities.normalize_and_add_constraint(
+                model,
+                one(T) * vi + g[i],
+                MOI.LessThan(zero(T)),
+            )
             g[i] = vi
         end
     end
-    constraint = MOI.add_constraint(model, MOI.Utilities.vectorize(g), _signomial(set))
+    constraint =
+        MOI.add_constraint(model, MOI.Utilities.vectorize(g), _signomial(set))
     return SignomialBridge{T,S,P,F}(constraint)
 end
 

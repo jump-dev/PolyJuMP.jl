@@ -78,10 +78,13 @@ function MOI.get(
         !isempty,
         [
             filter(
-                x -> !isapprox(x, zero(x), atol=attr.tol),
-                MOI.get(model, MOI.VariablePrimal(attr.result_index), bridge.ν[k, :])
-            )
-            for k in axes(bridge.ν, 1)
-        ]
+                x -> !isapprox(x, zero(x), atol = attr.tol),
+                MOI.get(
+                    model,
+                    MOI.VariablePrimal(attr.result_index),
+                    bridge.ν[k, :],
+                ),
+            ) for k in axes(bridge.ν, 1)
+        ],
     )
 end

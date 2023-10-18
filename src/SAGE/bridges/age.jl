@@ -36,7 +36,7 @@ In this bridge, we use the second formulation.
 "Relative entropy relaxations for signomial optimization."
 SIAM Journal on Optimization 26.2 (2016): 1147-1173.
 [MCW21] Murray, Riley, Venkat Chandrasekaran, and Adam Wierman.
-"Signomial and polynomial optimization via relative entropy and partial dualization."
+"Signomials and polynomial optimization via relative entropy and partial dualization."
 Mathematical Programming Computation 13 (2021): 257-295.
 https://arxiv.org/pdf/1907.00814.pdf
 """
@@ -50,7 +50,7 @@ function MOI.Bridges.Constraint.bridge_constraint(
     ::Type{AGEBridge{T,F,G,H}},
     model,
     func::H,
-    set::SignomialAGECone,
+    set::Cone{Signomials{Int}},
 ) where {T,F,G,H}
     m = size(set.α, 1)
     ν = MOI.add_variables(model, m - 1)
@@ -59,7 +59,7 @@ function MOI.Bridges.Constraint.bridge_constraint(
         f = zero(typeof(sumν))
         j = 0
         for i in 1:m
-            if i == set.k
+            if i == set.cone.monomial
                 MA.sub_mul!!(f, convert(T, set.α[i, var]), sumν)
             else
                 j += 1
@@ -72,19 +72,23 @@ function MOI.Bridges.Constraint.bridge_constraint(
     f = MOI.Utilities.operate(
         vcat,
         T,
-        scalars[set.k] + sumν,
-        scalars[setdiff(1:m, set.k)],
+        scalars[set.cone.monomial] + sumν,
+        scalars[setdiff(1:m, set.cone.monomial)],
         MOI.VectorOfVariables(ν),
     )
     relative_entropy_constraint =
         MOI.add_constraint(model, f, MOI.RelativeEntropyCone(2m - 1))
-    return AGEBridge{T,F,G,H}(set.k, ceq, relative_entropy_constraint)
+    return AGEBridge{T,F,G,H}(
+        set.cone.monomial,
+        ceq,
+        relative_entropy_constraint,
+    )
 end
 
 function MOI.supports_constraint(
     ::Type{<:AGEBridge{T}},
     ::Type{<:MOI.AbstractVectorFunction},
-    ::Type{<:SignomialAGECone},
+    ::Type{Cone{Signomials{Int}}},
 ) where {T}
     return true
 end
@@ -102,7 +106,7 @@ end
 function MOI.Bridges.Constraint.concrete_bridge_type(
     ::Type{<:AGEBridge{T}},
     H::Type{<:MOI.AbstractVectorFunction},
-    ::Type{<:SignomialAGECone},
+    ::Type{Cone{Signomials{Int}}},
 ) where {T}
     S = MOI.Utilities.scalar_type(H)
     F = MOI.Utilities.promote_operation(

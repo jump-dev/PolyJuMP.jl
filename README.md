@@ -54,7 +54,7 @@ model = Model()
 you need to specify how to interpret this nonnegativity constraint. To use Sum-of-Arithmetic-Geometric-Exponentials (SAGE), use
 ```julia
 import PolyJuMP
-PolyJuMP.setpolymodule!(model, PolyJuMP.RelativeEntropy)
+PolyJuMP.setpolymodule!(model, PolyJuMP.SAGE)
 ```
 To use Sum-of-Squares (SOS), use
 ```julia

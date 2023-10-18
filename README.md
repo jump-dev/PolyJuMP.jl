@@ -65,7 +65,7 @@ or replace `model = Model()` by `model = SOSModel()`.
 
 Alternatively, the nonnegativity constraint can be explicit:
 ```julia
-@constraint(model, a * x * y^2 + y^3 - a * x in PolyJuMP.SAGE.Polynomial())
+@constraint(model, a * x * y^2 + y^3 - a * x in PolyJuMP.SAGE.Polynomials())
 @constraint(model, a * x * y^2 + y^3 - a * x in SumOfSquares.SOSCone())
 ```
 This allows mixing SAGE and SOS constraints in the same model.

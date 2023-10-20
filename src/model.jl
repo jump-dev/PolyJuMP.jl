@@ -265,29 +265,45 @@ function _add_to_system(
     return lagrangian
 end
 
-function lagrangian_kkt(model::Model{T}, solver = nothing) where {T}
+function lagrangian_kkt(
+    objective_sense::MOI.ObjectiveSense,
+    objective_function::MP.AbstractPolynomialLike{T},
+    set;
+    solver = nothing,
+    variables = nothing,
+) where {T}
     if isnothing(solver)
         system = SS.AlgebraicSet{T,PolyJuMP.PolyType{T}}()
     else
         I = SS.PolynomialIdeal{T,PolyJuMP.PolyType{T}}()
         system = SS.AlgebraicSet(I, solver)
     end
-    if model.objective_sense == MOI.FEASIBILITY_SENSE
+    if objective_sense == MOI.FEASIBILITY_SENSE
         lagrangian = MA.Zero()
     else
-        lagrangian = MA.mutable_copy(model.objective_function)
+        lagrangian = MA.mutable_copy(objective_function)
     end
     lagrangian = _add_to_system(
         system,
         lagrangian,
-        model.set,
-        model.objective_sense == MOI.MAX_SENSE,
+        set,
+        objective_sense == MOI.MAX_SENSE,
     )
     if !(lagrangian isa MA.Zero)
-        ∇x = MP.differentiate(lagrangian, MP.variables(model))
+        ∇x = MP.differentiate(lagrangian, variables)
         for p in ∇x
             SS.add_equality!(system, p)
         end
     end
     return lagrangian, system
+end
+
+function lagrangian_kkt(model::Model{T}, solver = nothing) where {T}
+    return lagrangian_kkt(
+        model.objective_sense,
+        model.objective_function,
+        model.set;
+        solver,
+        variables = MP.variables(model),
+    )
 end

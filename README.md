@@ -25,14 +25,14 @@ Pkg.add("PolyJuMP")
 
 ## Use with JuMP
 
-To use QCQP solver with JuMP, use a nonconvex QCQP solver, e.g., `Gurobi.Optimizer` and `PolyJuMP.QCQP.Optimizer`:
+To use QCQP solver with JuMP, use a nonconvex QCQP solver, for example `Gurobi.Optimizer`, and `PolyJuMP.QCQP.Optimizer`:
 
 ```julia
 using JuMP, PolyJuMP, Gurobi
 model = Model(() -> PolyJuMP.QCQP.Optimizer(Gurobi.Optimizer))
 ```
 
-To use KKT solver with JuMP, use solver of algebraic systems of equations implementing the [SemialgebraicSets interface](https://github.com/JuliaAlgebra/SemialgebraicSets.jl), e.g., `HomotopyContinuation.SemialgebraicSetsHCSolver` and `PolyJuMP.KKT.Optimizer`:
+To use KKT solver with JuMP, use solver of algebraic systems of equations implementing the [SemialgebraicSets interface](https://github.com/JuliaAlgebra/SemialgebraicSets.jl), for example `HomotopyContinuation.SemialgebraicSetsHCSolver`, and `PolyJuMP.KKT.Optimizer`:
 
 ```julia
 using JuMP, PolyJuMP, HomotopyContinuation
@@ -42,7 +42,7 @@ model = Model(optimizer_with_attributes(
 ))
 ```
 
-For a nonnegativity constraint on a polynomial, e.g.,
+For a nonnegativity constraint on a polynomial, for example
 ```julia
 using DynamicPolynomials
 @polyvar x y

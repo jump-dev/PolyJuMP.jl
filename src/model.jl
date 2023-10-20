@@ -266,7 +266,7 @@ function _add_to_system(
 end
 
 function lagrangian_kkt(
-    objective_sense::MOI.ObjectiveSense,
+    objective_sense::MOI.OptimizationSense,
     objective_function::MP.AbstractPolynomialLike{T},
     set;
     solver = nothing,
@@ -290,7 +290,7 @@ function lagrangian_kkt(
         objective_sense == MOI.MAX_SENSE,
     )
     if !(lagrangian isa MA.Zero)
-        ∇x = MP.differentiate(lagrangian, variables)
+        ∇x = MP.differentiate(lagrangian, MP.variables(lagrangian))
         for p in ∇x
             SS.add_equality!(system, p)
         end

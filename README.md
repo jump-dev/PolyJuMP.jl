@@ -25,24 +25,12 @@ Pkg.add("PolyJuMP")
 
 ## Use with JuMP
 
-To use QCQP solver with JuMP, use a nonconvex QCQP solver, e.g., `Gurobi.Optimizer` and `PolyJuMP.QCQP.Optimizer`:
+### Polynomial nonnegativity constraints
 
-```julia
-using JuMP, PolyJuMP, Gurobi
-model = Model(() -> PolyJuMP.QCQP.Optimizer(Gurobi.Optimizer))
-```
-
-To use KKT solver with JuMP, use solver of algebraic systems of equations implementing the [SemialgebraicSets interface](https://github.com/JuliaAlgebra/SemialgebraicSets.jl), e.g., `HomotopyContinuation.SemialgebraicSetsHCSolver` and `PolyJuMP.KKT.Optimizer`:
-
-```julia
-using JuMP, PolyJuMP, HomotopyContinuation
-model = Model(optimizer_with_attributes(
-    PolyJuMP.KKT.Optimizer,
-    "solver" => HomotopyContinuation.SemialgebraicSetsHCSolver(),
-))
-```
-
-For a nonnegativity constraint on a polynomial, e.g.,
+`PolyJuMP` allows encoding a constraint that a polynomial should be nonnegative for all values of some
+symbolic variables defined with `DynamicPolynomials.@polyvar` or `TypedPolynomials.@polyvar` as follows.
+For instance, the following constrains the JuMP decision variable `a` to be such that
+`a * x * y^2 + y^3 - a * x` is nonnegative for all real values of `x` and `y`:
 ```julia
 using DynamicPolynomials
 @polyvar x y
@@ -51,7 +39,10 @@ model = Model()
 @variable(model, a)
 @constraint(model, a * x * y^2 + y^3 >= a * x)
 ```
-you need to specify how to interpret this nonnegativity constraint. To use Sum-of-Arithmetic-Geometric-Exponentials (SAGE), use
+Determining the nonnegativity of a multivariate polynomial is however NP-hard so sufficient conditions
+are used instead.
+You need to specify which sufficient condition is used explicitly.
+To use Sum-of-Arithmetic-Geometric-Exponentials (SAGE), use
 ```julia
 import PolyJuMP
 PolyJuMP.setpolymodule!(model, PolyJuMP.SAGE)
@@ -69,6 +60,34 @@ Alternatively, the nonnegativity constraint can be explicit:
 @constraint(model, a * x * y^2 + y^3 - a * x in SumOfSquares.SOSCone())
 ```
 This allows mixing SAGE and SOS constraints in the same model.
+
+### Polynomial optimization
+
+PolyJuMP also allows solving polynomial optimization problems using the `QCQP` and `KKT` solvers.
+Polynomial optimization problems do not involve any symbolic variables from DynamicPolynomials or TypedPolynomials,
+instead all variables are JuMP decision variables.
+
+The `QCQP` solver is parametrized by a nonconvex QCQP inner solver.
+It reformulates the polynomial optimization problem into a nonconvex `QCQP`
+and relies on the inner solver to solve it.
+For instance, to use the `QCQP` solver with JuMP with `Gurobi.Optimizer` as inner solver, use:
+```julia
+using JuMP, PolyJuMP, Gurobi
+model = Model(() -> PolyJuMP.QCQP.Optimizer(Gurobi.Optimizer))
+```
+
+The `KKT` solver is parametrized by an inner solver of algebraic systems of equations implementing the [SemialgebraicSets interface](https://github.com/JuliaAlgebra/SemialgebraicSets.jl).
+It reformulates the polynomial optimization problem into a system of polynomial equations
+and relies on the inner solver to solve it.
+For instance, to use the `QCQP` solver with JuMP with
+`HomotopyContinuation.SemialgebraicSetsHCSolver` as inner solver, use:
+```julia
+using JuMP, PolyJuMP, HomotopyContinuation
+model = Model(optimizer_with_attributes(
+    PolyJuMP.KKT.Optimizer,
+    "solver" => HomotopyContinuation.SemialgebraicSetsHCSolver(),
+))
+```
 
 ## Documentation
 

@@ -73,6 +73,9 @@ function JuMP.build_constraint(
     set::Union{Signomials,Polynomials};
     kws...,
 )
+    for (key, _) in kws
+        _error("unsupported keyword argument `$key`.")
+    end
     coefs = PolyJuMP.non_constant_coefficients(p)
     monos = MP.monomials(p)
     cone = JuMP.moi_set(set, monos)

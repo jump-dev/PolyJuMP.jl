@@ -75,6 +75,17 @@ function test_motzkin(x, y, T, solver)
     return
 end
 
+# See https://github.com/jump-dev/PolyJuMP.jl/issues/102#issuecomment-1888004697
+function test_domain(x, y, T, solver)
+    p = x^3 - x^2 + 2x*y -y^2 + y^3
+    S = @set x >= 0 && y >= 0 && x + y >= 1
+    model = Model(solver)
+    setpolymodule!(model, PolyJuMP.SAGE)
+    @variable(model, α)
+    @objective(model, Max, α)
+    @test_throws ErrorException @constraint(model, c3, p >= α, domain = S)
+end
+
 import ECOS
 const SOLVERS =
     [optimizer_with_attributes(ECOS.Optimizer, MOI.Silent() => true)]

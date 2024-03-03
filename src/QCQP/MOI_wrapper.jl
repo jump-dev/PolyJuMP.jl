@@ -269,12 +269,14 @@ function monomial_variable_index(
             l = max(l, zero(T))
         end
         u = max(bounds...)
+        l, u = ifelse(isnan(l), typemin(T), l), ifelse(isnan(u), typemax(T), u)
         d[mono], _ =
             MOI.add_constrained_variable(model.model, MOI.Interval(l, u))
-        MOI.add_constraint(
+        MOI.Utilities.MOI.Utilities.normalize_and_add_constraint(
             model,
             MA.@rewrite(one(T) * d[mono] - one(T) * vx * vy),
-            MOI.EqualTo(zero(T)),
+            MOI.EqualTo(zero(T));
+            allow_modify_function = true,
         )
     end
     return d[mono]

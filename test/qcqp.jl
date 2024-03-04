@@ -163,7 +163,7 @@ function test_scalar_constant_not_zero(x, y, T)
         return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
     end
     PolyJuMP.@variable(model, -1 <= x[1:3] <= 2)
-    PolyJuMP.@constraint(model, 0.4 * x[1] * x[2] * x[3] == 1)
+    PolyJuMP.@constraint(model, 4 * x[1] * x[2] * x[3] == 1)
     PolyJuMP.@objective(model, Min, sum(x))
     PolyJuMP.optimize!(model)
     for (F, S) in MOI.get(inner, MOI.ListOfConstraintTypesPresent())
@@ -185,11 +185,16 @@ function test_unbound_polynomial(x, y, T)
     PolyJuMP.@variable(model, x >= 0)
     PolyJuMP.@objective(model, Min, x^3)
     PolyJuMP.optimize!(model)
-    F, S = MOI.VariableIndex, MOI.Interval{T}
+    F = MOI.VariableIndex
+    S = MOI.Interval{T}
+    @test MOI.get(inner, MOI.NumberOfConstraints{F,S}()) == 0
+    S = MOI.LessThan{T}
+    @test MOI.get(inner, MOI.NumberOfConstraints{F,S}()) == 0
+    S = MOI.GreaterThan{T}
+    @test MOI.get(inner, MOI.NumberOfConstraints{F,S}()) == 2
     for ci in MOI.get(inner, MOI.ListOfConstraintIndices{F,S}())
         set = MOI.get(inner, MOI.ConstraintSet(), ci)
-        @test set.lower == typemin(T)
-        @test set.upper == typemax(T)
+        @test set.lower == zero(T)
     end
     return
 end

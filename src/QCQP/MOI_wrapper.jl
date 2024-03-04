@@ -252,6 +252,8 @@ function _add_variables!(
     return d
 end
 
+import IntervalArithmetic
+
 function monomial_variable_index(
     model::Optimizer{T},
     d::Dict,
@@ -259,21 +261,51 @@ function monomial_variable_index(
     mono::MP.AbstractMonomialLike,
 ) where {T}
     if !haskey(d, mono)
+        # If we don't have a variable for `mono` yet,
+        # we create one now by equal to `x * y`.
+        mono_bounds = IntervalArithmetic.interval(one(T))
+        for var in MP.variables(mono)
+            deg = MP.degree(mono, var)
+            if deg == 0
+                continue
+            end
+            vi = monomial_variable_index(model, d, div, var)
+            lb_var, ub_var = MOI.Utilities.get_bounds(model, T, vi)
+            F = float(T)
+            var_bounds = IntervalArithmetic.interval(
+                lb_var == typemin(lb_var) ? typemin(F) : float(lb_var),
+                ub_var == typemax(ub_var) ? typemax(F) : float(ub_var),
+            )
+            mono_bounds *= var_bounds^deg
+        end
         x = div[mono]
         vx = monomial_variable_index(model, d, div, x)
         y = MP.div_multiple(mono, x)
         vy = monomial_variable_index(model, d, div, y)
-        lx, ux = MOI.Utilities.get_bounds(model, T, vx)
-        ly, uy = MOI.Utilities.get_bounds(model, T, vy)
-        bounds = (lx * ly, lx * uy, ux * ly, ux * uy)
-        l = min(bounds...)
-        if vx == vy
-            l = max(l, zero(T))
+        lb = IntervalArithmetic.inf(mono_bounds)
+        ub = IntervalArithmetic.sup(mono_bounds)
+        if isfinite(lb)
+            if isfinite(ub)
+                if lb == ub
+                    set = MOI.EqualTo(T(lb))
+                else
+                    set = MOI.Interval(T(lb), T(ub))
+                end
+            else
+                set = MOI.GreaterThan(T(lb))
+            end
+        else
+            if isfinite(ub)
+                set = MOI.LessThan(T(ub))
+            else
+                set = nothing
+            end
         end
-        u = max(bounds...)
-        l, u = ifelse(isnan(l), typemin(T), l), ifelse(isnan(u), typemax(T), u)
-        d[mono], _ =
-            MOI.add_constrained_variable(model.model, MOI.Interval(l, u))
+        if isnothing(set)
+            d[mono] = MOI.add_variable(model.model)
+        else
+            d[mono], _ = MOI.add_constrained_variable(model.model, set)
+        end
         MOI.Utilities.normalize_and_add_constraint(
             model,
             MA.@rewrite(one(T) * d[mono] - one(T) * vx * vy),

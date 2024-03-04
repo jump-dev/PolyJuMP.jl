@@ -112,6 +112,7 @@ function MOI.supports_constraint(
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     return MOI.supports_constraint(model.model, F, S)
 end
+
 function MOI.supports_constraint(
     model::Optimizer{T},
     ::Type{<:PolyJuMP.ScalarPolynomialFunction{T}},
@@ -131,6 +132,7 @@ function MOI.add_constraint(
 )
     return MOI.add_constraint(model.model, func, set)
 end
+
 function MOI.add_constraint(
     model::Optimizer{T},
     func::PolyJuMP.ScalarPolynomialFunction{T,P},
@@ -272,7 +274,7 @@ function monomial_variable_index(
         l, u = ifelse(isnan(l), typemin(T), l), ifelse(isnan(u), typemax(T), u)
         d[mono], _ =
             MOI.add_constrained_variable(model.model, MOI.Interval(l, u))
-        MOI.Utilities.MOI.Utilities.normalize_and_add_constraint(
+        MOI.Utilities.normalize_and_add_constraint(
             model,
             MA.@rewrite(one(T) * d[mono] - one(T) * vx * vy),
             MOI.EqualTo(zero(T));
@@ -288,8 +290,9 @@ function _add_constraints(model::Optimizer, cis, index_to_var, d, div)
         set = MOI.get(model, MOI.ConstraintSet(), ci)
         func, index_to_var = _subs!(func, index_to_var)
         quad = _quad_convert(func.polynomial, d, div)
-        MOI.add_constraint(model, quad, set)
+        MOI.Utilities.normalize_and_add_constraint(model, quad, set)
     end
+    return
 end
 
 function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}

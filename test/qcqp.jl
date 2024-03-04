@@ -157,6 +157,48 @@ function test_no_monomials(x, y, T)
     return
 end
 
+function test_scalar_constant_not_zero(x, y, T)
+    inner = Model{T}()
+    model = PolyJuMP.JuMP.GenericModel{T}() do
+        return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
+    end
+    PolyJuMP.@variable(model, -1 <= x[1:3] <= 2)
+    PolyJuMP.@constraint(model, 4 * x[1] * x[2] * x[3] == 1)
+    PolyJuMP.@objective(model, Min, sum(x))
+    PolyJuMP.optimize!(model)
+    for (F, S) in MOI.get(inner, MOI.ListOfConstraintTypesPresent())
+        for ci in MOI.get(inner, MOI.ListOfConstraintIndices{F,S}())
+            if F isa MOI.ScalarQuadraticFunction
+                f = MOI.get(inner, MOI.ConstraintFunction(), ci)
+                @test iszero(f.constant)
+            end
+        end
+    end
+    return
+end
+
+function test_unbound_polynomial(x, y, T)
+    inner = Model{T}()
+    model = PolyJuMP.JuMP.GenericModel{T}() do
+        return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
+    end
+    PolyJuMP.@variable(model, x >= 0)
+    PolyJuMP.@objective(model, Min, x^3)
+    PolyJuMP.optimize!(model)
+    F = MOI.VariableIndex
+    S = MOI.Interval{T}
+    @test MOI.get(inner, MOI.NumberOfConstraints{F,S}()) == 0
+    S = MOI.LessThan{T}
+    @test MOI.get(inner, MOI.NumberOfConstraints{F,S}()) == 0
+    S = MOI.GreaterThan{T}
+    @test MOI.get(inner, MOI.NumberOfConstraints{F,S}()) == 2
+    for ci in MOI.get(inner, MOI.ListOfConstraintIndices{F,S}())
+        set = MOI.get(inner, MOI.ConstraintSet(), ci)
+        @test set.lower == zero(T)
+    end
+    return
+end
+
 function runtests(x, y)
     for name in names(@__MODULE__; all = true)
         if startswith("$name", "test_")

@@ -1,7 +1,7 @@
 name = "PolyJuMP"
 uuid = "ddf597a6-d67e-5340-b84c-e37d84115374"
 repo = "https://github.com/jump-dev/PolyJuMP.jl.git"
-version = "0.7.1"
+version = "0.7.2"
 
 [deps]
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"

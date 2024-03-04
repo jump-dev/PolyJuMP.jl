@@ -318,25 +318,27 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
             end
         end
     end
-    div = decompose(monos)
-    for mono in sort(collect(keys(div)))
-        if haskey(vars, mono)
-            continue
+    if !isnothing(monos)
+        div = decompose(monos)
+        for mono in sort(collect(keys(div)))
+            if haskey(vars, mono)
+                continue
+            end
+            a = div[mono]
+            monomial_variable_index(model, vars, div, a)
+            b = MP.div_multiple(mono, a)
+            monomial_variable_index(model, vars, div, b)
         end
-        a = div[mono]
-        monomial_variable_index(model, vars, div, a)
-        b = MP.div_multiple(mono, a)
-        monomial_variable_index(model, vars, div, b)
-    end
-    if !isnothing(model.objective)
-        func, index_to_var = _subs!(model.objective, index_to_var)
-        obj = _quad_convert(func.polynomial, vars, div)
-        MOI.set(model.model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
-    end
-    for S in keys(model.constraints)
-        F = PolyJuMP.ScalarPolynomialFunction{T,model.constraints[S][1]}
-        cis = MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
-        _add_constraints(model, cis, index_to_var, vars, div)
+        if !isnothing(model.objective)
+            func, index_to_var = _subs!(model.objective, index_to_var)
+            obj = _quad_convert(func.polynomial, vars, div)
+            MOI.set(model.model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
+        end
+        for S in keys(model.constraints)
+            F = PolyJuMP.ScalarPolynomialFunction{T,model.constraints[S][1]}
+            cis = MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
+            _add_constraints(model, cis, index_to_var, vars, div)
+        end
     end
     return
 end

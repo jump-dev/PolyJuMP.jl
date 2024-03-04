@@ -144,6 +144,19 @@ function test_objective_and_constraint(x, y, T)
           o * a3 * b3 + o * a6
 end
 
+function test_no_monomials(x, y, T)
+    inner = Model{T}()
+    model = PolyJuMP.JuMP.GenericModel{T}() do
+        return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
+    end
+    PolyJuMP.@variable(model, 0 <= x[1:2] <= 1)
+    PolyJuMP.@constraint(model, x[1] * x[2] == 0.5)
+    PolyJuMP.@objective(model, Min, sum(x))
+    PolyJuMP.optimize!(model)
+    @test MOI.get(inner, MOI.NumberOfVariables()) == 2
+    return
+end
+
 function runtests(x, y)
     for name in names(@__MODULE__; all = true)
         if startswith("$name", "test_")

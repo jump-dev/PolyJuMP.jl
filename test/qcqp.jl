@@ -199,6 +199,23 @@ function test_unbound_polynomial(x, y, T)
     return
 end
 
+function test_scalar_nonlinear_function(x, y, T)
+    inner = Model{T}()
+    model = PolyJuMP.JuMP.GenericModel{T}() do
+        return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
+    end
+    PolyJuMP.@variable(model, 0 <= x <= 1)
+    PolyJuMP.@expression(model, f, 0 + x)
+    PolyJuMP.@expression(model, g, x^2)
+    PolyJuMP.@constraint(model, f * g == 0)
+    PolyJuMP.optimize!(model)
+    F, S = ScalarQuadraticFunction{T}, EqualTo{T}
+    @test MOI.get(inner, MOI.NumberOfConstraints{F,S}()) == 2
+    @test MOI.get(inner, MOI.NumberOfVariables()) == 2
+    return
+end
+
+
 function runtests(x, y)
     for name in names(@__MODULE__; all = true)
         if startswith("$name", "test_")

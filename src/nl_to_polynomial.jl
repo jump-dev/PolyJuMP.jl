@@ -60,6 +60,14 @@ end
 function _to_polynomial!(
     d,
     ::Type{T},
+    f::Union{MOI.ScalarAffineFunction,MOI.ScalarQuadraticFunction},
+) where {T}
+    return _to_polynomial!(d, T, convert(MOI.ScalarNonlinearFunction, f))
+end
+
+function _to_polynomial!(
+    d,
+    ::Type{T},
     expr::Union{Expr,MOI.ScalarNonlinearFunction},
 ) where {T}
     operands = _operands(expr)

@@ -215,7 +215,6 @@ function test_scalar_nonlinear_function(x, y, T)
     return
 end
 
-
 function runtests(x, y)
     for name in names(@__MODULE__; all = true)
         if startswith("$name", "test_")

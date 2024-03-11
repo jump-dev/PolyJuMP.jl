@@ -149,8 +149,8 @@ function test_no_monomials(x, y, T)
     model = PolyJuMP.JuMP.GenericModel{T}() do
         return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
     end
-    PolyJuMP.@variable(model, 0 <= x[1:2] <= 1)
-    PolyJuMP.@constraint(model, x[1] * x[2] == 0.5)
+    PolyJuMP.@variable(model, 0 <= x[1:2] <= 2)
+    PolyJuMP.@constraint(model, x[1] * x[2] == 1)
     PolyJuMP.@objective(model, Min, sum(x))
     PolyJuMP.optimize!(model)
     @test MOI.get(inner, MOI.NumberOfVariables()) == 2
@@ -209,7 +209,7 @@ function test_scalar_nonlinear_function(x, y, T)
     PolyJuMP.@expression(model, g, x^2)
     PolyJuMP.@constraint(model, f * g == 0)
     PolyJuMP.optimize!(model)
-    F, S = ScalarQuadraticFunction{T}, EqualTo{T}
+    F, S = MOI.ScalarQuadraticFunction{T}, MOI.EqualTo{T}
     @test MOI.get(inner, MOI.NumberOfConstraints{F,S}()) == 2
     @test MOI.get(inner, MOI.NumberOfVariables()) == 2
     return

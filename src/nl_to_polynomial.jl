@@ -98,7 +98,7 @@ function _to_polynomial!(
             return MP.div(a, b)
         else
             return a / b
-        end        
+        end
     elseif _is_variable(expr)
         return _to_polynomial!(d, T, operands[1])
     else
@@ -113,9 +113,8 @@ function _to_polynomial(expr, ::Type{T}) where {T}
 end
 
 function _scalar_polynomial(d::Dict{K,V}, ::Type{T}, poly) where {T,K,V}
-    variable_map = collect(d)
-    sort!(variable_map, by = x -> x[2], rev = true)
-    variables = [x[1] for x in variable_map]
+    inv = Dict(v => k for (k, v) in d)
+    variables = [inv[v] for v in MP.variables(poly)]
     P = MP.polynomial_type(V, T)
     return ScalarPolynomialFunction{T,P}(poly, variables)
 end

@@ -228,16 +228,14 @@ function _subs!(
         end
     end
     if !isempty(old_var)
-        old_var_map = Dict(zip(old_var, new_var))
-        all_old_vars = MP.variables(p.polynomial)
-
-        updated_vars = [get(old_var_map, v, v) for v in all_old_vars]
-        variable_map = collect(zip(p.variables, updated_vars))
-        sort!(variable_map, by = x -> x[2], rev = true)
-        moi_variables = [x[1] for x in variable_map]
+        to_old_map = Dict(zip(new_var, old_var))
+        to_moi_map = Dict(zip(MP.variables(p.polynomial), p.variables))
 
         poly = MP.subs(p.polynomial, old_var => new_var)
-        p = PolyJuMP.ScalarPolynomialFunction(poly, moi_variables)
+        all_new_vars = MP.variables(poly)
+        moi_vars = [to_moi_map[get(to_old_map, v, v)] for v in all_new_vars]
+
+        p = PolyJuMP.ScalarPolynomialFunction(poly, moi_vars)
     end
     return p, index_to_var
 end

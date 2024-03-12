@@ -94,7 +94,11 @@ function _to_polynomial!(
         return a^b
     elseif _is_operator(expr, :/) && length(operands) == 2
         a, b = _to_polynomial!.(Ref(d), T, operands)
-        return a / b
+        if iszero(MP.rem(a, b))
+            return MP.div(a, b)
+        else
+            return a / b
+        end        
     elseif _is_variable(expr)
         return _to_polynomial!(d, T, operands[1])
     else

@@ -245,7 +245,6 @@ end
 function _add_variables!(
     p::PolyJuMP.ScalarPolynomialFunction{T,P},
     d,
-    va,
 ) where {T,P}
     if isnothing(d)
         d = Dict{MP.monomial_type(P),MOI.VariableIndex}()
@@ -342,7 +341,7 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
     monos = nothing
     if !isnothing(model.objective)
         func, index_to_var = _subs!(model.objective, index_to_var)
-        vars = _add_variables!(func, vars, index_to_var)
+        vars = _add_variables!(func, vars)
         monos = _add_monomials!(func, monos)
     end
     if !isempty(model.constraints)
@@ -359,7 +358,7 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
             )
                 func = MOI.get(model, MOI.ConstraintFunction(), ci)
                 func, index_to_var = _subs!(func, index_to_var)
-                vars = _add_variables!(func, vars, index_to_var)
+                vars = _add_variables!(func, vars)
                 monos = _add_monomials!(func, monos)
             end
         end

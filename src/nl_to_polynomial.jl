@@ -94,8 +94,9 @@ function _to_polynomial!(
         return a^b
     elseif _is_operator(expr, :/) && length(operands) == 2
         a, b = _to_polynomial!.(Ref(d), T, operands)
-        if iszero(MP.rem(a, b))
-            return MP.div(a, b)
+        divisor, remainder = Base.divrem(a, b)
+        if iszero(remainder)
+            return divisor
         else
             return a / b
         end

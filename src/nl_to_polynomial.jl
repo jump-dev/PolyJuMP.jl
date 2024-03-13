@@ -114,8 +114,10 @@ function _to_polynomial(expr, ::Type{T}) where {T}
 end
 
 function _scalar_polynomial(d::Dict{K,V}, ::Type{T}, poly) where {T,K,V}
-    inv = Dict(v => k for (k, v) in d)
-    variables = [inv[v] for v in MP.variables(poly)]
+    var_set = Set(MP.variables(poly))
+    variable_map = Tuple{K, V}[(k, v) for (k, v) in d if v in var_set]
+    sort!(variable_map, by = x -> x[2], rev = true)
+    variables = [x[1] for x in variable_map]
     P = MP.polynomial_type(V, T)
     return ScalarPolynomialFunction{T,P}(poly, variables)
 end

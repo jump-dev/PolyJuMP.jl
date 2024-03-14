@@ -215,6 +215,20 @@ function test_scalar_nonlinear_function(x, y, T)
     return
 end
 
+function test_variable_primal(x, y, T)
+    inner = Model{T}()
+    optimizer = MOI.Utilities.MockOptimizer(inner)
+    model = PolyJuMP.JuMP.direct_generic_model(
+        T,
+        PolyJuMP.QCQP.Optimizer{T}(optimizer),
+    )
+    PolyJuMP.@variable(model, 1 <= a <= 3)
+    MOI.set(model, MOI.VariablePrimal(), a, T(2))
+    MOI.set(model, MOI.TerminationStatus(), MOI.OPTIMAL)
+    @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
+    @test PolyJuMP.value(a) == 2
+end
+
 function runtests(x, y)
     for name in names(@__MODULE__; all = true)
         if startswith("$name", "test_")

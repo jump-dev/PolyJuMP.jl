@@ -56,6 +56,23 @@ end
 
 MOI.add_variable(model::Optimizer) = MOI.add_variable(model.model)
 
+function MOI.set(
+    model::Optimizer,
+    attr::MOI.AbstractVariableAttribute,
+    vi::MOI.VariableIndex,
+    value,
+)
+    return MOI.set(model.model, attr, vi, value)
+end
+
+function MOI.get(
+    model::Optimizer,
+    attr::MOI.AbstractVariableAttribute,
+    vi::MOI.VariableIndex,
+)
+    return MOI.get(model.model, attr, vi)
+end
+
 function MOI.supports_add_constrained_variable(
     model::Optimizer,
     ::Type{S},

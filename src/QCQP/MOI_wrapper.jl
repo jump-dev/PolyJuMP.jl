@@ -232,7 +232,6 @@ function _subs_ensure_moi_order(p::PolyJuMP.ScalarPolynomialFunction, old, new)
     return PolyJuMP.ScalarPolynomialFunction(poly, moi_vars)
 end
 
-
 function _subs!(
     p::PolyJuMP.ScalarPolynomialFunction,
     index_to_var::Dict{K,V},

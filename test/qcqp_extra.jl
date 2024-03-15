@@ -16,12 +16,11 @@ function test_unconstrained_before_projection(T)
         () -> PolyJuMP.QCQP.Optimizer{T}(optimizer),
     )
     PolyJuMP.@variable(model, -1 <= a[1:2] <= 1)
-    PolyJuMP.@objective(model, Min, a[1]^2*a[2]^2)
+    PolyJuMP.@objective(model, Min, a[1]^2 * a[2]^2)
     PolyJuMP.optimize!(model)
 
     vis = MOI.get(inner, MOI.ListOfVariableIndices())
     @test length(vis) == 4
-    
     F = MOI.ScalarQuadraticFunction{T}
     S = MOI.EqualTo{T}
     cis = MOI.get(inner, MOI.ListOfConstraintIndices{F,S}())
@@ -35,12 +34,11 @@ function test_unconstrained_after_projection(T)
         () -> PolyJuMP.QCQP.Optimizer{T}(optimizer),
     )
     PolyJuMP.@variable(model, -1 <= a <= 1)
-    PolyJuMP.@objective(model, Min, a^2)    
+    PolyJuMP.@objective(model, Min, a^2)
     PolyJuMP.optimize!(model)
 
     vis = MOI.get(inner, MOI.ListOfVariableIndices())
     @test length(vis) == 1
-    
     F = MOI.ScalarQuadraticFunction{T}
     S = MOI.EqualTo{T}
     cis = MOI.get(inner, MOI.ListOfConstraintIndices{F,S}())
@@ -60,7 +58,7 @@ function test_subs!_preserves_moi_sync(xs, ys, T)
 
     mask = rand(Bool, length(xs))
     is = Random.shuffle(eachindex(xs)[mask])
-    index = Dict{eltype(mois), eltype(xs)}(zip(mois[is], ys[is]))
+    index = Dict{eltype(mois),eltype(xs)}(zip(mois[is], ys[is]))
 
     moi_map = Dict(zip(xs, mois))
     moivars = [moi_map[v] for v in MP.variables(p)]

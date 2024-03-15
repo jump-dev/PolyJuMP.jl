@@ -7,3 +7,4 @@ include("Mock/mock_tests.jl")
 
 include("kkt.jl")
 include("sage.jl")
+include("qcqp.jl")

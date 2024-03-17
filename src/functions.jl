@@ -64,29 +64,6 @@ function Base.convert(
     return ScalarPolynomialFunction{T,P}(poly, variables)
 end
 
-function _to_polynomial!(
-    d::Dict{K,V},
-    ::Type{T},
-    func::MOI.ScalarQuadraticFunction{T},
-) where {K,V,T}
-    terms = MP.term_type(V, T)[MOI.constant(func)]
-    for t in func.affine_terms
-        push!(terms, MP.term(t.coefficient, _to_polynomial!(d, T, t.variable)))
-    end
-    for t in func.quadratic_terms
-        coef = t.variable_1 == t.variable_2 ? t.coefficient / 2 : t.coefficient
-        push!(
-            terms,
-            MP.term(
-                coef,
-                _to_polynomial!(d, T, t.variable_1) *
-                _to_polynomial!(d, T, t.variable_2),
-            ),
-        )
-    end
-    return MP.polynomial(terms)
-end
-
 function Base.convert(
     ::Type{ScalarPolynomialFunction{T,P}},
     func::MOI.ScalarQuadraticFunction{T},

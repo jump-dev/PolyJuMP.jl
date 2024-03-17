@@ -95,6 +95,13 @@ function _to_polynomial!(
     elseif _is_operator(expr, :/) && length(operands) == 2
         a, b = _to_polynomial!.(Ref(d), T, operands)
         return a / b
+        # TODO(odow): see PR#113
+        # divisor, remainder = Base.divrem(a, b)
+        # if iszero(remainder)
+        #     return divisor
+        # else
+        #     return a / b
+        # end
     elseif _is_variable(expr)
         return _to_polynomial!(d, T, operands[1])
     else
@@ -109,7 +116,8 @@ function _to_polynomial(expr, ::Type{T}) where {T}
 end
 
 function _scalar_polynomial(d::Dict{K,V}, ::Type{T}, poly) where {T,K,V}
-    variable_map = collect(d)
+    var_set = Set(MP.variables(poly))
+    variable_map = Tuple{K,V}[(k, v) for (k, v) in d if v in var_set]
     sort!(variable_map, by = x -> x[2], rev = true)
     variables = [x[1] for x in variable_map]
     P = MP.polynomial_type(V, T)

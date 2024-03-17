@@ -7,7 +7,6 @@ import MultivariatePolynomials as MP
 import PolyJuMP
 import Random
 
-
 MOI.Utilities.@model(
     Model,
     (),

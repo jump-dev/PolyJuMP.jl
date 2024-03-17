@@ -215,6 +215,38 @@ function test_scalar_nonlinear_function(x, y, T)
     return
 end
 
+function test_scalar_nonlinear_function_div_rem_zero(x, y, T)
+    inner = Model{T}()
+    model = PolyJuMP.JuMP.GenericModel{T}() do
+        return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
+    end
+    PolyJuMP.@variable(model, x)
+    PolyJuMP.@objective(model, Min, x^3 / x)
+    PolyJuMP.optimize!(model)
+    @test MOI.get(inner, MOI.NumberOfVariables()) == 1
+    @test isempty(MOI.get(inner, MOI.ListOfConstraintTypesPresent()))
+    @test PolyJuMP.objective_function(model) isa PolyJuMP.GenericNonlinearExpr
+    F = MOI.get(inner, MOI.ObjectiveFunctionType())
+    @test F <: MOI.ScalarQuadraticFunction{T}
+    return
+end
+
+test_scalar_nonlinear_function_div_rem_one(x, y, ::Type{Int}) = nothing
+
+function test_scalar_nonlinear_function_div_rem_one(x, y, T)
+    inner = Model{T}()
+    model = PolyJuMP.JuMP.GenericModel{T}() do
+        return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
+    end
+    PolyJuMP.@variable(model, x)
+    PolyJuMP.@objective(model, Min, x^3 / 2)
+    PolyJuMP.optimize!(model)
+    @test MOI.get(inner, MOI.NumberOfVariables()) == 2
+    F, S = MOI.ScalarQuadraticFunction{T}, MOI.EqualTo{T}
+    @test (F, S) in MOI.get(inner, MOI.ListOfConstraintTypesPresent())
+    return
+end
+
 function test_variable_primal(x, y, T)
     inner = Model{T}()
     optimizer = MOI.Utilities.MockOptimizer(inner)

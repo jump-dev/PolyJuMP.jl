@@ -94,19 +94,25 @@ function _to_polynomial!(
         return a^b
     elseif _is_operator(expr, :/) && length(operands) == 2
         a, b = _to_polynomial!.(Ref(d), T, operands)
-        return a / b
-        # TODO(odow): see PR#113
-        # divisor, remainder = Base.divrem(a, b)
-        # if iszero(remainder)
-        #     return divisor
-        # else
-        #     return a / b
-        # end
+        return _checked_div(a, b)
     elseif _is_variable(expr)
         return _to_polynomial!(d, T, operands[1])
     else
         throw(InvalidNLExpression("Cannot convert `$(expr)` into a polynomial"))
     end
+end
+
+_checked_div(a, b) = a / b
+
+function _checked_div(
+    a::DynamicPolynomials.Monomial,
+    b::DynamicPolynomials.Variable,
+)
+    divisor, remainder = Base.divrem(a, b)
+    if iszero(remainder)
+        return divisor
+    end
+    return a / b
 end
 
 function _to_polynomial(expr, ::Type{T}) where {T}

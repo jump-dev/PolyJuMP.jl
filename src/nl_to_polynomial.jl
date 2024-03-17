@@ -94,12 +94,14 @@ function _to_polynomial!(
         return a^b
     elseif _is_operator(expr, :/) && length(operands) == 2
         a, b = _to_polynomial!.(Ref(d), T, operands)
-        divisor, remainder = Base.divrem(a, b)
-        if iszero(remainder)
-            return divisor
-        else
-            return a / b
-        end
+        return a / b
+        # TODO(odow): see PR#113
+        # divisor, remainder = Base.divrem(a, b)
+        # if iszero(remainder)
+        #     return divisor
+        # else
+        #     return a / b
+        # end
     elseif _is_variable(expr)
         return _to_polynomial!(d, T, operands[1])
     else

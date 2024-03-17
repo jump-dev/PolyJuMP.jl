@@ -221,14 +221,11 @@ function _subs_ensure_moi_order(p::PolyJuMP.ScalarPolynomialFunction, old, new)
     if isempty(old)
         return p
     end
-
     poly = MP.subs(p.polynomial, old => new)
-
     all_new_vars = MP.variables(poly)
     to_old_map = Dict(zip(new, old))
     to_moi_map = Dict(zip(MP.variables(p.polynomial), p.variables))
     moi_vars = [to_moi_map[get(to_old_map, v, v)] for v in all_new_vars]
-
     return PolyJuMP.ScalarPolynomialFunction(poly, moi_vars)
 end
 
@@ -354,8 +351,8 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
         vars = _add_variables!(func, vars)
         monos = _add_monomials!(func, monos)
     end
-    for S in keys(model.constraints)
-        F = PolyJuMP.ScalarPolynomialFunction{T,model.constraints[S][1]}
+    for (S, constraints) in model.constraints
+        F = PolyJuMP.ScalarPolynomialFunction{T,constraints[1]}
         for ci in MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
             func = MOI.get(model, MOI.ConstraintFunction(), ci)
             func, index_to_var = _subs!(func, index_to_var)

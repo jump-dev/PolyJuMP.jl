@@ -109,10 +109,12 @@ function _checked_div(
     b::DynamicPolynomials.Variable,
 )
     divisor, remainder = Base.divrem(a, b)
-    if iszero(remainder)
-        return divisor
+    if !iszero(remainder)
+        throw(
+            InvalidNLExpression("Cannot convert `$(a) / $b` into a polynomial"),
+        )
     end
-    return a / b
+    return divisor
 end
 
 function _to_polynomial(expr, ::Type{T}) where {T}

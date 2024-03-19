@@ -105,13 +105,25 @@ end
 _checked_div(a, b) = a / b
 
 function _checked_div(
-    a::DynamicPolynomials.Monomial,
-    b::DynamicPolynomials.Variable,
+    α,
+    p::MP.AbstractPolynomialLike,
+)
+    if !MP.isconstant(p)
+        throw(
+            InvalidNLExpression("Cannot convert `α / ($p)` to a polynomial."),
+        )
+    end
+    return MP.constant_term(α / MP.convert_to_constant(p), p)
+end
+
+function _checked_div(
+    a::MP.AbstractPolynomialLike,
+    b::MP.AbstractPolynomialLike,
 )
     divisor, remainder = Base.divrem(a, b)
     if !iszero(remainder)
         throw(
-            InvalidNLExpression("Cannot convert `$(a) / $b` into a polynomial"),
+            InvalidNLExpression("Cannot convert `($(a)) / ($b)` into a polynomial as the Euclidean division has a nonzero remainder `$remainder` (the divisor is `$divisor`)."),
         )
     end
     return divisor

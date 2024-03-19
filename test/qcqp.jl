@@ -240,10 +240,12 @@ function test_scalar_nonlinear_function_div_rem_err(x, y, T)
     PolyJuMP.@variable(model, y)
     PolyJuMP.@objective(model, Min, x^3 / y)
     @test_throws PolyJuMP.InvalidNLExpression PolyJuMP.optimize!(model)
+    PolyJuMP.@objective(model, Min, 2 / y)
+    @test_throws PolyJuMP.InvalidNLExpression PolyJuMP.optimize!(model)
+    PolyJuMP.@objective(model, Min, 2 / (x * y^2 - y^2 * x - 1))
+    PolyJuMP.optimize!(model)
     return
 end
-
-test_scalar_nonlinear_function_div_rem_number(x, y, ::Type{Int}) = nothing
 
 function test_scalar_nonlinear_function_div_rem_number(x, y, T)
     inner = Model{T}()
@@ -251,7 +253,7 @@ function test_scalar_nonlinear_function_div_rem_number(x, y, T)
         return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
     end
     PolyJuMP.@variable(model, x)
-    PolyJuMP.@objective(model, Min, x^3 / 2)
+    PolyJuMP.@objective(model, Min, 4x^3 / 2)
     PolyJuMP.optimize!(model)
     @test MOI.get(inner, MOI.NumberOfVariables()) == 2
     F, S = MOI.ScalarQuadraticFunction{T}, MOI.EqualTo{T}

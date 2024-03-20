@@ -94,19 +94,36 @@ function _to_polynomial!(
         return a^b
     elseif _is_operator(expr, :/) && length(operands) == 2
         a, b = _to_polynomial!.(Ref(d), T, operands)
-        return a / b
-        # TODO(odow): see PR#113
-        # divisor, remainder = Base.divrem(a, b)
-        # if iszero(remainder)
-        #     return divisor
-        # else
-        #     return a / b
-        # end
+        return _checked_div(a, b)
     elseif _is_variable(expr)
         return _to_polynomial!(d, T, operands[1])
     else
         throw(InvalidNLExpression("Cannot convert `$(expr)` into a polynomial"))
     end
+end
+
+_checked_div(a, b) = a / b
+
+function _checked_div(α, p::MP.AbstractPolynomialLike)
+    if !MP.isconstant(p)
+        throw(InvalidNLExpression("Cannot convert `α / ($p)` to a polynomial."))
+    end
+    return MP.constant_term(α / MP.convert_to_constant(p), p)
+end
+
+function _checked_div(
+    a::MP.AbstractPolynomialLike,
+    b::MP.AbstractPolynomialLike,
+)
+    divisor, remainder = Base.divrem(a, b)
+    if !iszero(remainder)
+        throw(
+            InvalidNLExpression(
+                "Cannot convert `($(a)) / ($b)` into a polynomial as the Euclidean division has a nonzero remainder `$remainder` (the divisor is `$divisor`).",
+            ),
+        )
+    end
+    return divisor
 end
 
 function _to_polynomial(expr, ::Type{T}) where {T}

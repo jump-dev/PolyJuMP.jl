@@ -5,6 +5,7 @@ using Test
 import MathOptInterface as MOI
 import MultivariatePolynomials as MP
 import PolyJuMP
+import JuMP
 import Random
 
 MOI.Utilities.@model(
@@ -63,7 +64,7 @@ end
 function test_unconstrained_before_projection(T)
     inner = Model{T}()
     optimizer = MOI.Utilities.MockOptimizer(inner)
-    model = PolyJuMP.JuMP.GenericModel{T}(
+    model = JuMP.GenericModel{T}(
         () -> PolyJuMP.QCQP.Optimizer{T}(optimizer),
     )
     PolyJuMP.@variable(model, -1 <= a[1:2] <= 1)
@@ -81,7 +82,7 @@ end
 function test_unconstrained_after_projection(T)
     inner = Model{T}()
     optimizer = MOI.Utilities.MockOptimizer(inner)
-    model = PolyJuMP.JuMP.GenericModel{T}(
+    model = JuMP.GenericModel{T}(
         () -> PolyJuMP.QCQP.Optimizer{T}(optimizer),
     )
     PolyJuMP.@variable(model, -1 <= a <= 1)

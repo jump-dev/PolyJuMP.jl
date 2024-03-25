@@ -1,12 +1,12 @@
 import MathOptInterface as MOI
 
+const _Model{F,S} = MOI.Utilities.UniversalFallback{MOI.Utilities.VectorOfConstraints{F,S}}
+
 mutable struct Optimizer{T,O<:MOI.ModelLike} <: MOI.AbstractOptimizer
     model::O
     objective::Union{Nothing,PolyJuMP.ScalarPolynomialFunction{T}}
-    constraints::DataStructures.OrderedDict{
-        Type,
-        Tuple{Type,MOI.Utilities.VectorOfConstraints},
-    }
+    constraints::DataStructures.OrderedDict{Type,Tuple{Type,_Model}}
+    index_map::Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}
 end
 
 function Optimizer{T}(model::MOI.ModelLike) where {T}
@@ -14,6 +14,7 @@ function Optimizer{T}(model::MOI.ModelLike) where {T}
         model,
         nothing,
         DataStructures.OrderedDict{Type,MOI.Utilities.VectorOfConstraints}(),
+        Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
     )
 end
 
@@ -34,6 +35,7 @@ function MOI.empty!(model::Optimizer)
     MOI.empty!(model.model)
     model.objective = nothing
     empty!(model.constraints)
+    empty!(model.index_map)
     return
 end
 
@@ -46,6 +48,32 @@ function MOI.is_valid(
            MOI.is_valid(model.constraints[S][2], ci)
 end
 
+function MOI.supports(
+    model::Optimizer,
+    attr::MOI.AbstractConstraintAttribute,
+    C::Type{<:MOI.ConstraintIndex},
+)
+    return MOI.supports(model.model, attr, C)
+end
+
+function MOI.set(
+    model::Optimizer,
+    attr::MOI.AbstractConstraintAttribute,
+    ci::MOI.ConstraintIndex,
+    value,
+)
+    return MOI.set(model.model, attr, ci, value)
+end
+
+function MOI.set(
+    model::Optimizer{T},
+    attr::MOI.AbstractConstraintAttribute,
+    ci::MOI.ConstraintIndex{<:PolyJuMP.ScalarPolynomialFunction{T},S},
+    value,
+) where {T,S<:MOI.AbstractScalarSet}
+    return MOI.get(model.constraints[S][2], attr, model.index_map[ci], value)
+end
+
 function MOI.get(
     model::Optimizer,
     attr::MOI.AbstractConstraintAttribute,
@@ -54,7 +82,27 @@ function MOI.get(
     return MOI.get(model.model, attr, ci)
 end
 
+function MOI.get(
+    model::Optimizer{T},
+    attr::MOI.AbstractConstraintAttribute,
+    ci::MOI.ConstraintIndex{<:PolyJuMP.ScalarPolynomialFunction{T},S},
+) where {T,S<:MOI.AbstractScalarSet}
+    if MOI.is_set_by_optimize(attr)
+        return MOI.get(model.model, attr, model.index_map[ci])
+    else
+        return MOI.get(model.constraints[S][2], attr, ci)
+    end
+end
+
 MOI.add_variable(model::Optimizer) = MOI.add_variable(model.model)
+
+function MOI.supports(
+    model::Optimizer,
+    attr::MOI.AbstractVariableAttribute,
+    ::Type{MOI.VariableIndex},
+)
+    return MOI.supports(model.model, attr, MOI.VariableIndex)
+end
 
 function MOI.set(
     model::Optimizer,
@@ -158,7 +206,7 @@ function MOI.add_constraint(
     F = typeof(func)
     S = typeof(set)
     if !haskey(model.constraints, S)
-        con = MOI.Utilities.VectorOfConstraints{F,S}()
+        con = MOI.Utilities.UniversalFallback(MOI.Utilities.VectorOfConstraints{F,S}())
         model.constraints[S] = (P, con)
     end
     return MOI.add_constraint(model.constraints[S][2], func, set)
@@ -168,7 +216,7 @@ function MOI.get(
     model::Optimizer{T},
     attr::Union{MOI.ConstraintFunction,MOI.ConstraintSet},
     ci::MOI.ConstraintIndex{<:PolyJuMP.ScalarPolynomialFunction{T},S},
-) where {T,S}
+) where {T,S<:MOI.AbstractScalarSet}
     return MOI.get(model.constraints[S][2], attr, ci)
 end
 
@@ -296,6 +344,7 @@ function monomial_variable_index(
         # If we don't have a variable for `mono` yet,
         # we create one now by equal to `x * y`.
         mono_bounds = IntervalArithmetic.interval(one(T))
+        mono_start = one(T)
         for var in MP.variables(mono)
             deg = MP.degree(mono, var)
             if deg == 0
@@ -309,6 +358,15 @@ function monomial_variable_index(
                 ub_var == typemax(ub_var) ? typemax(F) : float(ub_var),
             )
             mono_bounds *= var_bounds^deg
+            attr = MOI.VariablePrimalStart()
+            if !isnothing(mono_start) && MOI.supports(model, attr, MOI.VariableIndex)
+                start = MOI.get(model, attr, vi)
+                if isnothing(start)
+                    mono_start = nothing
+                else
+                    mono_start *= start^deg
+                end
+            end
         end
         x = div[mono]
         vx = monomial_variable_index(model, d, div, x)
@@ -338,6 +396,9 @@ function monomial_variable_index(
         else
             d[mono], _ = MOI.add_constrained_variable(model.model, set)
         end
+        if !isnothing(mono_start) && MOI.supports(model, MOI.VariablePrimalStart(), MOI.VariableIndex)
+            MOI.set(model.model, MOI.VariablePrimalStart(), d[mono], mono_start)
+        end
         MOI.Utilities.normalize_and_add_constraint(
             model,
             MA.@rewrite(one(T) * d[mono] - one(T) * vx * vy),
@@ -348,14 +409,36 @@ function monomial_variable_index(
     return d[mono]
 end
 
-function _add_constraints(model::Optimizer, cis, index_to_var, d, div)
-    for ci in cis
-        func = MOI.get(model, MOI.ConstraintFunction(), ci)
-        set = MOI.get(model, MOI.ConstraintSet(), ci)
+function _add_constraints(dest, src, index_map, cis_src::Vector{MOI.ConstraintIndex{F,S}}, index_to_var, d, div) where {F,S}
+    for ci in cis_src
+        func = MOI.get(src, MOI.ConstraintFunction(), ci)
+        set = MOI.get(src, MOI.ConstraintSet(), ci)
         func, index_to_var = _subs!(func, index_to_var)
         quad = _quad_convert(func.polynomial, d, div)
-        MOI.Utilities.normalize_and_add_constraint(model, quad, set)
+        dest_ci = MOI.Utilities.normalize_and_add_constraint(dest, quad, set)
+        index_map[ci] = dest_ci
     end
+    # `Utilities.pass_attributes` needs `index_map` to be an `IndexMap` :(
+    #MOI.Utilities.pass_attributes(dest, src, index_map, cis_src)
+    # `ListOfConstraintAttributesSet` not defined for `VectorOfConstraints`
+#    for attr in MOI.get(src, MOI.ListOfConstraintAttributesSet{F,S}())
+#        if !MOI.supports(dest, attr)
+#            if attr == MOI.Name()
+#                continue  # Skipping names is okay.
+#            end
+#        end
+#        for ci in cis_src
+#            value = MOI.get(src, attr, ci)
+#            if value !== nothing
+#                MOI.set(
+#                    dest,
+#                    attr,
+#                    index_map[ci],
+#                    MOI.Utilities.map_indices(index_map, attr, value),
+#                )
+#            end
+#        end
+#    end
     return
 end
 
@@ -396,7 +479,8 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
         for S in keys(model.constraints)
             F = PolyJuMP.ScalarPolynomialFunction{T,model.constraints[S][1]}
             cis = MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
-            _add_constraints(model, cis, index_to_var, vars, div)
+            src = model.constraints[S][2]
+            _add_constraints(model.model, src, model.index_map, cis, index_to_var, vars, div)
         end
     end
     return

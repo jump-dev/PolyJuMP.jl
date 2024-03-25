@@ -50,9 +50,7 @@ end
 function _test_objective_or_constraint(x, y, T, obj::Bool)
     inner = Model{T}()
     optimizer = MOI.Utilities.MockOptimizer(inner)
-    model = JuMP.GenericModel{T}(
-        () -> PolyJuMP.QCQP.Optimizer{T}(optimizer),
-    )
+    model = JuMP.GenericModel{T}(() -> PolyJuMP.QCQP.Optimizer{T}(optimizer))
     PolyJuMP.@variable(model, 1 <= a <= 2)
     PolyJuMP.@variable(model, -5 <= b <= 3)
     PolyJuMP.@constraint(model, a + b >= 1)
@@ -101,9 +99,7 @@ end
 function test_objective_and_constraint(x, y, T)
     inner = Model{T}()
     optimizer = MOI.Utilities.MockOptimizer(inner)
-    model = JuMP.GenericModel{T}(
-        () -> PolyJuMP.QCQP.Optimizer{T}(optimizer),
-    )
+    model = JuMP.GenericModel{T}(() -> PolyJuMP.QCQP.Optimizer{T}(optimizer))
     PolyJuMP.@variable(model, -2 <= a <= 3)
     PolyJuMP.@variable(model, 5 <= b <= 7)
     PolyJuMP.@constraint(model, 0 <= a^3 <= 1)
@@ -296,9 +292,12 @@ function test_name(x, y, T)
     JuMP.@variable(model, 1 <= a <= 3)
     JuMP.@variable(model, 1 <= b <= 3)
     JuMP.@constraint(model, aff, a >= b)
-    JuMP.@constraint(model, con_ref, a^3 >= a*b^4)
+    JuMP.@constraint(model, con_ref, a^3 >= a * b^4)
     inner = Model{T}()
-    qcqp = MOI.instantiate(() -> PolyJuMP.QCQP.Optimizer{T}(inner), with_bridge_type = T)
+    qcqp = MOI.instantiate(
+        () -> PolyJuMP.QCQP.Optimizer{T}(inner),
+        with_bridge_type = T,
+    )
     idxmap = MOI.copy_to(qcqp, JuMP.backend(model))
     attr = MOI.VariableName()
     @test MOI.get(qcqp, attr, idxmap[JuMP.index(a)]) == "a"

@@ -1,6 +1,7 @@
 import MathOptInterface as MOI
 
-const _Model{F,S} = MOI.Utilities.UniversalFallback{MOI.Utilities.VectorOfConstraints{F,S}}
+const _Model{F,S} =
+    MOI.Utilities.UniversalFallback{MOI.Utilities.VectorOfConstraints{F,S}}
 
 mutable struct Optimizer{T,O<:MOI.ModelLike} <: MOI.AbstractOptimizer
     model::O
@@ -206,7 +207,9 @@ function MOI.add_constraint(
     F = typeof(func)
     S = typeof(set)
     if !haskey(model.constraints, S)
-        con = MOI.Utilities.UniversalFallback(MOI.Utilities.VectorOfConstraints{F,S}())
+        con = MOI.Utilities.UniversalFallback(
+            MOI.Utilities.VectorOfConstraints{F,S}(),
+        )
         model.constraints[S] = (P, con)
     end
     return MOI.add_constraint(model.constraints[S][2], func, set)
@@ -359,7 +362,8 @@ function monomial_variable_index(
             )
             mono_bounds *= var_bounds^deg
             attr = MOI.VariablePrimalStart()
-            if !isnothing(mono_start) && MOI.supports(model, attr, MOI.VariableIndex)
+            if !isnothing(mono_start) &&
+               MOI.supports(model, attr, MOI.VariableIndex)
                 start = MOI.get(model, attr, vi)
                 if isnothing(start)
                     mono_start = nothing
@@ -396,7 +400,8 @@ function monomial_variable_index(
         else
             d[mono], _ = MOI.add_constrained_variable(model.model, set)
         end
-        if !isnothing(mono_start) && MOI.supports(model, MOI.VariablePrimalStart(), MOI.VariableIndex)
+        if !isnothing(mono_start) &&
+           MOI.supports(model, MOI.VariablePrimalStart(), MOI.VariableIndex)
             MOI.set(model.model, MOI.VariablePrimalStart(), d[mono], mono_start)
         end
         MOI.Utilities.normalize_and_add_constraint(
@@ -409,7 +414,15 @@ function monomial_variable_index(
     return d[mono]
 end
 
-function _add_constraints(dest, src, index_map, cis_src::Vector{MOI.ConstraintIndex{F,S}}, index_to_var, d, div) where {F,S}
+function _add_constraints(
+    dest,
+    src,
+    index_map,
+    cis_src::Vector{MOI.ConstraintIndex{F,S}},
+    index_to_var,
+    d,
+    div,
+) where {F,S}
     for ci in cis_src
         func = MOI.get(src, MOI.ConstraintFunction(), ci)
         set = MOI.get(src, MOI.ConstraintSet(), ci)
@@ -421,24 +434,24 @@ function _add_constraints(dest, src, index_map, cis_src::Vector{MOI.ConstraintIn
     # `Utilities.pass_attributes` needs `index_map` to be an `IndexMap` :(
     #MOI.Utilities.pass_attributes(dest, src, index_map, cis_src)
     # `ListOfConstraintAttributesSet` not defined for `VectorOfConstraints`
-#    for attr in MOI.get(src, MOI.ListOfConstraintAttributesSet{F,S}())
-#        if !MOI.supports(dest, attr)
-#            if attr == MOI.Name()
-#                continue  # Skipping names is okay.
-#            end
-#        end
-#        for ci in cis_src
-#            value = MOI.get(src, attr, ci)
-#            if value !== nothing
-#                MOI.set(
-#                    dest,
-#                    attr,
-#                    index_map[ci],
-#                    MOI.Utilities.map_indices(index_map, attr, value),
-#                )
-#            end
-#        end
-#    end
+    #    for attr in MOI.get(src, MOI.ListOfConstraintAttributesSet{F,S}())
+    #        if !MOI.supports(dest, attr)
+    #            if attr == MOI.Name()
+    #                continue  # Skipping names is okay.
+    #            end
+    #        end
+    #        for ci in cis_src
+    #            value = MOI.get(src, attr, ci)
+    #            if value !== nothing
+    #                MOI.set(
+    #                    dest,
+    #                    attr,
+    #                    index_map[ci],
+    #                    MOI.Utilities.map_indices(index_map, attr, value),
+    #                )
+    #            end
+    #        end
+    #    end
     return
 end
 
@@ -480,7 +493,15 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
             F = PolyJuMP.ScalarPolynomialFunction{T,model.constraints[S][1]}
             cis = MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
             src = model.constraints[S][2]
-            _add_constraints(model.model, src, model.index_map, cis, index_to_var, vars, div)
+            _add_constraints(
+                model.model,
+                src,
+                model.index_map,
+                cis,
+                index_to_var,
+                vars,
+                div,
+            )
         end
     end
     return

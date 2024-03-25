@@ -312,6 +312,20 @@ function test_name(x, y, T)
     @test_broken MOI.get(inner, attr, ci) == "con_ref"
 end
 
+function test_start(x, y, T)
+    inner = MOI.Utilities.UniversalFallback(Model{T}())
+    model = PolyJuMP.QCQP.Optimizer{T}(inner)
+    a = MOI.add_variable(model)
+    MOI.set(model, MOI.VariablePrimalStart(), a, 2one(T))
+    b = MOI.add_variable(model)
+    MOI.set(model, MOI.VariablePrimalStart(), b, 3one(T))
+    p = PolyJuMP.ScalarPolynomialFunction(one(T) * x^3 - x * y^2, [a, b])
+    MOI.add_constraint(model, p, MOI.LessThan(zero(T)))
+    MOI.Utilities.final_touch(model, nothing)
+    vis = MOI.get(inner, MOI.ListOfVariableIndices())
+    @test sort(MOI.get(inner, MOI.VariablePrimalStart(), vis)) == T[2, 3, 4, 9]
+end
+
 function runtests(x, y)
     for name in names(@__MODULE__; all = true)
         if startswith("$name", "test_")

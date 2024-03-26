@@ -43,7 +43,7 @@ end
 MOI.is_valid(model::Optimizer, i::MOI.Index) = MOI.is_valid(model.model, i)
 function MOI.is_valid(
     model::Optimizer{T},
-    ::MOI.ConstraintIndex{PolyJuMP.ScalarPolynomialFunction{T},S},
+    ci::MOI.ConstraintIndex{<:PolyJuMP.ScalarPolynomialFunction{T},S},
 ) where {T,S<:MOI.AbstractScalarSet}
     return haskey(model.constraints, S) &&
            MOI.is_valid(model.constraints[S][2], ci)

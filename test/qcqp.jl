@@ -7,6 +7,15 @@ import MultivariatePolynomials as MP
 import PolyJuMP
 import JuMP
 
+function test_solver_name(_, _, _)
+    model = Model{Float64}()
+    inner = MOI.Utilities.MockOptimizer(model)
+    # We don't specify `T` to test the fallback
+    optimizer = PolyJuMP.QCQP.Optimizer(inner)
+    @test optimizer isa PolyJuMP.QCQP.Optimizer{Float64}
+    @test MOI.get(optimizer, MOI.SolverName()) == "PolyJuMP.QCQP with Mock"
+end
+
 function _test_decompose(monos, exps)
     vars = MP.variables(monos)
     M = eltype(monos)
@@ -320,7 +329,8 @@ function test_start(x, y, T)
     b = MOI.add_variable(model)
     MOI.set(model, MOI.VariablePrimalStart(), b, 3one(T))
     p = PolyJuMP.ScalarPolynomialFunction(one(T) * x^3 - x * y^2, [a, b])
-    MOI.add_constraint(model, p, MOI.LessThan(zero(T)))
+    ci = MOI.add_constraint(model, p, MOI.LessThan(zero(T)))
+    @test MOI.is_valid(model, ci)
     MOI.Utilities.final_touch(model, nothing)
     vis = MOI.get(inner, MOI.ListOfVariableIndices())
     @test sort(MOI.get(inner, MOI.VariablePrimalStart(), vis)) == T[2, 3, 4, 9]

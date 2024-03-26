@@ -5,6 +5,16 @@ using Test
 import MathOptInterface as MOI
 import MultivariatePolynomials as MP
 import PolyJuMP
+import JuMP
+
+function test_solver_name(_, _, _)
+    model = Model{Float64}()
+    inner = MOI.Utilities.MockOptimizer(model)
+    # We don't specify `T` to test the fallback
+    optimizer = PolyJuMP.QCQP.Optimizer(inner)
+    @test optimizer isa PolyJuMP.QCQP.Optimizer{Float64}
+    @test MOI.get(optimizer, MOI.SolverName()) == "PolyJuMP.QCQP with Mock"
+end
 
 function _test_decompose(monos, exps)
     vars = MP.variables(monos)
@@ -49,9 +59,7 @@ end
 function _test_objective_or_constraint(x, y, T, obj::Bool)
     inner = Model{T}()
     optimizer = MOI.Utilities.MockOptimizer(inner)
-    model = PolyJuMP.JuMP.GenericModel{T}(
-        () -> PolyJuMP.QCQP.Optimizer{T}(optimizer),
-    )
+    model = JuMP.GenericModel{T}(() -> PolyJuMP.QCQP.Optimizer{T}(optimizer))
     PolyJuMP.@variable(model, 1 <= a <= 2)
     PolyJuMP.@variable(model, -5 <= b <= 3)
     PolyJuMP.@constraint(model, a + b >= 1)
@@ -100,9 +108,7 @@ end
 function test_objective_and_constraint(x, y, T)
     inner = Model{T}()
     optimizer = MOI.Utilities.MockOptimizer(inner)
-    model = PolyJuMP.JuMP.GenericModel{T}(
-        () -> PolyJuMP.QCQP.Optimizer{T}(optimizer),
-    )
+    model = JuMP.GenericModel{T}(() -> PolyJuMP.QCQP.Optimizer{T}(optimizer))
     PolyJuMP.@variable(model, -2 <= a <= 3)
     PolyJuMP.@variable(model, 5 <= b <= 7)
     PolyJuMP.@constraint(model, 0 <= a^3 <= 1)
@@ -146,7 +152,7 @@ end
 
 function test_no_monomials(x, y, T)
     inner = Model{T}()
-    model = PolyJuMP.JuMP.GenericModel{T}() do
+    model = JuMP.GenericModel{T}() do
         return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
     end
     PolyJuMP.@variable(model, 0 <= x[1:2] <= 2)
@@ -159,7 +165,7 @@ end
 
 function test_scalar_constant_not_zero(x, y, T)
     inner = Model{T}()
-    model = PolyJuMP.JuMP.GenericModel{T}() do
+    model = JuMP.GenericModel{T}() do
         return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
     end
     PolyJuMP.@variable(model, -1 <= x[1:3] <= 2)
@@ -179,7 +185,7 @@ end
 
 function test_unbound_polynomial(x, y, T)
     inner = Model{T}()
-    model = PolyJuMP.JuMP.GenericModel{T}() do
+    model = JuMP.GenericModel{T}() do
         return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
     end
     PolyJuMP.@variable(model, x >= 0)
@@ -201,7 +207,7 @@ end
 
 function test_scalar_nonlinear_function(x, y, T)
     inner = Model{T}()
-    model = PolyJuMP.JuMP.GenericModel{T}() do
+    model = JuMP.GenericModel{T}() do
         return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
     end
     PolyJuMP.@variable(model, 0 <= x <= 1)
@@ -217,7 +223,7 @@ end
 
 function test_scalar_nonlinear_function_div_rem_zero(x, y, T)
     inner = Model{T}()
-    model = PolyJuMP.JuMP.GenericModel{T}() do
+    model = JuMP.GenericModel{T}() do
         return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
     end
     PolyJuMP.@variable(model, x)
@@ -233,7 +239,7 @@ end
 
 function test_scalar_nonlinear_function_div_rem_err(x, y, T)
     inner = Model{T}()
-    model = PolyJuMP.JuMP.GenericModel{T}() do
+    model = JuMP.GenericModel{T}() do
         return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
     end
     PolyJuMP.@variable(model, x)
@@ -249,7 +255,7 @@ end
 
 function test_scalar_nonlinear_function_div_rem_number(x, y, T)
     inner = Model{T}()
-    model = PolyJuMP.JuMP.GenericModel{T}() do
+    model = JuMP.GenericModel{T}() do
         return PolyJuMP.QCQP.Optimizer{T}(MOI.Utilities.MockOptimizer(inner))
     end
     PolyJuMP.@variable(model, x)
@@ -264,15 +270,70 @@ end
 function test_variable_primal(x, y, T)
     inner = Model{T}()
     optimizer = MOI.Utilities.MockOptimizer(inner)
-    model = PolyJuMP.JuMP.direct_generic_model(
+    model = JuMP.direct_generic_model(
         T,
-        PolyJuMP.QCQP.Optimizer{T}(optimizer),
+        MOI.instantiate(
+            () -> PolyJuMP.QCQP.Optimizer{T}(optimizer),
+            with_bridge_type = T,
+        ),
     )
-    PolyJuMP.@variable(model, 1 <= a <= 3)
+    JuMP.@variable(model, 1 <= a <= 3)
+    aff = JuMP.@constraint(model, a <= 1)
+    cub = JuMP.@constraint(model, a^3 <= 1)
     MOI.set(model, MOI.VariablePrimal(), a, T(2))
     MOI.set(model, MOI.TerminationStatus(), MOI.OPTIMAL)
+    MOI.set(model, MOI.ConstraintDual(), aff, T(3))
+    MOI.Utilities.final_touch(JuMP.backend(model), nothing)
+    inner = JuMP.backend(model).model
+    F = MOI.ScalarQuadraticFunction{T}
+    S = MOI.LessThan{T}
+    ci = first(MOI.get(inner, MOI.ListOfConstraintIndices{F,S}()))
+    MOI.set(inner, MOI.ConstraintDual(), ci, T(4))
     @test MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMAL
-    @test PolyJuMP.value(a) == 2
+    @test JuMP.value(a) == 2
+    @test JuMP.dual(aff) == 3
+    @test JuMP.dual(cub) == 4
+end
+
+# We test names as it's supported by `MOI.Utilities.Model`
+function test_name(x, y, T)
+    model = JuMP.GenericModel{T}()
+    JuMP.@variable(model, 1 <= a <= 3)
+    JuMP.@variable(model, 1 <= b <= 3)
+    JuMP.@constraint(model, aff, a >= b)
+    JuMP.@constraint(model, con_ref, a^3 >= a * b^4)
+    inner = Model{T}()
+    qcqp = MOI.instantiate(
+        () -> PolyJuMP.QCQP.Optimizer{T}(inner),
+        with_bridge_type = T,
+    )
+    idxmap = MOI.copy_to(qcqp, JuMP.backend(model))
+    attr = MOI.VariableName()
+    @test MOI.get(qcqp, attr, idxmap[JuMP.index(a)]) == "a"
+    @test MOI.get(qcqp, attr, idxmap[JuMP.index(b)]) == "b"
+    attr = MOI.ConstraintName()
+    @test MOI.get(qcqp, attr, idxmap[JuMP.index(aff)]) == "aff"
+    @test MOI.get(qcqp, attr, idxmap[JuMP.index(con_ref)]) == "con_ref"
+    inner = qcqp.model.model
+    F = MOI.ScalarQuadraticFunction{T}
+    S = MOI.GreaterThan{T}
+    ci = first(MOI.get(inner, MOI.ListOfConstraintIndices{F,S}()))
+    @test_broken MOI.get(inner, attr, ci) == "con_ref"
+end
+
+function test_start(x, y, T)
+    inner = MOI.Utilities.UniversalFallback(Model{T}())
+    model = PolyJuMP.QCQP.Optimizer{T}(inner)
+    a = MOI.add_variable(model)
+    MOI.set(model, MOI.VariablePrimalStart(), a, 2one(T))
+    b = MOI.add_variable(model)
+    MOI.set(model, MOI.VariablePrimalStart(), b, 3one(T))
+    p = PolyJuMP.ScalarPolynomialFunction(one(T) * x^3 - x * y^2, [a, b])
+    ci = MOI.add_constraint(model, p, MOI.LessThan(zero(T)))
+    @test MOI.is_valid(model, ci)
+    MOI.Utilities.final_touch(model, nothing)
+    vis = MOI.get(inner, MOI.ListOfVariableIndices())
+    @test sort(MOI.get(inner, MOI.VariablePrimalStart(), vis)) == T[2, 3, 4, 9]
 end
 
 function runtests(x, y)

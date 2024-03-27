@@ -49,6 +49,22 @@ MOI.Utilities.@model(
     (),
 )
 
+MOI.Utilities.@model(
+    AffineObjectiveModel,
+    (),
+    (MOI.LessThan, MOI.GreaterThan, MOI.EqualTo, MOI.Interval),
+    (),
+    (),
+    (),
+    (MOI.ScalarAffineFunction, MOI.ScalarQuadraticFunction),
+    (),
+    (),
+)
+
+function MOI.supports(::AffineObjectiveModel{T}, ::MOI.ObjectiveFunction{F}) where {T,F<:MOI.AbstractFunction}
+    return F == MOI.ScalarAffineFunction{T}
+end
+
 function MOI.supports(
     ::Model,
     ::MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction},
@@ -334,6 +350,20 @@ function test_start(x, y, T)
     MOI.Utilities.final_touch(model, nothing)
     vis = MOI.get(inner, MOI.ListOfVariableIndices())
     @test sort(MOI.get(inner, MOI.VariablePrimalStart(), vis)) == T[2, 3, 4, 9]
+end
+
+function test_inner_bridge(x, y, T)
+    # The quadratic objective should be bridged after the QCQP layer
+    inner = AffineObjectiveModel{T}()
+    model = PolyJuMP.QCQP.Optimizer{T}(inner)
+    a = MOI.add_variable(model)
+    b = MOI.add_variable(model)
+    p = PolyJuMP.ScalarPolynomialFunction(one(T) * x^3 - x * y^2, [a, b])
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(model, MOI.ObjectiveFunction{typeof(p)}(), p)
+    MOI.Utilities.final_touch(model, nothing)
+    F = MOI.ScalarAffineFunction{T}
+    @test MOI.ObjectiveFunction{F}() in MOI.get(inner, MOI.ListOfModelAttributesSet())
 end
 
 function runtests(x, y)

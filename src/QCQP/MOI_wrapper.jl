@@ -10,9 +10,16 @@ mutable struct Optimizer{T,O<:MOI.ModelLike} <: MOI.AbstractOptimizer
     index_map::Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}
 end
 
-function Optimizer{T}(model::MOI.ModelLike) where {T}
-    return Optimizer{T,typeof(model)}(
-        model,
+function Optimizer{T}(optimizer::MOI.ModelLike) where {T}
+    if !MOI.supports_incremental_interface(optimizer)
+        cache = MOI.default_cache(optimizer, T)
+        optimizer = MOI.Utilities.CachingOptimizer(cache, optimizer)
+    end
+    # This bridge layer is needed for instance if `optimizer` needs to bridge
+    # quadratic objective into quadratic constraints with a slack bridge (e.g., like SCIP)
+    inner = MOI.Bridges.full_bridge_optimizer(optimizer, T)
+    return Optimizer{T,typeof(inner)}(
+        inner,
         nothing,
         DataStructures.OrderedDict{Type,MOI.Utilities.VectorOfConstraints}(),
         Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),

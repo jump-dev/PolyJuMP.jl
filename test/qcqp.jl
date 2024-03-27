@@ -61,7 +61,10 @@ MOI.Utilities.@model(
     (),
 )
 
-function MOI.supports(::AffineObjectiveModel{T}, ::MOI.ObjectiveFunction{F}) where {T,F<:MOI.AbstractFunction}
+function MOI.supports(
+    ::AffineObjectiveModel{T},
+    ::MOI.ObjectiveFunction{F},
+) where {T,F<:MOI.AbstractFunction}
     return F == MOI.ScalarAffineFunction{T}
 end
 
@@ -363,7 +366,8 @@ function test_inner_bridge(x, y, T)
     MOI.set(model, MOI.ObjectiveFunction{typeof(p)}(), p)
     MOI.Utilities.final_touch(model, nothing)
     F = MOI.ScalarAffineFunction{T}
-    @test MOI.ObjectiveFunction{F}() in MOI.get(inner, MOI.ListOfModelAttributesSet())
+    @test MOI.ObjectiveFunction{F}() in
+          MOI.get(inner, MOI.ListOfModelAttributesSet())
 end
 
 function runtests(x, y)

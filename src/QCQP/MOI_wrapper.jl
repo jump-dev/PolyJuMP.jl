@@ -79,7 +79,7 @@ function MOI.set(
     ci::MOI.ConstraintIndex{<:PolyJuMP.ScalarPolynomialFunction{T},S},
     value,
 ) where {T,S<:MOI.AbstractScalarSet}
-    return MOI.get(model.constraints[S][2], attr, model.index_map[ci], value)
+    return MOI.set(model.constraints[S][2], attr, ci, value)
 end
 
 function MOI.get(
@@ -425,7 +425,7 @@ function _add_constraints(
     dest,
     src,
     index_map,
-    cis_src::Vector{MOI.ConstraintIndex{F,S}},
+    cis_src::AbstractVector{MOI.ConstraintIndex{F,S}},
     index_to_var,
     d,
     div,
@@ -438,27 +438,7 @@ function _add_constraints(
         dest_ci = MOI.Utilities.normalize_and_add_constraint(dest, quad, set)
         index_map[ci] = dest_ci
     end
-    # `Utilities.pass_attributes` needs `index_map` to be an `IndexMap` :(
-    #MOI.Utilities.pass_attributes(dest, src, index_map, cis_src)
-    # `ListOfConstraintAttributesSet` not defined for `VectorOfConstraints`
-    #    for attr in MOI.get(src, MOI.ListOfConstraintAttributesSet{F,S}())
-    #        if !MOI.supports(dest, attr)
-    #            if attr == MOI.Name()
-    #                continue  # Skipping names is okay.
-    #            end
-    #        end
-    #        for ci in cis_src
-    #            value = MOI.get(src, attr, ci)
-    #            if value !== nothing
-    #                MOI.set(
-    #                    dest,
-    #                    attr,
-    #                    index_map[ci],
-    #                    MOI.Utilities.map_indices(index_map, attr, value),
-    #                )
-    #            end
-    #        end
-    #    end
+    MOI.Utilities.pass_attributes(dest, src, index_map, cis_src)
     return
 end
 

@@ -315,7 +315,7 @@ function test_variable_primal(x, y, T)
 end
 
 # We test names as it's supported by `MOI.Utilities.Model`
-function test_name(x, y, T)
+function test_name(_, _, T)
     model = JuMP.GenericModel{T}()
     JuMP.@variable(model, 1 <= a <= 3)
     JuMP.@variable(model, 1 <= b <= 3)
@@ -333,11 +333,6 @@ function test_name(x, y, T)
     attr = MOI.ConstraintName()
     @test MOI.get(qcqp, attr, idxmap[JuMP.index(aff)]) == "aff"
     @test MOI.get(qcqp, attr, idxmap[JuMP.index(con_ref)]) == "con_ref"
-    inner = qcqp.model.model
-    F = MOI.ScalarQuadraticFunction{T}
-    S = MOI.GreaterThan{T}
-    ci = first(MOI.get(inner, MOI.ListOfConstraintIndices{F,S}()))
-    @test_broken MOI.get(inner, attr, ci) == "con_ref"
 end
 
 function test_start(x, y, T)
@@ -349,10 +344,14 @@ function test_start(x, y, T)
     MOI.set(model, MOI.VariablePrimalStart(), b, 3one(T))
     p = PolyJuMP.ScalarPolynomialFunction(one(T) * x^3 - x * y^2, [a, b])
     ci = MOI.add_constraint(model, p, MOI.LessThan(zero(T)))
+    MOI.set(model, MOI.ConstraintPrimalStart(), ci, 5one(T))
+    @test MOI.get(model, MOI.ConstraintPrimalStart(), ci) == 5
     @test MOI.is_valid(model, ci)
     MOI.Utilities.final_touch(model, nothing)
     vis = MOI.get(inner, MOI.ListOfVariableIndices())
     @test sort(MOI.get(inner, MOI.VariablePrimalStart(), vis)) == T[2, 3, 4, 9]
+    @test MOI.get(model, MOI.ConstraintPrimalStart(), ci) == 5
+    @test MOI.get(model.model, MOI.ConstraintPrimalStart(), model.index_map[ci]) == 5
 end
 
 function test_inner_bridge(x, y, T)

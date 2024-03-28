@@ -351,7 +351,11 @@ function test_start(x, y, T)
     vis = MOI.get(inner, MOI.ListOfVariableIndices())
     @test sort(MOI.get(inner, MOI.VariablePrimalStart(), vis)) == T[2, 3, 4, 9]
     @test MOI.get(model, MOI.ConstraintPrimalStart(), ci) == 5
-    @test MOI.get(model.model, MOI.ConstraintPrimalStart(), model.index_map[ci]) == 5
+    @test MOI.get(
+        model.model,
+        MOI.ConstraintPrimalStart(),
+        model.index_map[ci],
+    ) == 5
 end
 
 function test_inner_bridge(x, y, T)

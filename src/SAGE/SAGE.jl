@@ -1,6 +1,7 @@
 module SAGE
 
 import MutableArithmetics as MA
+import MultivariateBases as MB
 import MultivariatePolynomials as MP
 import MathOptInterface as MOI
 import JuMP
@@ -40,9 +41,10 @@ struct Signomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <:
 end
 Signomials() = Signomials(nothing)
 _index(_, ::Nothing) = nothing
-_index(monos, mono::MP.AbstractMonomial) = findfirst(isequal(mono), monos)::Int
-function JuMP.moi_set(c::Signomials, monos)
-    return Cone(Signomials(_index(monos, c.monomial)), _exponents_matrix(monos))
+_index(basis, mono::MP.AbstractMonomial) = MB.monomial_index(basis, mono)::Int
+function JuMP.moi_set(c::Signomials, basis::MB.SubBasis{MB.Monomial})
+    monos = basis.monomials
+    return Cone(Signomials(_index(basis, c.monomial)), _exponents_matrix(monos))
 end
 
 """
@@ -55,9 +57,10 @@ struct Polynomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <:
     monomial::M
 end
 Polynomials() = Polynomials(nothing)
-function JuMP.moi_set(c::Polynomials, monos)
+function JuMP.moi_set(c::Polynomials, basis::MB.SubBasis{MB.Monomial})
+    monos = basis.monomials
     return Cone(
-        Polynomials(_index(monos, c.monomial)),
+        Polynomials(_index(basis, c.monomial)),
         _exponents_matrix(monos),
     )
 end
@@ -77,9 +80,9 @@ function JuMP.build_constraint(
         _error("unsupported keyword argument `$key`.")
     end
     coefs = PolyJuMP.non_constant_coefficients(p)
-    monos = MP.monomials(p)
-    cone = JuMP.moi_set(set, monos)
-    shape = PolyJuMP.PolynomialShape(monos)
+    basis = MB.SubBasis{MB.Monomial}(MP.monomials(p))
+    cone = JuMP.moi_set(set, basis)
+    shape = PolyJuMP.PolynomialShape(basis)
     return PolyJuMP.bridgeable(
         JuMP.VectorConstraint(coefs, cone, shape),
         JuMP.moi_function_type(typeof(coefs)),

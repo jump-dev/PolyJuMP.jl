@@ -2,21 +2,21 @@ module DummyPolyModule
 
 using LinearAlgebra
 import MathOptInterface as MOI
-using JuMP
-using PolyJuMP
+import StarAlgebras as SA
 using MultivariatePolynomials
 import MultivariateBases as MB
 using SemialgebraicSets
+using JuMP
+using PolyJuMP
 
 struct NonNeg{
-    BT<:MB.AbstractPolynomialBasis,
+    Z<:SA.AbstractBasis,
     DT<:SemialgebraicSets.AbstractSemialgebraicSet,
-    MT<:AbstractMonomial,
-    MVT<:AbstractVector{MT},
+    B<:SA.ExplicitBasis,
 } <: MOI.AbstractVectorSet
-    basis::Type{BT}
+    zero_basis::Z
     domain::DT
-    monomials::MVT
+    basis::B
     kwargs::Any
 end
 MOI.dimension(set::NonNeg) = length(set.monomials)
@@ -57,15 +57,15 @@ end
 
 function JuMP.moi_set(
     cone::DummyNonNeg,
-    monos::AbstractVector{<:AbstractMonomial};
+    b::MB.SubBasis{MB.Monomial,M};
     domain::AbstractSemialgebraicSet = FullSpace(),
-    basis = MB.MonomialBasis,
+    basis = MB.FullBasis{MB.Monomial,M}(),
     kwargs...,
-)
+) where {M}
     # For terms, `monomials` return a `OneOrZeroElementVector`
     # which would create a `NonNeg` of different type which would
     # make some complications in testing so let's convert it here
-    return NonNeg(basis, domain, monomial_vector(monos), kwargs)
+    return NonNeg(basis, domain, b, kwargs)
 end
 
 function JuMP.build_constraint(
@@ -75,10 +75,10 @@ function JuMP.build_constraint(
     kwargs...,
 )
     coefs = PolyJuMP.non_constant_coefficients(p)
-    monos = monomials(p)
-    set = JuMP.moi_set(s, monos; kwargs...)
+    basis = MB.SubBasis{MB.Monomial}(monomials(p))
+    set = JuMP.moi_set(s, basis; kwargs...)
     return PolyJuMP.bridgeable(
-        JuMP.VectorConstraint(coefs, set, PolyJuMP.PolynomialShape(monos)),
+        JuMP.VectorConstraint(coefs, set, PolyJuMP.PolynomialShape(basis)),
         JuMP.moi_function_type(typeof(coefs)),
         typeof(set),
     )
@@ -109,12 +109,12 @@ function JuMP.reshape_vector(
 end
 
 struct PosDefMatrix{
-    BT<:MB.AbstractPolynomialBasis,
+    Z<:SA.AbstractBasis,
     DT<:SemialgebraicSets.AbstractSemialgebraicSet,
     MT<:AbstractMonomial,
     MVT<:AbstractVector{MT},
 } <: MOI.AbstractVectorSet
-    basis::Type{BT}
+    zero_basis::Z
     domain::DT
     monomials::Matrix{MVT}
     kwargs::Any
@@ -131,7 +131,7 @@ function JuMP.moi_set(
     ::DummyPosDefMatrix,
     monos::Matrix{<:AbstractVector{<:AbstractMonomial}};
     domain::AbstractSemialgebraicSet = FullSpace(),
-    basis = MB.MonomialBasis,
+    basis = MB.FullBasis{MB.Monomial,eltype(eltype(monos))}(),
     kwargs...,
 )
     return PosDefMatrix(basis, domain, monos, kwargs)

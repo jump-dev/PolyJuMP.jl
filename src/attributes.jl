@@ -1,5 +1,5 @@
 """
-    MomentsAttribute(N)
+    MomentsAttribute(result_index)
     MomentsAttribute()
 
 A constraint attribute for the vector of moments corresponding to the

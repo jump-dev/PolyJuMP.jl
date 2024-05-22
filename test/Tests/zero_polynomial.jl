@@ -47,21 +47,19 @@ function _zero_polynomial_test(
         @test μ isa AbstractMeasure{Float64}
         @test length(moments(μ)) == 1
         @test moment_value(moments(μ)[1]) ≈ -1.0 atol = atol rtol = rtol
-        @test monomial(moments(μ)[1]) == x * y
+        @test moments(μ)[1].polynomial == MB.Polynomial{MB.Monomial}(x * y)
     end
 
     F = MOI.VectorAffineFunction{Float64}
     ST = PolyJuMP.ZeroPolynomialSet{
         FullSpace,
-        MB.MonomialBasis,
-        monomial_type(x),
-        monomial_vector_type(x),
+        MB.FullBasis{MB.Monomial,monomial_type(x)},
+        MB.SubBasis{MB.Monomial,monomial_type(x),monomial_vector_type(x)},
     }
     SP = PolyJuMP.ZeroPolynomialSet{
         FullSpace,
-        MB.MonomialBasis,
-        monomial_type(x),
-        monomial_vector_type(x),
+        MB.FullBasis{MB.Monomial,monomial_type(x)},
+        MB.SubBasis{MB.Monomial,monomial_type(x),monomial_vector_type(x)},
     }
     @test Set(MOI.get(model, MOI.ListOfConstraintTypesPresent())) == Set([
         (MOI.VariableIndex, MOI.LessThan{Float64}),

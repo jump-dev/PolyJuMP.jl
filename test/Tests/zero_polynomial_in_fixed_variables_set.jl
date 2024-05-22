@@ -38,31 +38,29 @@ function zero_polynomial_in_fixed_variables_set_test(
     @test μ isa AbstractMeasure{Float64}
     @test length(moments(μ)) == 2
     @test moment_value(moments(μ)[1]) ≈ -1.0 atol = atol rtol = rtol
-    @test monomial(moments(μ)[1]) == y
+    @test moments(μ)[1].polynomial == MB.Polynomial{MB.Monomial}(y)
     @test moment_value(moments(μ)[2]) ≈ -1.0 atol = atol rtol = rtol
-    @test monomial(moments(μ)[2]) == x * y
+    @test moments(μ)[2].polynomial == MB.Polynomial{MB.Monomial}(x * y)
 
     μ = moments(cref)
     @test μ isa AbstractMeasure{Float64}
     @test length(moments(μ)) == 1
     @test moment_value(moments(μ)[1]) ≈ -1.0 atol = atol rtol = rtol
-    @test monomial(moments(μ)[1]) == y
+    @test moments(μ)[1].polynomial == MB.Polynomial{MB.Monomial}(y)
 
     F = MOI.VectorAffineFunction{Float64}
     S = PolyJuMP.ZeroPolynomialSet{
         typeof(@set x == 1),
-        MB.MonomialBasis,
-        monomial_type(x),
-        monomial_vector_type(x),
+        MB.FullBasis{MB.Monomial,monomial_type(x)},
+        MB.SubBasis{MB.Monomial,monomial_type(x),monomial_vector_type(x)},
     }
     @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
           [(MOI.VariableIndex, MOI.LessThan{Float64}), (F, S)]
     @testset "Delete" begin
         ST = PolyJuMP.ZeroPolynomialSet{
             FullSpace,
-            MB.MonomialBasis,
-            monomial_type(x),
-            monomial_vector_type(x),
+            MB.FullBasis{MB.Monomial,monomial_type(x)},
+            MB.SubBasis{MB.Monomial,monomial_type(x),monomial_vector_type(x)},
         }
         test_delete_bridge(model, cref, 2, ((F, MOI.Zeros, 0), (F, ST, 0)))
     end

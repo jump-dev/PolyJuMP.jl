@@ -87,14 +87,14 @@ function test_MonomialBasis(var)
     @variable m p5[1:3] Poly(X)
     @test isa(p5, Vector{PT})
     _test_variable(m, p5[1], X)
-    @variable(m, p6, Poly(MB.MonomialBasis(X)), integer = true)
+    @variable(m, p6, Poly(MB.SubBasis{MB.Monomial}(X)), integer = true)
     return _test_variable(m, p6, X, false, true)
 end
 
 function test_ScaledMonomialBasis(var)
     x = MP.similar_variable(var, Val{:x})
     m = Model()
-    @variable(m, p1, Poly(MB.ScaledMonomialBasis([1, x, x^2])), Int)
+    @variable(m, p1, Poly(MB.SubBasis{MB.ScaledMonomial}([1, x, x^2])), Int)
     return _test_variable(
         m,
         p1,
@@ -106,63 +106,64 @@ function test_ScaledMonomialBasis(var)
     )
 end
 
-function test_FixedPolynomialBasis(var)
-    x = MP.similar_variable(var, Val{:x})
-    y = MP.similar_variable(var, Val{:y})
-    m = Model()
-    @variable(m, p1, Poly(MB.FixedPolynomialBasis([1 - x^2, x^2 + 2])), Bin)
-    _test_variable(m, p1, monomial_vector([x^2, 1]), true, false, false, false)
-    @variable(m, p2[1:2], Poly(MB.FixedPolynomialBasis([1 - x^2, x^2 + 2])))
-    _test_variable(
-        m,
-        p2[1],
-        monomial_vector([x^2, 1]),
-        false,
-        false,
-        false,
-        false,
-    )
-    # Elements of the basis have type monomial
-    @variable(m, p3[2:3], Poly(MB.FixedPolynomialBasis([x, x^2])))
-    _test_variable(
-        m,
-        p3[2],
-        monomial_vector([x^2, x]),
-        false,
-        false,
-        false,
-        false,
-    )
-    # Elements of the basis have type term
-    @variable(m, p4[1:2], Poly(MB.FixedPolynomialBasis([1, x, x^2])), Int)
-    _test_variable(
-        m,
-        p4[1],
-        monomial_vector([x^2, x, 1]),
-        false,
-        true,
-        false,
-        false,
-    )
-    # Elements of the basis have type variable
-    @variable(
-        m,
-        p5[-1:1],
-        Poly(MB.FixedPolynomialBasis([x, y])),
-        integer = true
-    )
-    _test_variable(m, p5[0], monomial_vector([x, y]), false, true, false)
-    @variable(m, p6[-1:1], Poly(MB.FixedPolynomialBasis([x])), integer = true)
-    return _test_variable(
-        m,
-        p6[0],
-        monomial_vector([x]),
-        false,
-        true,
-        true,
-        false,
-    )
-end
+# TODO recover with other basis
+#function test_FixedPolynomialBasis(var)
+#    x = MP.similar_variable(var, Val{:x})
+#    y = MP.similar_variable(var, Val{:y})
+#    m = Model()
+#    @variable(m, p1, Poly(MB.FixedPolynomialBasis([1 - x^2, x^2 + 2])), Bin)
+#    _test_variable(m, p1, monomial_vector([x^2, 1]), true, false, false, false)
+#    @variable(m, p2[1:2], Poly(MB.FixedPolynomialBasis([1 - x^2, x^2 + 2])))
+#    _test_variable(
+#        m,
+#        p2[1],
+#        monomial_vector([x^2, 1]),
+#        false,
+#        false,
+#        false,
+#        false,
+#    )
+#    # Elements of the basis have type monomial
+#    @variable(m, p3[2:3], Poly(MB.FixedPolynomialBasis([x, x^2])))
+#    _test_variable(
+#        m,
+#        p3[2],
+#        monomial_vector([x^2, x]),
+#        false,
+#        false,
+#        false,
+#        false,
+#    )
+#    # Elements of the basis have type term
+#    @variable(m, p4[1:2], Poly(MB.FixedPolynomialBasis([1, x, x^2])), Int)
+#    _test_variable(
+#        m,
+#        p4[1],
+#        monomial_vector([x^2, x, 1]),
+#        false,
+#        true,
+#        false,
+#        false,
+#    )
+#    # Elements of the basis have type variable
+#    @variable(
+#        m,
+#        p5[-1:1],
+#        Poly(MB.FixedPolynomialBasis([x, y])),
+#        integer = true
+#    )
+#    _test_variable(m, p5[0], monomial_vector([x, y]), false, true, false)
+#    @variable(m, p6[-1:1], Poly(MB.FixedPolynomialBasis([x])), integer = true)
+#    return _test_variable(
+#        m,
+#        p6[0],
+#        monomial_vector([x]),
+#        false,
+#        true,
+#        true,
+#        false,
+#    )
+#end
 
 function test_value_function(var)
     x = MP.similar_variable(var, Val{:x})

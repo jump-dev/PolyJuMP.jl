@@ -28,11 +28,11 @@ abstract type AbstractPoly end
 
 Polynomial variable ``v^\\top p`` where ``v`` is a vector of new decision variables and ``p`` is a vector of polynomials for the basis `polynomial_basis`.
 """
-struct Poly{PB<:MB.AbstractPolynomialBasis} <: AbstractPoly
-    polynomial_basis::PB
+struct Poly{B<:SA.ExplicitBasis} <: AbstractPoly
+    polynomial_basis::B
 end
 function Poly(x::AbstractVector{<:MP.AbstractPolynomialLike})
-    return Poly(MB.MonomialBasis(x))
+    return Poly(MB.SubBasis{MB.Monomial}(x))
 end
 
 # Macro

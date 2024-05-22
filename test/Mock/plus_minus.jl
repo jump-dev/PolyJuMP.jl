@@ -8,10 +8,9 @@ using DynamicPolynomials
 using SemialgebraicSets
 using PolyJuMP
 const NonNeg = DummyPolyModule.NonNeg{
-    MB.FullBasis{MB.Monomial,typeof(x^2)},
+    MB.FullBasis{MB.Monomial,monomial_type(x)},
     typeof(@set x^2 ≤ 0),
-    monomial_type(x),
-    monomial_vector_type(x),
+    MB.SubBasis{MB.Monomial,monomial_type(x),monomial_vector_type(x)},
 }
 
 MOI.Utilities.@model(

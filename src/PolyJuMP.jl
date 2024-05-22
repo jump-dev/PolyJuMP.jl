@@ -1,6 +1,7 @@
 module PolyJuMP
 
 import MutableArithmetics as MA
+import StarAlgebras as SA
 
 # MultivariatePolynomials extension
 

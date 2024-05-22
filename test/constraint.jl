@@ -44,9 +44,9 @@ function _test_constraint(
     p,
     ineqs,
     eqs,
-    basis = MB.MonomialBasis,
     kwargs = [];
     T = Float64,
+    basis = MB.Monomial,
 )
     @test cref isa JuMP.ConstraintRef{
         Model,
@@ -56,8 +56,11 @@ function _test_constraint(
     set = JuMP.moi_set(c)
     @test set isa S
     if set isa PolyJuMP.ZeroPolynomialSet
-        @test typeof(set.monomials) ==
-              MP.monomial_vector_type(typeof(set.monomials))
+        @test set.basis isa MB.SubBasis{
+            MB.Monomial,
+            MP.monomial_type(set.basis.monomials),
+            MP.monomial_vector_type(typeof(set.basis.monomials)),
+        }
     end
     if set isa PolyJuMP.PlusMinusSet
         set = set.set
@@ -82,7 +85,7 @@ function _test_constraint(
         " \$\$",
     )
     @test sprint(show, MIME"text/latex"(), cref) == expected_str
-    @test set.basis == basis
+    @test set.zero_basis isa MB.FullBasis{basis}
     if !isempty(kwargs)
         @test length(set.kwargs) == length(kwargs)
         for (i, kw) in enumerate(set.kwargs)
@@ -220,7 +223,6 @@ function test_NonNeg(var)
             -p + q,
             [],
             [],
-            MB.MonomialBasis,
             [(:maxdegree, 1)],
         )
     end

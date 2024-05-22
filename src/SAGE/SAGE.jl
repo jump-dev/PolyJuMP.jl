@@ -139,7 +139,7 @@ function decomposition(
     tol::Real,
     result_index::Int = 1,
 )
-    monos = con_ref.shape.monomials
+    monos = con_ref.shape.basis.monomials
     attr = DecompositionAttribute(tol, result_index)
     return Decomposition([
         MP.polynomial(a, monos) for

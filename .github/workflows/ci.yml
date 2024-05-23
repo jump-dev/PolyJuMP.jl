@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['1', '1.6']  # Test against LTS
+        version: ['1'] # , '1.6']  # LTS is failing because HomotopyContinuation is a dependency of the tests it doesn't support the LTS
         os: [ubuntu-latest, macOS-latest, windows-latest]
         arch: [x64]
         include:

@@ -28,7 +28,7 @@ struct PolynomialShape{B<:SA.ExplicitBasis} <: JuMP.AbstractShape
     basis::B
 end
 function JuMP.reshape_vector(x::Vector, shape::PolynomialShape)
-    return MP.polynomial(x, shape.basis)
+    return MB.algebra_element(x, shape.basis)
 end
 struct MomentsShape{B<:SA.ExplicitBasis} <: JuMP.AbstractShape
     basis::B

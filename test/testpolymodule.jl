@@ -31,7 +31,10 @@ function PolyJuMP.bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{<:NonNeg},
 )
-    return Tuple{Type,Type}[(DummyNonNegBridge, PolyJuMP.coefficient_type_or_float(F))]
+    return Tuple{Type,Type}[(
+        DummyNonNegBridge,
+        PolyJuMP.coefficient_type_or_float(F),
+    )]
 end
 function MOI.Bridges.added_constrained_variable_types(
     ::Type{<:DummyNonNegBridge},

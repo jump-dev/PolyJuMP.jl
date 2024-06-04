@@ -64,7 +64,8 @@ end
 Return a list of bridges that may be needed to bridge `F`-in-`S` constraints but
 not the bridges that may be needed by constraints added by the bridges.
 """
-bridges(::Type{<:MOI.AbstractFunction}, ::Type{<:MOI.AbstractSet}) = Tuple{Type,Type}[]
+bridges(::Type{<:MOI.AbstractFunction}, ::Type{<:MOI.AbstractSet}) =
+    Tuple{Type,Type}[]
 
 """
     bridges(S::Type{<:MOI.AbstractSet})
@@ -79,7 +80,10 @@ function bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{<:ZeroPolynomialSet{SS.FullSpace}},
 )
-    return Tuple{Type,Type}[(Bridges.Constraint.ZeroPolynomialBridge, coefficient_type_or_float(F))]
+    return Tuple{Type,Type}[(
+        Bridges.Constraint.ZeroPolynomialBridge,
+        coefficient_type_or_float(F),
+    )]
 end
 
 function bridges(
@@ -93,7 +97,10 @@ function bridges(
 end
 
 function bridges(F::Type{<:MOI.AbstractVectorFunction}, ::Type{<:PlusMinusSet})
-    return Tuple{Type,Type}[(Bridges.Constraint.PlusMinusBridge, coefficient_type_or_float(F))]
+    return Tuple{Type,Type}[(
+        Bridges.Constraint.PlusMinusBridge,
+        coefficient_type_or_float(F),
+    )]
 end
 
 """

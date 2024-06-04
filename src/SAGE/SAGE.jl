@@ -173,7 +173,10 @@ function PolyJuMP.bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{Cone{Polynomials{M}}},
 ) where {M}
-    return Tuple{Type,Type}[(SignomialsBridge, PolyJuMP.coefficient_type_or_float(F))]
+    return Tuple{Type,Type}[(
+        SignomialsBridge,
+        PolyJuMP.coefficient_type_or_float(F),
+    )]
 end
 
 end

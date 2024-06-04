@@ -155,7 +155,7 @@ function PolyJuMP.bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{Cone{Signomials{Nothing}}},
 )
-    return [(SAGEBridge, PolyJuMP._coef_type(F))]
+    return Tuple{Type,Type}[(SAGEBridge, PolyJuMP.coefficient_type_or_float(F))]
 end
 
 include("bridges/age.jl")
@@ -164,7 +164,7 @@ function PolyJuMP.bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{Cone{Signomials{Int}}},
 )
-    return [(AGEBridge, PolyJuMP._coef_type(F))]
+    return Tuple{Type,Type}[(AGEBridge, PolyJuMP.coefficient_type_or_float(F))]
 end
 
 include("bridges/signomial.jl")
@@ -173,7 +173,10 @@ function PolyJuMP.bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{Cone{Polynomials{M}}},
 ) where {M}
-    return [(SignomialsBridge, PolyJuMP._coef_type(F))]
+    return Tuple{Type,Type}[(
+        SignomialsBridge,
+        PolyJuMP.coefficient_type_or_float(F),
+    )]
 end
 
 end

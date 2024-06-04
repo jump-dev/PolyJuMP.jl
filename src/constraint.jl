@@ -64,7 +64,8 @@ end
 Return a list of bridges that may be needed to bridge `F`-in-`S` constraints but
 not the bridges that may be needed by constraints added by the bridges.
 """
-bridges(::Type{<:MOI.AbstractFunction}, ::Type{<:MOI.AbstractSet}) = []
+bridges(::Type{<:MOI.AbstractFunction}, ::Type{<:MOI.AbstractSet}) =
+    Tuple{Type,Type}[]
 
 """
     bridges(S::Type{<:MOI.AbstractSet})
@@ -79,21 +80,27 @@ function bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{<:ZeroPolynomialSet{SS.FullSpace}},
 )
-    return [(Bridges.Constraint.ZeroPolynomialBridge, _coef_type(F))]
+    return Tuple{Type,Type}[(
+        Bridges.Constraint.ZeroPolynomialBridge,
+        coefficient_type_or_float(F),
+    )]
 end
 
 function bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{<:ZeroPolynomialSet{<:SS.AbstractAlgebraicSet}},
 )
-    return [(
+    return Tuple{Type,Type}[(
         Bridges.Constraint.ZeroPolynomialInAlgebraicSetBridge,
-        _coef_type(F),
+        coefficient_type_or_float(F),
     )]
 end
 
 function bridges(F::Type{<:MOI.AbstractVectorFunction}, ::Type{<:PlusMinusSet})
-    return [(Bridges.Constraint.PlusMinusBridge, _coef_type(F))]
+    return Tuple{Type,Type}[(
+        Bridges.Constraint.PlusMinusBridge,
+        coefficient_type_or_float(F),
+    )]
 end
 
 """
@@ -143,8 +150,13 @@ function bridgeable(c::JuMP.AbstractConstraint, S::Type{<:MOI.AbstractSet})
     return c
 end
 
-_coef_type(::Type{<:MOI.AbstractFunction}) = Float64
-_coef_type(::Type{<:MOI.Utilities.TypedLike{T}}) where {T} = T
+# TODO If `JuMP.value_type` is not `Float64`, we should
+#      redo `bridgeable`, `bridges` etc... in `JuMP.model_convert`
+#      the most important is that `MOI.Bridges.concrete_bridge_type`
+#      works so we should stick to the same coefficient type if there is
+#      one. If there is none, `Float64` should be fine.
+coefficient_type_or_float(::Type{<:MOI.AbstractFunction}) = Float64
+coefficient_type_or_float(::Type{<:MOI.Utilities.TypedLike{T}}) where {T} = T
 
 function bridgeable(
     c::JuMP.AbstractConstraint,

@@ -17,7 +17,7 @@ function JuMP.function_string(::MIME"text/plain", p::Union{SA.AlgebraElement,MP.
     return sprint(show, MIME"text/plain"(), p)
 end
 function JuMP.function_string(mime::MIME"text/latex", p::Union{SA.AlgebraElement,MP.AbstractPolynomialLike})
-    return SA.strip_LaTeX(mime, sprint(show, MIME"text/latex"(), p))
+    return SA.trim_LaTeX(mime, sprint(show, MIME"text/latex"(), p))
 end
 
 ### Shapes for polynomial/moments primal-dual pair ###

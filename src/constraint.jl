@@ -13,10 +13,16 @@ struct ZeroPoly <: PolynomialSet end
 struct NonNegPoly <: PolynomialSet end
 struct PosDefPolyMatrix <: PolynomialSet end
 
-function JuMP.function_string(::MIME"text/plain", p::Union{SA.AlgebraElement,MP.AbstractPolynomialLike})
+function JuMP.function_string(
+    ::MIME"text/plain",
+    p::Union{SA.AlgebraElement,MP.AbstractPolynomialLike},
+)
     return sprint(show, MIME"text/plain"(), p)
 end
-function JuMP.function_string(mime::MIME"text/latex", p::Union{SA.AlgebraElement,MP.AbstractPolynomialLike})
+function JuMP.function_string(
+    mime::MIME"text/latex",
+    p::Union{SA.AlgebraElement,MP.AbstractPolynomialLike},
+)
     return SA.trim_LaTeX(mime, sprint(show, MIME"text/latex"(), p))
 end
 

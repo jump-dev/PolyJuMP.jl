@@ -30,7 +30,7 @@ function MOI.Bridges.Constraint.bridge_constraint(
         MB.SubBasis{MB.Monomial,MT,MVT},
     },
 ) where {T,F,Z,DT,MT,MVT}
-    p = MP.polynomial(MOI.Utilities.scalarize(f), s.basis)
+    p = MP.polynomial(MB.algebra_element(MOI.Utilities.scalarize(f), s.basis))
     # As `*(::MOI.ScalarAffineFunction{T}, ::S)` is only defined if `S == T`, we
     # need to call `similar`. This is critical since `T` is
     # `Float64` when used with JuMP and the coefficient type is often `Int` with

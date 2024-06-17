@@ -29,14 +29,16 @@ _con_constant(a) = a
 # `MOI.Utilities.Model` canonicalizes the constraints so we need to
 # canonicalize them as well for the printing tests.
 function _canon(model, p::MP.AbstractPolynomialLike)
-    return MB.algebra_element(MP.polynomial(
-        map(MP.terms(p)) do t
-            coef = _con_constant(MP.coefficient(t))
-            moi = JuMP.moi_function(coef)
-            jump = JuMP.jump_function(model, MOI.Utilities.canonical(moi))
-            return MP.term(jump, MP.monomial(t))
-        end,
-    ))
+    return MB.algebra_element(
+        MP.polynomial(
+            map(MP.terms(p)) do t
+                coef = _con_constant(MP.coefficient(t))
+                moi = JuMP.moi_function(coef)
+                jump = JuMP.jump_function(model, MOI.Utilities.canonical(moi))
+                return MP.term(jump, MP.monomial(t))
+            end,
+        ),
+    )
 end
 _canon(model, p::Matrix) = MP.polynomial.(_canon.(model, p))
 

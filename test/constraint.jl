@@ -2,6 +2,7 @@ module TestConstraint
 
 using Test
 
+import StarAlgebras as SA
 using MultivariatePolynomials
 const MP = MultivariatePolynomials
 import MultivariateBases as MB
@@ -13,7 +14,10 @@ using PolyJuMP
 include("utilities.jl")
 include("testpolymodule.jl")
 
-_isequal(p, q) = all(JuMP.isequal_canonical.(coefficients(p), coefficients(q)))
+_coeffs(p::MP.AbstractPolynomialLike) = coefficients(p)
+_coeffs(a::SA.AlgebraElement) = SA.coeffs(a, MB.explicit_basis(a))
+
+_isequal(p, q) = all(JuMP.isequal_canonical.(_coeffs(p), _coeffs(q)))
 function _isequal(x::AbstractArray, y::AbstractArray)
     return size(x) == size(y) && all(_isequal.(x, y))
 end
@@ -25,16 +29,18 @@ _con_constant(a) = a
 # `MOI.Utilities.Model` canonicalizes the constraints so we need to
 # canonicalize them as well for the printing tests.
 function _canon(model, p::MP.AbstractPolynomialLike)
-    return MP.polynomial(
-        map(MP.terms(p)) do t
-            coef = _con_constant(MP.coefficient(t))
-            moi = JuMP.moi_function(coef)
-            jump = JuMP.jump_function(model, MOI.Utilities.canonical(moi))
-            return MP.term(jump, MP.monomial(t))
-        end,
+    return MB.algebra_element(
+        MP.polynomial(
+            map(MP.terms(p)) do t
+                coef = _con_constant(MP.coefficient(t))
+                moi = JuMP.moi_function(coef)
+                jump = JuMP.jump_function(model, MOI.Utilities.canonical(moi))
+                return MP.term(jump, MP.monomial(t))
+            end,
+        ),
     )
 end
-_canon(model, p::Matrix) = _canon.(model, p)
+_canon(model, p::Matrix) = MP.polynomial.(_canon.(model, p))
 
 function _test_constraint(
     m,
@@ -150,9 +156,9 @@ function test_printing(var)
     in_sym = Sys.iswindows() ? "in" : "∈"
     eqref = @constraint(m, p == q)
     @test sprint(show, MIME"text/plain"(), eqref) ==
-          "(-α)y² + (α - β)xy + (-α + β)x² $in_sym PolyJuMP.ZeroPoly()"
+          "(-α)·y² + (α - β)·xy + (-α + β)·x² $in_sym PolyJuMP.ZeroPoly()"
     @test sprint(show, MIME"text/latex"(), eqref) ==
-          "\$\$ (-α)y^{2} + (α - β)xy + (-α + β)x^{2} \\in PolyJuMP.ZeroPoly() \$\$"
+          "\$\$ (-α) \\cdot y^{2} + (α - β) \\cdot xy + (-α + β) \\cdot x^{2} \\in PolyJuMP.ZeroPoly() \$\$"
     sdref = @constraint(m, [p q; q p] in PSDCone())
     @test sprint(show, MIME"text/plain"(), sdref) ==
           "[(α)xy + (β)x²          (α)y² + (β)xy + (α)x²;\n (α)y² + (β)xy + (α)x²  (α)xy + (β)x²] $in_sym $DummyPolyModule.DummyPosDefMatrix()"

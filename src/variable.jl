@@ -107,5 +107,5 @@ function JuMP.add_variable(
         end
         return vref
     end
-    return MP.polynomial(_newvar, v.p.polynomial_basis)
+    return MB.algebra_element(_newvar, v.p.polynomial_basis)
 end

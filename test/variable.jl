@@ -41,15 +41,7 @@ function _algebra_element_type(B, mono)
     M = MP.monomial_type(mono)
     C = JuMP.VariableRef
     return SA.AlgebraElement{
-        MB.Algebra{
-            MB.SubBasis{
-                B,
-                M,
-                MP.monomial_vector_type(M),
-            },
-            B,
-            M,
-        },
+        MB.Algebra{MB.SubBasis{B,M,MP.monomial_vector_type(M)},B,M},
         C,
         Vector{C},
     }

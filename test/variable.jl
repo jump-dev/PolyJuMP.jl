@@ -3,6 +3,7 @@ module TestVariable
 using Test
 
 import MutableArithmetics as MA
+import StarAlgebras as SA
 
 using MultivariatePolynomials
 const MP = MultivariatePolynomials
@@ -36,34 +37,44 @@ function test_variable_macro_with_Poly(var)
     @test_throws ErrorException @variable(m, p3[2:3] >= 0, Poly(X))
 end
 
+function _algebra_element_type(B, mono)
+    M = MP.monomial_type(mono)
+    C = JuMP.VariableRef
+    return SA.AlgebraElement{
+        MB.Algebra{
+            MB.SubBasis{
+                B,
+                M,
+                MP.monomial_vector_type(M),
+            },
+            B,
+            M,
+        },
+        C,
+        Vector{C},
+    }
+end
+
 function _test_variable(
     m,
     p,
     monos,
     binary = false,
     integer = false,
-    vars = true,
     use_y = true,
+    B = MB.Monomial,
 )
-    PT = polynomial_type(
-        use_y ? first(monos) : first(variables(first(monos))),
-        vars ? JuMP.VariableRef : JuMP.AffExpr,
+    @test isa(
+        p,
+        _algebra_element_type(
+            B,
+            use_y ? first(monos) : first(variables(first(monos))),
+        ),
     )
-    @test isa(p, PT)
-    @test monomials(p) == monomial_vector(monos)
-    if vars
-        @test all(α -> JuMP.is_binary(α) == binary, coefficients(p))
-        @test all(α -> JuMP.is_integer(α) == integer, coefficients(p))
-    else
-        @test all(
-            α -> JuMP.is_binary(first(keys(α.terms))) == binary,
-            coefficients(p),
-        )
-        @test all(
-            α -> JuMP.is_integer(first(keys(α.terms))) == integer,
-            coefficients(p),
-        )
-    end
+    @test SA.basis(p).monomials == monomial_vector(monos)
+    coeffs = SA.coeffs(p, MB.explicit_basis(p))
+    @test all(α -> JuMP.is_binary(α) == binary, coeffs)
+    @test all(α -> JuMP.is_integer(α) == integer, coeffs)
 end
 
 function test_MonomialBasis(var)
@@ -72,7 +83,7 @@ function test_MonomialBasis(var)
     X = [1, y, x^2, x, y^2]
     m = Model()
     @variable m p1[1:3] Poly(X)
-    PT = polynomial_type(x * y, JuMP.VariableRef)
+    PT = _algebra_element_type(MB.Monomial, x * y)
     @test isa(p1, Vector{PT})
     _test_variable(m, p1[1], X)
     @variable(m, p2, Poly(X), integer = true)
@@ -102,7 +113,7 @@ function test_ScaledMonomialBasis(var)
         false,
         true,
         false,
-        false,
+        MB.ScaledMonomial,
     )
 end
 

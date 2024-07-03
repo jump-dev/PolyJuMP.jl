@@ -177,8 +177,13 @@ function test_value_function(var)
     p = α * x * y + β * x^2
     JuMP.fix(α, 2)
     JuMP.fix(β, 3)
-    @test_broken JuMP.value(p) == 2x * y + 3x^2
-    @test JuMP.value(fix_value, p) == 2x * y + 3x^2
+    expected = 2x * y + 3x^2
+    @test_broken JuMP.value(p) == expected
+    @test JuMP.value(fix_value, p) == expected
+    a = MB.algebra_element(p)
+    exp_a = MB.algebra_element(expected)
+    @test_broken JuMP.value(a) == exp_a
+    @test JuMP.value(fix_value, a) == exp_a
 end
 
 function runtests(var)

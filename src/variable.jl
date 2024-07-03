@@ -15,7 +15,18 @@ function JuMP.value(
     return MP.polynomial(JuMP.value.(f, MP.terms(p)), MP.SortedUniqState())
 end
 
+function JuMP.value(
+    f::Function,
+    p::SA.AlgebraElement{A,<:JuMP.AbstractJuMPScalar},
+) where {A}
+    return SA.AlgebraElement(JuMP.value.(f, SA.coeffs(p)), parent(p))
+end
+
 function JuMP.value(p::MP.AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
+    return JuMP.value(JuMP.value, p)
+end
+
+function JuMP.value(p::SA.AlgebraElement{A,<:JuMP.AbstractJuMPScalar}) where {A}
     return JuMP.value(JuMP.value, p)
 end
 

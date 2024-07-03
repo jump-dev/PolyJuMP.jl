@@ -26,7 +26,7 @@ function JuMP.value(p::MP.AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
     return JuMP.value(JuMP.value, p)
 end
 
-function JuMP.value(p::SA.AlgebraElement{A,<:JuMP.AbstractJuMPScalar}) where A
+function JuMP.value(p::SA.AlgebraElement{A,<:JuMP.AbstractJuMPScalar}) where {A}
     return JuMP.value(JuMP.value, p)
 end
 

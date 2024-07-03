@@ -1,5 +1,7 @@
 export moments
 
+const _AE_APL = Union{SA.AlgebraElement,MP.AbstractPolynomialLike}
+
 abstract type PolynomialSet end
 
 _in(::MIME) = Sys.iswindows() ? "in" : "∈"
@@ -15,13 +17,13 @@ struct PosDefPolyMatrix <: PolynomialSet end
 
 function JuMP.function_string(
     ::MIME"text/plain",
-    p::Union{SA.AlgebraElement,MP.AbstractPolynomialLike},
+    p::_AE_APL,
 )
     return sprint(show, MIME"text/plain"(), p)
 end
 function JuMP.function_string(
     mime::MIME"text/latex",
-    p::Union{SA.AlgebraElement,MP.AbstractPolynomialLike},
+    p::_AE_APL,
 )
     return SA.trim_LaTeX(mime, sprint(show, MIME"text/latex"(), p))
 end
@@ -203,7 +205,7 @@ non_constant_coefficients(p) = non_constant(MP.coefficients(p))
 ## ZeroPoly
 function JuMP.build_constraint(
     error_fn::Function,
-    p::MP.AbstractPolynomialLike,
+    p::_AE_APL,
     s::ZeroPoly;
     domain::SS.AbstractSemialgebraicSet = SS.FullSpace(),
     kws...,
@@ -238,7 +240,7 @@ function JuMP.build_constraint(
 end
 function JuMP.build_constraint(
     error_fn::Function,
-    p::MP.AbstractPolynomialLike,
+    p::_AE_APL,
     s::MOI.EqualTo;
     kws...,
 )
@@ -304,7 +306,7 @@ end
 # `NonNegPoly`
 function JuMP.build_constraint(
     error_fn::Function,
-    p::MP.AbstractPolynomialLike,
+    p::_AE_APL,
     s::MOI.GreaterThan;
     kws...,
 )
@@ -312,7 +314,7 @@ function JuMP.build_constraint(
 end
 function JuMP.build_constraint(
     error_fn::Function,
-    p::MP.AbstractPolynomialLike,
+    p::_AE_APL,
     s::MOI.LessThan;
     kws...,
 )
@@ -324,7 +326,7 @@ end
 # need a more specific here to avoid ambiguity
 function JuMP.build_constraint(
     error_fn::Function,
-    p::AbstractMatrix{<:MP.AbstractPolynomialLike},
+    p::AbstractMatrix{<:_AE_APL},
     s::PSDCone;
     kws...,
 )
@@ -334,7 +336,7 @@ end
 # Needed for the syntax `@constraint(model, A >= B, PSDCone())`
 function JuMP.build_constraint(
     error_fn::Function,
-    f::AbstractMatrix{<:MP.AbstractPolynomialLike},
+    f::AbstractMatrix{<:_AE_APL},
     s::MOI.GreaterThan,
     extra::PSDCone,
 )
@@ -345,7 +347,7 @@ end
 # Needed for the syntax `@constraint(model, A <= B, PSDCone())`
 function JuMP.build_constraint(
     error_fn::Function,
-    f::AbstractMatrix{<:MP.AbstractPolynomialLike},
+    f::AbstractMatrix{<:_AE_APL},
     s::MOI.LessThan,
     extra::PSDCone,
 )

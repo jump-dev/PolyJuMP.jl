@@ -270,6 +270,15 @@ function test_ZeroPolynomialSet(var)
             [],
             [],
         )
+        _test_constraint(
+            m,
+            @constraint(m, MB.algebra_element(p - q) in PolyJuMP.ZeroPoly()),
+            S,
+            jump_set,
+            p - q,
+            [],
+            [],
+        )
         _test_constraint(m, @constraint(m, x == y), S, jump_set, x - y, [], [])
         _test_constraint(
             m,

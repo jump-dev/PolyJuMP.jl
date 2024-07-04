@@ -194,7 +194,11 @@ function non_constant(a::AbstractVector{T}) where {T}
     # also take care of `collect`ing into a `Vector`
     return convert(Vector{non_constant_type(T)}, a)
 end
-non_constant_coefficients(p) = non_constant(MP.coefficients(p))
+non_constant_coefficients(p::MP.AbstractPolynomialLike) = non_constant(MP.coefficients(p))
+function non_constant_coefficients(p::SA.AlgebraElement)
+    MA.operate!(SA.canonical, SA.coeffs(p))
+    return non_constant(values(SA.coeffs(p)))
+end
 
 ## ZeroPoly
 function JuMP.build_constraint(
@@ -205,7 +209,7 @@ function JuMP.build_constraint(
     kws...,
 )
     coefs = non_constant_coefficients(p)
-    monos = MP.monomials(p)
+    basis = MB.explicit_basis(p)
     if domain isa SS.BasicSemialgebraicSet
         # p(x) = 0 for all x in a basic semialgebraic set. We replace it by
         # p(x) ≤ 0 and p(x) ≥ 0 for all x in the basic semialgebraic set.
@@ -222,7 +226,6 @@ function JuMP.build_constraint(
         )
         return Constraint(error_fn, p, s, all_kws)
     else
-        basis = MB.SubBasis{MB.Monomial}(monos)
         set = JuMP.moi_set(s, basis; domain = domain, kws...)
         constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(basis))
         return bridgeable(

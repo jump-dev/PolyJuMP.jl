@@ -194,7 +194,9 @@ function non_constant(a::AbstractVector{T}) where {T}
     # also take care of `collect`ing into a `Vector`
     return convert(Vector{non_constant_type(T)}, a)
 end
-non_constant_coefficients(p::MP.AbstractPolynomialLike) = non_constant(MP.coefficients(p))
+function non_constant_coefficients(p::MP.AbstractPolynomialLike)
+    return non_constant(MP.coefficients(p))
+end
 function non_constant_coefficients(p::SA.AlgebraElement)
     MA.operate!(SA.canonical, SA.coeffs(p))
     return non_constant(values(SA.coeffs(p)))

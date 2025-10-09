@@ -460,7 +460,7 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
             monos = _add_monomials!(func, monos)
         end
     end
-    if !isnothing(monos)
+    time = @elapsed if !isnothing(monos)
         div = decompose(monos)
         for mono in sort(collect(keys(div)))
             if haskey(vars, mono)
@@ -491,6 +491,9 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
             )
         end
     end
+    file = open("perf.tmp", "w")
+    write(file, string(time))
+    close(file)
     return
 end
 

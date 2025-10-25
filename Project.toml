@@ -1,7 +1,7 @@
 name = "PolyJuMP"
 uuid = "ddf597a6-d67e-5340-b84c-e37d84115374"
 repo = "https://github.com/jump-dev/PolyJuMP.jl.git"
-version = "0.7.5"
+version = "0.7.6"
 
 [deps]
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
@@ -17,8 +17,8 @@ MutableArithmetics = "d8a4904e-b15c-11e9-3269-09a3773c0cb0"
 SemialgebraicSets = "8e049039-38e8-557d-ae3a-bc521ccf6204"
 
 [compat]
-DataStructures = "0.18"
-DynamicPolynomials = "0.5,0.6"
+DataStructures = "0.18, 0.19"
+DynamicPolynomials = "0.5, 0.6"
 IntervalArithmetic = "0.22"
 JuMP = "1"
 MathOptInterface = "1"

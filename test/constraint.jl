@@ -120,14 +120,14 @@ function test_errors(var)
     @variable m β
     p = α * x * y + β * x^2
     q = α * x^2 + β * x * y + α * y^2
-    @test_macro_throws ErrorException @constraint(m, p)
-    @test_macro_throws ErrorException @constraint(m, begin
+    @test_throws_parsetime ErrorException @constraint(m, p)
+    @test_throws_parsetime ErrorException @constraint(m, begin
         p >= 0
     end)
-    @test_macro_throws ErrorException @constraint(m, +(p, p, p))
-    @test_macro_throws ErrorException @constraint(m, p >= 0, 1)
-    #@test_macro_throws ErrorException @constraint(m, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1))
-    @test_macro_throws ErrorException @constraint(
+    @test_throws_parsetime ErrorException @constraint(m, +(p, p, p))
+    @test_throws_parsetime ErrorException @constraint(m, p >= 0, 1)
+    #@test_throws_parsetime ErrorException @constraint(m, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1))
+    @test_throws_parsetime ErrorException @constraint(
         m,
         p + 0,
         domain = (@set x >= -1 && x <= 1)

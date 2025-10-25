@@ -1,7 +1,9 @@
 name: CI
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+      - release-* # Added only on this branch
   pull_request:
     types: [opened, synchronize, reopened]
 jobs:

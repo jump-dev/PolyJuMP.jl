@@ -114,21 +114,28 @@ end
 function test_errors(var)
     x = MP.similar_variable(var, Val{:x})
     y = MP.similar_variable(var, Val{:y})
-    m = Model()
-    setpolymodule!(m, DummyPolyModule)
-    @variable m α
-    @variable m β
+    model = Model()
+    setpolymodule!(model, DummyPolyModule)
+    @variable model α
+    @variable model β
     p = α * x * y + β * x^2
     q = α * x^2 + β * x * y + α * y^2
-    @test_throws_parsetime ErrorException @constraint(m, p)
-    @test_throws_parsetime ErrorException @constraint(m, begin
+    @test_throws_parsetime ErrorException @constraint(model, p)
+    @test_throws_parsetime ErrorException @constraint(model, begin
         p >= 0
     end)
-    @test_throws_parsetime ErrorException @constraint(m, +(p, p, p))
-    @test_throws_parsetime ErrorException @constraint(m, p >= 0, 1)
-    #@test_throws_parsetime ErrorException @constraint(m, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1))
+    @test_throws_parsetime ErrorException @constraint(model, +(p, p, p))
+    # FIXME I get a `model` not defined with the following line
+    #       so I just manually did the `@test_throws_parsetime`
+    # @test_throws_parsetime ErrorException @constraint(model, p >= 0, 1),
+    @test_throws(ErrorException, try
+        @constraint(model, p >= 0, 1)
+    catch err
+        throw(_strip_line_from_error(err))
+    end)
+    #@test_throws_parsetime ErrorException @constraint(model, p >= 0, domain = (@set x >= -1 && x <= 1, domain = y >= -1 && y <= 1))
     @test_throws_parsetime ErrorException @constraint(
-        m,
+        model,
         p + 0,
         domain = (@set x >= -1 && x <= 1)
     )

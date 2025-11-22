@@ -72,11 +72,11 @@ end
 function MOI.get(
     ::MOI.ModelLike,
     ::MOI.ConstraintSet,
-    bridge::ZeroPolynomialBridge{T,F,MB.SubBasis{MB.Monomial,M,V}},
-) where {T,F,M,V}
+    bridge::ZeroPolynomialBridge,
+)
     return PolyJuMP.ZeroPolynomialSet(
         SS.FullSpace(),
-        MB.FullBasis{MB.Monomial,M}(),
+        parent(bridge.basis),
         bridge.basis,
     )
 end

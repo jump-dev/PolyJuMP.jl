@@ -41,7 +41,7 @@ struct Signomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <:
 end
 Signomials() = Signomials(nothing)
 _index(_, ::Nothing) = nothing
-_index(basis, mono::MP.AbstractMonomial) = MB.monomial_index(basis, mono)::Int
+_index(basis, mono::MP.AbstractMonomial) = SA.key_index(basis, MP.exponents(mono))::Int
 function JuMP.moi_set(c::Signomials, basis::MB.SubBasis{MB.Monomial})
     monos = basis.monomials
     return Cone(Signomials(_index(basis, c.monomial)), _exponents_matrix(monos))

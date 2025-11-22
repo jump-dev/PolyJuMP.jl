@@ -62,7 +62,7 @@ function JuMP.moi_set(
     cone::DummyNonNeg,
     b::MB.SubBasis{MB.Monomial,M};
     domain::AbstractSemialgebraicSet = FullSpace(),
-    basis = MB.FullBasis{MB.Monomial,M}(),
+    basis = parent(b),
     kwargs...,
 ) where {M}
     # For terms, `monomials` return a `OneOrZeroElementVector`
@@ -134,7 +134,7 @@ function JuMP.moi_set(
     ::DummyPosDefMatrix,
     monos::Matrix{<:AbstractVector{<:AbstractMonomial}};
     domain::AbstractSemialgebraicSet = FullSpace(),
-    basis = MB.FullBasis{MB.Monomial,eltype(eltype(monos))}(),
+    basis = MB.FullBasis{MB.Monomial}(variables(first(monos))),
     kwargs...,
 )
     return PosDefMatrix(basis, domain, monos, kwargs)

@@ -43,7 +43,7 @@ Signomials() = Signomials(nothing)
 _index(_, ::Nothing) = nothing
 _index(basis, mono::MP.AbstractMonomial) = SA.key_index(basis, MP.exponents(mono))::Int
 function JuMP.moi_set(c::Signomials, basis::MB.SubBasis{MB.Monomial})
-    monos = basis.monomials
+    monos = MB.keys_as_monomials(basis)
     return Cone(Signomials(_index(basis, c.monomial)), _exponents_matrix(monos))
 end
 

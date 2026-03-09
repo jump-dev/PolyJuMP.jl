@@ -17,8 +17,8 @@ end
 
 function JuMP.value(
     f::Function,
-    p::SA.AlgebraElement{A,<:JuMP.AbstractJuMPScalar},
-) where {A}
+    p::SA.AlgebraElement{<:JuMP.AbstractJuMPScalar},
+)
     return SA.AlgebraElement(JuMP.value.(f, SA.coeffs(p)), parent(p))
 end
 
@@ -26,7 +26,7 @@ function JuMP.value(p::MP.AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
     return JuMP.value(JuMP.value, p)
 end
 
-function JuMP.value(p::SA.AlgebraElement{A,<:JuMP.AbstractJuMPScalar}) where {A}
+function JuMP.value(p::SA.AlgebraElement{<:JuMP.AbstractJuMPScalar})
     return JuMP.value(JuMP.value, p)
 end
 

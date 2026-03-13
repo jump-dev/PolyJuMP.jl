@@ -1,7 +1,6 @@
 module Objective
 
-import MathOptInterface
-const MOI = MathOptInterface
+import MathOptInterface as MOI
 
 using PolyJuMP
 

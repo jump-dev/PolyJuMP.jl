@@ -362,6 +362,7 @@ function monomial_variable_index(
             end
             vi = monomial_variable_index(model, d, div, var)
             lb_var, ub_var = MOI.Utilities.get_bounds(model, T, vi)
+			println("got [$lb_var, $ub_var] for $vi")
             F = float(T)
             var_bounds = IntervalArithmetic.interval(
                 lb_var == typemin(lb_var) ? typemin(F) : float(lb_var),

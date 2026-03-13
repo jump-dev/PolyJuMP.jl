@@ -12,5 +12,6 @@ include("zero_polynomial.jl")
 include("zero_polynomial_in_algebraic_set.jl")
 include("plus_minus.jl")
 include("to_polynomial.jl")
+include("to_reformulated_polynomial.jl")
 
 end # module

@@ -20,7 +20,7 @@ StarAlgebras = "0c0c59c1-dc5f-42e9-9a8b-b5dc384a6cd1"
 [compat]
 DataStructures = "0.19"
 DynamicPolynomials = "0.5, 0.6"
-IntervalArithmetic = "0.20, 0.21, 0.22, 1" # Needs v0.20 for Julia v1.6 support
+IntervalArithmetic = "0.20, 0.21, 0.22, 1"
 JuMP = "1"
 MathOptInterface = "1"
 MultivariateBases = "0.2"
@@ -28,8 +28,8 @@ MultivariateMoments = "0.4"
 MultivariatePolynomials = "0.5"
 MutableArithmetics = "1"
 SemialgebraicSets = "0.3"
+StarAlgebras = "0.2.1"
 julia = "1.6"
-
 [extras]
 DynamicPolynomials = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"

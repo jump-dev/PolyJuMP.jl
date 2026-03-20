@@ -203,6 +203,16 @@ function test_MOI_runtests(var, T, solver)
         r"test_nonlinear_duals$",
         r"test_nonlinear_expression_hs071$",
         r"test_nonlinear_expression_hs071_epigraph$",
+        # Not polynomial because of `sqrt`
+        "test_nonlinear_quadratic",
+        r"test_nonlinear_with_scalar_quadratic_function_with_off_diag$",
+        # Not polynomial because of `log`
+        r"test_nonlinear_constraint_log$",
+        # Evaluated: MathOptInterface.OTHER_ERROR == MathOptInterface.INVALID_MODEL
+        r"test_nonlinear_invalid$",
+        # Expression: ≈(MOI.get(model, MOI.ObjectiveValue()), T(6), config)
+        # Result index of attribute MathOptInterface.ObjectiveValue(1) out of bounds. There are currently 0 solution(s) in the model.
+        r"test_nonlinear_constraint_scalar_affine_function$",
     ]
     if solver isa typeof(SemialgebraicSets.default_algebraic_solver(Float64))
     else

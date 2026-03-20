@@ -103,7 +103,7 @@ function JuMP.reshape_vector(
     for j in 1:n
         for i in 1:n
             m = length(shape.monomials[i, j])
-            p[i, j] = polynomial(x[k.+(1:m)], shape.monomials[i, j])
+            p[i, j] = polynomial(x[k .+ (1:m)], shape.monomials[i, j])
             k += m
         end
     end

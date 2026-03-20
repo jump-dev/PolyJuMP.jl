@@ -65,8 +65,9 @@ end
 Return a list of bridges that may be needed to bridge `F`-in-`S` constraints but
 not the bridges that may be needed by constraints added by the bridges.
 """
-bridges(::Type{<:MOI.AbstractFunction}, ::Type{<:MOI.AbstractSet}) =
-    Tuple{Type,Type}[]
+function bridges(::Type{<:MOI.AbstractFunction}, ::Type{<:MOI.AbstractSet})
+    return Tuple{Type,Type}[]
+end
 
 """
     bridges(S::Type{<:MOI.AbstractSet})

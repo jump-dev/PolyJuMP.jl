@@ -38,13 +38,10 @@ function test_variable_macro_with_Poly(var)
 end
 
 function _algebra_element_type(B, mono)
-    M = MP.monomial_type(mono)
-    C = JuMP.VariableRef
-    return SA.AlgebraElement{
-        MB.Algebra{MB.SubBasis{B,M,MP.monomial_vector_type(M)},B,M},
-        C,
-        Vector{C},
-    }
+    return MB.algebra_element_type(
+        Vector{JuMP.VariableRef},
+        MB.explicit_basis_type(MB.full_basis_type(B, typeof(mono))),
+    )
 end
 
 function _test_variable(
@@ -63,7 +60,7 @@ function _test_variable(
             use_y ? first(monos) : first(variables(first(monos))),
         ),
     )
-    @test SA.basis(p).monomials == monomial_vector(monos)
+    @test MB.keys_as_monomials(SA.basis(p)) == monomial_vector(monos)
     coeffs = SA.coeffs(p, MB.explicit_basis(p))
     @test all(α -> JuMP.is_binary(α) == binary, coeffs)
     @test all(α -> JuMP.is_integer(α) == integer, coeffs)

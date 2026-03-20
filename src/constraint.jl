@@ -45,7 +45,7 @@ function JuMP.moi_set(
     ::ZeroPoly,
     b::MB.SubBasis{MB.Monomial,M};
     domain::SS.AbstractSemialgebraicSet = SS.FullSpace(),
-    basis = MB.FullBasis{MB.Monomial,M}(),
+    basis = parent(b),
 ) where {M}
     return ZeroPolynomialSet(domain, basis, b)
 end

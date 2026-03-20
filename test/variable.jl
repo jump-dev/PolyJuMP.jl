@@ -83,7 +83,7 @@ function test_MonomialBasis(var)
     @variable(m, p3[2:3], Poly(X))
     @test isa(p3, JuMP.Containers.DenseAxisArray{PT,1,Tuple{UnitRange{Int}}})
     _test_variable(m, p3[2], X)
-    @variable(m, p4[i = 2:3, j = i:4], Poly(X), binary = true)
+    @variable(m, p4[i=2:3, j=i:4], Poly(X), binary = true)
     _test_variable(m, p4[2, 3], X, true)
 
     X = [x^2, y^2]

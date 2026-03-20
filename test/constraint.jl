@@ -62,7 +62,8 @@ function _test_constraint(
     set = JuMP.moi_set(c)
     @test set isa S
     if set isa PolyJuMP.ZeroPolynomialSet
-        @test set.basis isa MB.SubBasis{MB.Monomial,typeof(MP.variables(set.basis))}
+        @test set.basis isa
+              MB.SubBasis{MB.Monomial,typeof(MP.variables(set.basis))}
     end
     if set isa PolyJuMP.PlusMinusSet
         set = set.set

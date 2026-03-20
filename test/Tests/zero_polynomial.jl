@@ -53,16 +53,8 @@ function _zero_polynomial_test(
     F = MOI.VectorAffineFunction{Float64}
     full_basis_type = typeof(MB.FullBasis{MB.Monomial}(x))
     sub_basis_type = MB.explicit_basis_type(full_basis_type)
-    ST = PolyJuMP.ZeroPolynomialSet{
-        FullSpace,
-        full_basis_type,
-        sub_basis_type,
-    }
-    SP = PolyJuMP.ZeroPolynomialSet{
-        FullSpace,
-        full_basis_type,
-        sub_basis_type,
-    }
+    ST = PolyJuMP.ZeroPolynomialSet{FullSpace,full_basis_type,sub_basis_type}
+    SP = PolyJuMP.ZeroPolynomialSet{FullSpace,full_basis_type,sub_basis_type}
     @test Set(MOI.get(model, MOI.ListOfConstraintTypesPresent())) == Set([
         (MOI.VariableIndex, MOI.LessThan{Float64}),
         (F, SP),

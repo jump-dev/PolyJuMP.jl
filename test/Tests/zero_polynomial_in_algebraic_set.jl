@@ -59,11 +59,8 @@ function zero_polynomial_in_algebraic_set_test(
     @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
           [(MOI.VariableIndex, MOI.LessThan{Float64}), (F, S)]
     @testset "Delete" begin
-        ST = PolyJuMP.ZeroPolynomialSet{
-            FullSpace,
-            full_basis_type,
-            sub_basis_type,
-        }
+        ST =
+            PolyJuMP.ZeroPolynomialSet{FullSpace,full_basis_type,sub_basis_type}
         test_delete_bridge(model, cref, 2, ((F, MOI.Zeros, 0), (F, ST, 0)))
     end
 end

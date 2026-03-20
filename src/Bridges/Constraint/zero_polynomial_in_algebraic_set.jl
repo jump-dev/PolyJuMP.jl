@@ -19,11 +19,7 @@ function MOI.Bridges.Constraint.bridge_constraint(
     ::Type{ZeroPolynomialInAlgebraicSetBridge{T,F,Z,DT,B}},
     model::MOI.ModelLike,
     f::MOI.AbstractVectorFunction,
-    s::PolyJuMP.ZeroPolynomialSet{
-        <:SS.AbstractAlgebraicSet,
-        Z,
-        B,
-    },
+    s::PolyJuMP.ZeroPolynomialSet{<:SS.AbstractAlgebraicSet,Z,B},
 ) where {T,F,Z,DT,B}
     p = MP.polynomial(MB.algebra_element(MOI.Utilities.scalarize(f), s.basis))
     # As `*(::MOI.ScalarAffineFunction{T}, ::S)` is only defined if `S == T`, we
@@ -65,14 +61,7 @@ end
 function MOI.Bridges.added_constraint_types(
     ::Type{<:ZeroPolynomialInAlgebraicSetBridge{T,F,Z,DT,B}},
 ) where {T,F,Z,DT,B}
-    return [(
-        F,
-        PolyJuMP.ZeroPolynomialSet{
-            SS.FullSpace,
-            Z,
-            B,
-        },
-    )]
+    return [(F, PolyJuMP.ZeroPolynomialSet{SS.FullSpace,Z,B})]
 end
 
 function MOI.Bridges.Constraint.concrete_bridge_type(
@@ -87,14 +76,7 @@ end
 # Attributes, Bridge acting as an model
 function MOI.get(
     ::ZeroPolynomialInAlgebraicSetBridge{T,F,Z,DT,B},
-    ::MOI.NumberOfConstraints{
-        F,
-        PolyJuMP.ZeroPolynomialSet{
-            SS.FullSpace,
-            Z,
-            B,
-        },
-    },
+    ::MOI.NumberOfConstraints{F,PolyJuMP.ZeroPolynomialSet{SS.FullSpace,Z,B}},
 ) where {T,F,Z,DT,B}
     return 1
 end
@@ -102,11 +84,7 @@ function MOI.get(
     b::ZeroPolynomialInAlgebraicSetBridge{T,F,Z,DT,B},
     ::MOI.ListOfConstraintIndices{
         F,
-        PolyJuMP.ZeroPolynomialSet{
-            SS.FullSpace,
-            Z,
-            B,
-        },
+        PolyJuMP.ZeroPolynomialSet{SS.FullSpace,Z,B},
     },
 ) where {T,F,Z,DT,B}
     return [b.zero_constraint]

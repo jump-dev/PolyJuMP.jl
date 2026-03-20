@@ -1,6 +1,7 @@
 module SAGE
 
 import MutableArithmetics as MA
+import StarAlgebras as SA
 import MultivariateBases as MB
 import MultivariatePolynomials as MP
 import MathOptInterface as MOI
@@ -60,7 +61,7 @@ struct Polynomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <:
 end
 Polynomials() = Polynomials(nothing)
 function JuMP.moi_set(c::Polynomials, basis::MB.SubBasis{MB.Monomial})
-    monos = basis.monomials
+    monos = MB.keys_as_monomials(basis)
     return Cone(
         Polynomials(_index(basis, c.monomial)),
         _exponents_matrix(monos),
@@ -141,7 +142,7 @@ function decomposition(
     tol::Real,
     result_index::Int = 1,
 )
-    monos = con_ref.shape.basis.monomials
+    monos = MB.keys_as_monomials(con_ref.shape.basis)
     attr = DecompositionAttribute(tol, result_index)
     return Decomposition([
         MP.polynomial(a, monos) for

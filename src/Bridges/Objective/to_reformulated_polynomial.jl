@@ -7,7 +7,7 @@ struct ToReformulatedPolynomialBridge{T} <: MOI.Bridges.Objective.AbstractBridge
 function MOI.Bridges.Objective.bridge_objective(
     ::Type{ToReformulatedPolynomialBridge{T}},
     model::MOI.ModelLike,
-    func::MOI.AbstractScalarFunction,
+    func::MOI.ScalarNonlinearFunction,
 ) where {T}
     F = FuncType{T}
 	nonlin_func = convert(MOI.ScalarNonlinearFunction, func)
@@ -20,7 +20,7 @@ end
 function MOI.Bridges.Objective.supports_objective_function(
     ::Type{ToReformulatedPolynomialBridge{T}},
     ::Type{F},
-) where {T,F<:MOI.AbstractScalarFunction}
+) where {T,F<:MOI.ScalarNonlinearFunction}
     return MOI.Utilities.is_coefficient_type(F, T)
 end
 

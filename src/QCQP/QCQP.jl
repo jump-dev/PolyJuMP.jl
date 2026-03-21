@@ -43,6 +43,51 @@ function decompose(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
     return quad
 end
 
+
+function decompose(monos::AbstractVector{M}, ::Any) where {M<:MP.AbstractMonomial}
+    vars = MP.variables(monos)
+    quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
+        var => var for var in vars
+    )
+	for x in vars
+		for y in vars
+			quad[x*y] = x
+		end
+	end
+
+	for mono in monos
+		deg = MP.degree(mono)
+		if deg <= 2
+			continue
+		end
+
+		terms = M[]
+		for (var, n) in zip(mono.vars, mono.z)
+			for _ in 1:n
+				push!(terms, var)
+			end
+		end
+
+		a = (deg-1)÷2
+		epp = prod(terms[2*a+1:deg])
+		quad[mono] = epp
+		
+		terms2 = terms[1:2*a]
+		ep = prod(terms2)
+		while MP.degree(ep) >= 2
+			if haskey(quad, ep)
+				break
+			end
+			div = prod(terms2[1:2])
+			quad[ep] = div
+			terms2 = terms2[3:end]
+			ep = prod(terms2)
+		end
+	end
+
+	return quad
+end
+
 include("MOI_wrapper.jl")
 
 end

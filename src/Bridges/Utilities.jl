@@ -53,18 +53,18 @@ function _to_reformulated_polynomial!(
     operands = expr.args
 	# println("I want to reformulate $expr")
     if operator == :*
+		# in this version, you keep the first expr
 		# new_operands = []
 		# should_substitute = false
-		# in this version, you keep the first expr
 		# for operand in operands
-			# if should_substitute
-			# 	operand = _substitute_expr(model, operand)
-			# end
-			# push!(new_operands, operand)
-			# if _is_expr(operand)
-			# 	println("is an expr: $operand")
-			# 	should_substitute = true
-			# end
+		# 	if should_substitute
+		# 		operand = _substitute_expr(model, T, d, operand)
+		# 	end
+		# 	push!(new_operands, operand)
+		# 	if _is_expr(operand)
+		# 		println("is an expr: $operand")
+		# 		should_substitute = true
+		# 	end
 		# end
 		# return MOI.ScalarNonlinearFunction(
 		# 	:*,
@@ -74,7 +74,7 @@ function _to_reformulated_polynomial!(
 		# in this version, you substitude all expr products
 		if sum(_is_expr.(operands)) > 1
 			# println("$operands have more than one expr")
-			operands = _substitute_expr.(model, Ref(d), operands)
+			operands = _substitute_expr.(model, T, Ref(d), operands)
 		else
 			# println("$operands have less than two exprs")
 			operands = _to_reformulated_polynomial!.(model, T, Ref(d), operands)
@@ -90,7 +90,7 @@ function _to_reformulated_polynomial!(
             b = round(Int, b)
 			throw(error("EXPONENTIATION ERROR"))
         end
-		a = _substitute_expr(model, d, a)
+		a = _substitute_expr(model, T, d, a)
         # a = _to_reformulated_polynomial!(model, T, a)
 		# println("preparing to apply exponent: $a^$b, of types $(typeof(a)) and $(typeof(b))")
 		return MOI.ScalarNonlinearFunction(:^, [a, b])
@@ -103,18 +103,18 @@ function _to_reformulated_polynomial!(
     end
 end
 
-function _substitute_expr(model::MOI.ModelLike, d::ExprMap, expr::Any)
+function _substitute_expr(model::MOI.ModelLike, ::Type{T}, d::ExprMap, expr::Any) where {T}
 	# println("sanity check")
 	func = convert(MOI.ScalarNonlinearFunction, expr)
 	if func.head ∉ [:+, :-]
-		return _to_reformulated_polynomial!(model, Float64, d, func)
+		return _to_reformulated_polynomial!(model, T, d, func)
 	end
-	func = _to_reformulated_polynomial!(model, Float64, d, func)
+	func = _to_reformulated_polynomial!(model, T, d, func)
 	new_var = if haskey(d, func)
 		# println("used cached variable $(d[func]) which is equal to $func")
 		d[func]
 	else
-		bnds = _get_nonlinfunc_bounds(model, Float64, func)
+		bnds = _get_nonlinfunc_bounds(model, T, func)
 		lb, ub = IA.bounds(bnds)
 		println("adding variable with bounds [$lb, $ub]")
 		v, _ = MOI.add_constrained_variable(model, MOI.Interval(lb, ub))
@@ -129,7 +129,7 @@ function _substitute_expr(model::MOI.ModelLike, d::ExprMap, expr::Any)
 end
 
 
-function _substitute_expr(::MOI.ModelLike, ::ExprMap, expr::Union{MOI.VariableIndex, Number})
+function _substitute_expr(::MOI.ModelLike, ::Type{T}, ::ExprMap, expr::Union{MOI.VariableIndex, Number}) where {T}
 	return expr
 end
 
@@ -161,7 +161,6 @@ end
 
 function _get_nonlinfunc_bounds(model::MOI.ModelLike, ::Type{T}, expr::MOI.VariableIndex)::IA.Interval{T} where T
 	F = float(T)
-	@show model
 	lb, ub = MOI.Utilities.get_bounds(model, T, expr)
 	println("got [$lb, $ub] for $expr")
 	var_bounds = IntervalArithmetic.interval(

@@ -14,7 +14,7 @@ end
 function MOI.Bridges.Constraint.bridge_constraint(
     ::Type{ToReformulatedPolynomialBridge{T}},
     model::MOI.ModelLike,
-    func::MOI.AbstractScalarFunction,
+    func::MOI.ScalarNonlinearFunction,
 	s::S,
 ) where {T,S}
 	nonlin_func = convert(MOI.ScalarNonlinearFunction, func)
@@ -28,14 +28,14 @@ end
 function MOI.Bridges.Objective.supports_objective_function(
     ::Type{ToReformulatedPolynomialBridge{T}},
     ::Type{F},
-) where {T,F<:MOI.AbstractScalarFunction}
+) where {T,F<:MOI.ScalarNonlinearFunction}
     return MOI.Utilities.is_coefficient_type(F, T)
 end
 
 
 function MOI.supports_constraint(
     ::Type{ToReformulatedPolynomialBridge{T}},
-    ::Type{<:MOI.AbstractScalarFunction},
+    ::Type{<:MOI.ScalarNonlinearFunction},
     ::Type{<:MOI.AbstractScalarSet},
 ) where {T}
     return true

@@ -3,11 +3,16 @@ import MathOptInterface as MOI
 const _Model{F,S} =
     MOI.Utilities.UniversalFallback{MOI.Utilities.VectorOfConstraints{F,S}}
 
+struct QuadratizationMethod <: MOI.AbstractOptimizerAttribute end
+struct EnforceConsistencyConstraints <: MOI.AbstractOptimizerAttribute end
+
 mutable struct Optimizer{T,O<:MOI.ModelLike} <: MOI.AbstractOptimizer
     model::O
     objective::Union{Nothing,PolyJuMP.ScalarPolynomialFunction{T}}
     constraints::DataStructures.OrderedDict{Type,Tuple{Type,_Model}}
     index_map::Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}
+	quadratization_type::AbstractQuadratizationMethod
+	consistency_constraints::Bool
 end
 
 function Optimizer{T}(optimizer::MOI.ModelLike) where {T}
@@ -23,6 +28,8 @@ function Optimizer{T}(optimizer::MOI.ModelLike) where {T}
         nothing,
         DataStructures.OrderedDict{Type,MOI.Utilities.VectorOfConstraints}(),
         Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
+		BasicQuadratization(),
+		false
     )
 end
 
@@ -178,6 +185,14 @@ function MOI.get(model::Optimizer, attr::MOI.AbstractModelAttribute)
     return MOI.get(model.model, attr)
 end
 
+function MOI.set(model::Optimizer, attr::MOI.AbstractOptimizerAttribute, value)
+	return MOI.set(model.model, attr, value)
+end
+
+function MOI.get(model::Optimizer, attr::MOI.AbstractOptimizerAttribute)
+	return MOI.get(model.model, attr)
+end
+
 function MOI.supports_constraint(
     model::Optimizer,
     ::Type{F},
@@ -246,6 +261,39 @@ function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
 end
 
 MOI.optimize!(model::Optimizer) = MOI.optimize!(model.model)
+
+
+MOI.Utilities.map_indices(::Any, ::QuadratizationMethod, x) = x
+
+function MOI.set(
+	model::Optimizer{T},
+	::QuadratizationMethod,
+	value::AbstractQuadratizationMethod
+) where {T}
+	model.quadratization_type = value
+end
+
+function MOI.get(
+	model::Optimizer{T},
+	::QuadratizationMethod,
+) where {T}
+	return model.quadratization_type
+end
+
+function MOI.set(
+	model::Optimizer{T},
+	::EnforceConsistencyConstraints,
+	value::Bool
+) where {T}
+	model.consistency_constraints = value
+end
+
+function MOI.get(
+	model::Optimizer{T},
+	::EnforceConsistencyConstraints,
+) where {T}
+	return model.consistency_constraints
+end
 
 function _quad_convert(p::MP.AbstractPolynomialLike{T}, index, div) where {T}
     q = zero(MOI.ScalarQuadraticFunction{T})
@@ -443,6 +491,49 @@ function _add_constraints(
     return
 end
 
+function _add_consistency_constraints!(
+	model::Optimizer{T},
+	vars::Dict,
+	monos::Vector{Vector},
+	cache::Set,
+	mono::MP.AbstractMonomialLike
+) where {T}
+	max_deg = length(monos)
+	v = vars[mono]
+	for a in keys(vars)
+		va = vars[a]
+		deg = MP.degree(a)+MP.degree(mono)
+		for b in reduce(vcat, monos[max(1, deg-max_deg):min(deg-1,max_deg)])
+			if b == a
+				continue
+			end
+			vb = vars[b]
+			for c in monos[deg-MP.degree(b)]
+				if c == a
+					continue
+				end
+				vc = vars[c]
+				key = convert(MOI.ScalarNonlinearFunction, one(T)*va*v + one(T)*vb*vc)
+				if key in cache
+					continue
+				end
+				# This could be nice but memory-wise it doesn't seem very smart
+				push!(cache, key)
+				if mono*a == b*c
+					println("added $mono * $a == $b * $c")
+					push!(cache, key)
+					MOI.Utilities.normalize_and_add_constraint(
+						model,
+						MA.@rewrite(one(T)*v*va - one(T)*vb*vc),
+						MOI.EqualTo(zero(T));
+						allow_modify_function = true,
+					)
+				end
+			end
+		end
+	end
+end
+
 function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
     index_to_var = nothing
     vars = nothing
@@ -462,8 +553,8 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
         end
     end
     time = @elapsed if !isnothing(monos)
-        # div = decompose(monos)
-        div = decompose(monos, true)
+		max_deg = maximum(MP.degree.(monos))
+        div = decompose(monos, model.quadratization_type)
         for mono in sort(collect(keys(div)))
             if haskey(vars, mono)
                 continue
@@ -473,6 +564,27 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
             b = MP.div_multiple(mono, a)
             monomial_variable_index(model, vars, div, b)
         end
+		println("DONE WITH QUAD")
+		if model.consistency_constraints
+			cache = Set{MOI.ScalarNonlinearFunction}()
+			sorted_monos = Vector[[] for _ in 1:max_deg]
+			for mono in keys(vars)
+				deg = MP.degree(mono)
+				push!(sorted_monos[deg], mono)
+			end
+			i = 1
+			l = length(keys(vars))
+			for mono in keys(vars)
+				if MP.degree(mono) <= 1
+					println("finished mono $i/$l")
+					i += 1
+					continue
+				end
+				_add_consistency_constraints!(model, vars, sorted_monos, cache, mono)
+				println("finished mono $i/$l")
+				i += 1
+			end
+		end
         if !isnothing(model.objective)
             func, index_to_var = _subs!(model.objective, index_to_var)
             obj = _quad_convert(func.polynomial, vars, div)

@@ -189,3 +189,21 @@ function MOI.Utilities.operate(
     poly = _to_polynomial!(d, T, f)
     return _scalar_polynomial(d, T, op(p.polynomial, poly))
 end
+
+
+# TODO: maybe try to merge this into MOI ?
+
+_sort_by(x::MOI.VariableIndex) = x.value
+_sort_by(x::Number) = x
+_sort_by(x::MOI.ScalarNonlinearFunction) = sum(_sort_by.(x.args))
+_sort_by(x::Any) = _sort_by(convert(MOI.ScalarNonlinearFunction, x))
+
+function Base.hash(x::MOI.ScalarNonlinearFunction, h::UInt = zero(UInt))::UInt
+	h = hash(x.head, h)
+	h = hash(tuple(sort(x.args, by=_sort_by)...), h)
+	return h
+end
+
+function Base.:(==)(x::MOI.ScalarNonlinearFunction, y::MOI.ScalarNonlinearFunction)::Bool
+	return x.head == y.head && sort(x.args, by=_sort_by) == sort(y.args, by=_sort_by)
+end

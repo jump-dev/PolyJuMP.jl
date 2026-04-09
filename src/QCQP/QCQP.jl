@@ -5,8 +5,14 @@ import MultivariatePolynomials as MP
 import DataStructures
 import PolyJuMP
 
+abstract type AbstractQuadratizationMethod end
+struct GreedyQuadratization <: AbstractQuadratizationMethod end
+struct BasicQuadratization <: AbstractQuadratizationMethod end
+struct KACQuadratization <: AbstractQuadratizationMethod end
+
 # TODO special case for squares ?
-function decompose(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
+function decompose(monos::AbstractVector{M}, ::GreedyQuadratization) where {M<:MP.AbstractMonomial}
+	println("RUNNING GREEDY QUADRATIZATION")
     vars = MP.variables(monos)
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
         var => var for var in vars
@@ -44,7 +50,8 @@ function decompose(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
 end
 
 
-function decompose(monos::AbstractVector{M}, ::Any) where {M<:MP.AbstractMonomial}
+function decompose(monos::AbstractVector{M}, ::BasicQuadratization) where {M<:MP.AbstractMonomial}
+	println("RUNNING BASIC QUADRATIZATION")
     vars = MP.variables(monos)
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
         var => var for var in vars
@@ -87,6 +94,84 @@ function decompose(monos::AbstractVector{M}, ::Any) where {M<:MP.AbstractMonomia
 
 	return quad
 end
+
+# Inspired by https://www.sciencedirect.com/science/article/pii/S0098135422002472, by T. Karia, C. S. Adjiman, B. Chachuat => "KAC"
+function decompose(monos::AbstractVector{M}, ::KACQuadratization) where {M<:MP.AbstractMonomial}
+	println("RUNNING KAC QUADRATIZATION")
+    vars = MP.variables(monos)
+    quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
+        var => var for var in vars
+    )
+	for x in vars
+		for y in vars
+			quad[x*y] = x
+		end
+	end
+
+	stack = DataStructures.Stack{M}(length(monos))
+	for mono in monos
+		push!(stack, mono)
+	end
+
+	while !isempty(stack)
+		mono = pop!(stack)
+		deg = MP.degree(mono)
+		if deg <= 2 || haskey(quad, mono)
+			continue
+		end
+
+		stop = false
+		for a in keys(quad)
+			if MP.divides(a, mono)
+				b = MP.div_multiple(mono, a)
+				# println("$a divides $mono and gives $b")
+				if haskey(quad, b)
+					quad[mono] = a
+					stop = true
+					break
+				elseif MP.degree(a) > 1
+					quad[mono] = a
+					push!(stack, b)
+					stop = true
+					break
+				end
+			end
+		end
+		if stop
+			continue
+		end
+
+		l, r = nothing, nothing
+		if maximum(mono.z) == 1
+			v = filter(x -> MP.divides(x, mono), mono.vars)
+			l = prod(v[1:deg÷2])
+			r = prod(v[deg÷2+1:deg])
+		elseif any(mono.z .% 2)
+			l = MP.div_multiple(mono, mono)
+			r = copy(mono)
+			for i in 1:length(mono.vars)
+				if r.z[i] % 2
+					l *= r.vars[i]
+					r.z[i] -= 1
+				end
+			end
+		else
+			l = copy(mono)
+			l.z ./= 2
+		end
+
+		if l !== nothing
+			quad[mono] = l
+			push!(stack, l)
+		end
+		if r !== nothing
+			push!(stack, r)
+		end
+	end
+
+	return quad
+end
+
 
 include("MOI_wrapper.jl")
 

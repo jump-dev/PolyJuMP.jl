@@ -1,3 +1,4 @@
+import StarAlgebras as SA
 using Test, JuMP
 
 function _model(optimizer::MOI.AbstractOptimizer)

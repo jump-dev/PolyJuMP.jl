@@ -215,8 +215,7 @@ function _optimize!(model::Optimizer{T}) where {T}
     try # We could check `SS.is_zero_dimensional(system)` but that would only work for Gröbner basis based
         solutions = collect(system)
     catch err
-        model.extrema = Vector{T}[]
-        model.objective_values = zeros(T, 0)
+        model.solutions = PolyJuMP.Solution{T}[]
         model.termination_status = MOI.OTHER_ERROR
         model.raw_status = "KKT system solver failed with : $(sprint(showerror, err))."
         return

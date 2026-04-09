@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ['1.10', '1']  # Test against LTS
+        version: ['1'] # , '1.6']  # LTS is failing because HomotopyContinuation is a dependency of the tests it doesn't support the LTS
         os: [ubuntu-latest, macOS-latest, windows-latest]
         arch: [x64]
         include:
@@ -22,17 +22,18 @@ jobs:
             os: ubuntu-latest
             arch: x86
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         with:
           depwarn: error
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v6
         with:
-          file: lcov.info
+          files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}

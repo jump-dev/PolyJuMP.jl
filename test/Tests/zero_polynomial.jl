@@ -36,8 +36,8 @@ function _zero_polynomial_test(
     @test value(β) ≈ 1.0 atol = atol rtol = rtol
     @test value(γ) ≈ 0.0 atol = atol rtol = rtol
     @test value(UpperBoundRef(β)) ≈ 1.0 atol = atol rtol = rtol
-    @test value(cref) isa MP.AbstractPolynomial{Float64}
-    @test value(cref) ≈ 0.0 * x * y atol = atol rtol = rtol
+    @test value(cref) isa SA.AlgebraElement
+    @test MP.polynomial(value(cref)) ≈ 0.0 * x * y atol = atol rtol = rtol
     @test value(cγ) ≈ 0.0 * x * y atol = atol rtol = rtol
 
     @test dual_status(model) == MOI.FEASIBLE_POINT
@@ -47,22 +47,14 @@ function _zero_polynomial_test(
         @test μ isa AbstractMeasure{Float64}
         @test length(moments(μ)) == 1
         @test moment_value(moments(μ)[1]) ≈ -1.0 atol = atol rtol = rtol
-        @test monomial(moments(μ)[1]) == x * y
+        @test moments(μ)[1].polynomial == MB.Polynomial{MB.Monomial}(x * y)
     end
 
     F = MOI.VectorAffineFunction{Float64}
-    ST = PolyJuMP.ZeroPolynomialSet{
-        FullSpace,
-        MB.MonomialBasis,
-        monomial_type(x),
-        monomial_vector_type(x),
-    }
-    SP = PolyJuMP.ZeroPolynomialSet{
-        FullSpace,
-        MB.MonomialBasis,
-        monomial_type(x),
-        monomial_vector_type(x),
-    }
+    full_basis_type = typeof(MB.FullBasis{MB.Monomial}(x))
+    sub_basis_type = MB.explicit_basis_type(full_basis_type)
+    ST = PolyJuMP.ZeroPolynomialSet{FullSpace,full_basis_type,sub_basis_type}
+    SP = PolyJuMP.ZeroPolynomialSet{FullSpace,full_basis_type,sub_basis_type}
     @test Set(MOI.get(model, MOI.ListOfConstraintTypesPresent())) == Set([
         (MOI.VariableIndex, MOI.LessThan{Float64}),
         (F, SP),

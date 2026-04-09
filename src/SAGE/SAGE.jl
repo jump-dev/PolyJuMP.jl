@@ -1,6 +1,8 @@
 module SAGE
 
 import MutableArithmetics as MA
+import StarAlgebras as SA
+import MultivariateBases as MB
 import MultivariatePolynomials as MP
 import MathOptInterface as MOI
 import JuMP
@@ -40,9 +42,12 @@ struct Signomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <:
 end
 Signomials() = Signomials(nothing)
 _index(_, ::Nothing) = nothing
-_index(monos, mono::MP.AbstractMonomial) = findfirst(isequal(mono), monos)::Int
-function JuMP.moi_set(c::Signomials, monos)
-    return Cone(Signomials(_index(monos, c.monomial)), _exponents_matrix(monos))
+function _index(basis, mono::MP.AbstractMonomial)
+    return SA.key_index(basis, MP.exponents(mono))::Int
+end
+function JuMP.moi_set(c::Signomials, basis::MB.SubBasis{MB.Monomial})
+    monos = MB.keys_as_monomials(basis)
+    return Cone(Signomials(_index(basis, c.monomial)), _exponents_matrix(monos))
 end
 
 """
@@ -55,9 +60,10 @@ struct Polynomials{M<:Union{Nothing,Int,MP.AbstractMonomial}} <:
     monomial::M
 end
 Polynomials() = Polynomials(nothing)
-function JuMP.moi_set(c::Polynomials, monos)
+function JuMP.moi_set(c::Polynomials, basis::MB.SubBasis{MB.Monomial})
+    monos = MB.keys_as_monomials(basis)
     return Cone(
-        Polynomials(_index(monos, c.monomial)),
+        Polynomials(_index(basis, c.monomial)),
         _exponents_matrix(monos),
     )
 end
@@ -77,9 +83,9 @@ function JuMP.build_constraint(
         _error("unsupported keyword argument `$key`.")
     end
     coefs = PolyJuMP.non_constant_coefficients(p)
-    monos = MP.monomials(p)
-    cone = JuMP.moi_set(set, monos)
-    shape = PolyJuMP.PolynomialShape(monos)
+    basis = MB.SubBasis{MB.Monomial}(MP.monomials(p))
+    cone = JuMP.moi_set(set, basis)
+    shape = PolyJuMP.PolynomialShape(basis)
     return PolyJuMP.bridgeable(
         JuMP.VectorConstraint(coefs, cone, shape),
         JuMP.moi_function_type(typeof(coefs)),
@@ -136,7 +142,7 @@ function decomposition(
     tol::Real,
     result_index::Int = 1,
 )
-    monos = con_ref.shape.monomials
+    monos = MB.keys_as_monomials(con_ref.shape.basis)
     attr = DecompositionAttribute(tol, result_index)
     return Decomposition([
         MP.polynomial(a, monos) for
@@ -152,7 +158,7 @@ function PolyJuMP.bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{Cone{Signomials{Nothing}}},
 )
-    return [(SAGEBridge, PolyJuMP._coef_type(F))]
+    return Tuple{Type,Type}[(SAGEBridge, PolyJuMP.coefficient_type_or_float(F))]
 end
 
 include("bridges/age.jl")
@@ -161,7 +167,7 @@ function PolyJuMP.bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{Cone{Signomials{Int}}},
 )
-    return [(AGEBridge, PolyJuMP._coef_type(F))]
+    return Tuple{Type,Type}[(AGEBridge, PolyJuMP.coefficient_type_or_float(F))]
 end
 
 include("bridges/signomial.jl")
@@ -170,7 +176,10 @@ function PolyJuMP.bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{Cone{Polynomials{M}}},
 ) where {M}
-    return [(SignomialsBridge, PolyJuMP._coef_type(F))]
+    return Tuple{Type,Type}[(
+        SignomialsBridge,
+        PolyJuMP.coefficient_type_or_float(F),
+    )]
 end
 
 end

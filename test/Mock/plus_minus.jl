@@ -7,11 +7,12 @@ using DynamicPolynomials
 
 using SemialgebraicSets
 using PolyJuMP
+const _full_basis_type = typeof(MB.FullBasis{MB.Monomial}(x))
+const _sub_basis_type = MB.explicit_basis_type(_full_basis_type)
 const NonNeg = DummyPolyModule.NonNeg{
-    MB.MonomialBasis,
+    _full_basis_type,
     typeof(@set x^2 ≤ 0),
-    monomial_type(x),
-    monomial_vector_type(x),
+    _sub_basis_type,
 }
 
 MOI.Utilities.@model(

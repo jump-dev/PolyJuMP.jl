@@ -1,5 +1,6 @@
 module Constraint
 
+import StarAlgebras as SA
 import MultivariatePolynomials as MP
 import MultivariateBases as MB
 import SemialgebraicSets as SS

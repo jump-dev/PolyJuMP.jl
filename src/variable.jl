@@ -15,7 +15,18 @@ function JuMP.value(
     return MP.polynomial(JuMP.value.(f, MP.terms(p)), MP.SortedUniqState())
 end
 
+function JuMP.value(
+    f::Function,
+    p::SA.AlgebraElement{<:JuMP.AbstractJuMPScalar},
+)
+    return SA.AlgebraElement(JuMP.value.(f, SA.coeffs(p)), parent(p))
+end
+
 function JuMP.value(p::MP.AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
+    return JuMP.value(JuMP.value, p)
+end
+
+function JuMP.value(p::SA.AlgebraElement{<:JuMP.AbstractJuMPScalar})
     return JuMP.value(JuMP.value, p)
 end
 
@@ -28,11 +39,11 @@ abstract type AbstractPoly end
 
 Polynomial variable ``v^\\top p`` where ``v`` is a vector of new decision variables and ``p`` is a vector of polynomials for the basis `polynomial_basis`.
 """
-struct Poly{PB<:MB.AbstractPolynomialBasis} <: AbstractPoly
-    polynomial_basis::PB
+struct Poly{B<:SA.ExplicitBasis} <: AbstractPoly
+    polynomial_basis::B
 end
 function Poly(x::AbstractVector{<:MP.AbstractPolynomialLike})
-    return Poly(MB.MonomialBasis(x))
+    return Poly(MB.SubBasis{MB.Monomial}(x))
 end
 
 # Macro
@@ -107,5 +118,5 @@ function JuMP.add_variable(
         end
         return vref
     end
-    return MP.polynomial(_newvar, v.p.polynomial_basis)
+    return MB.algebra_element(_newvar, v.p.polynomial_basis)
 end

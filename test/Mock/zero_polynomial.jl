@@ -29,7 +29,7 @@ end
     function optimize!(mock)
         return MOI.Utilities.mock_optimize!(
             mock,
-            [1.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0, 0.0, 0.0],
             (MOI.ScalarAffineFunction{Float64}, MOI.LessThan{Float64}) =>
                 [-1.0],
             (MOI.VectorAffineFunction{Float64}, MOI.Zeros) => [[-1.0], [-1.0]],

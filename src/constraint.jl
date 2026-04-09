@@ -1,5 +1,7 @@
 export moments
 
+const _AE_APL = Union{SA.AlgebraElement,MP.AbstractPolynomialLike}
+
 abstract type PolynomialSet end
 
 _in(::MIME) = Sys.iswindows() ? "in" : "∈"
@@ -13,42 +15,39 @@ struct ZeroPoly <: PolynomialSet end
 struct NonNegPoly <: PolynomialSet end
 struct PosDefPolyMatrix <: PolynomialSet end
 
-function JuMP.function_string(::MIME"text/plain", p::MP.AbstractPolynomialLike)
+function JuMP.function_string(::MIME"text/plain", p::_AE_APL)
     return sprint(show, MIME"text/plain"(), p)
 end
-function JuMP.function_string(::MIME"text/latex", p::MP.AbstractPolynomialLike)
-    # `show` prints `$$` around what `_show` prints.
-    return sprint(MP._show, MIME"text/latex"(), p)
+function JuMP.function_string(mime::MIME"text/latex", p::_AE_APL)
+    return SA.trim_LaTeX(mime, sprint(show, MIME"text/latex"(), p))
 end
 
 ### Shapes for polynomial/moments primal-dual pair ###
 
 # Inspired from `JuMP.dual_shape` docstring example
-struct PolynomialShape{MT<:MP.AbstractMonomial,MVT<:AbstractVector{MT}} <:
-       JuMP.AbstractShape
-    monomials::MVT
+struct PolynomialShape{B<:SA.ExplicitBasis} <: JuMP.AbstractShape
+    basis::B
 end
 function JuMP.reshape_vector(x::Vector, shape::PolynomialShape)
-    return MP.polynomial(x, shape.monomials)
+    return MB.algebra_element(x, shape.basis)
 end
-struct MomentsShape{MT<:MP.AbstractMonomial,MVT<:AbstractVector{MT}} <:
-       JuMP.AbstractShape
-    monomials::MVT
+struct MomentsShape{B<:SA.ExplicitBasis} <: JuMP.AbstractShape
+    basis::B
 end
 function JuMP.reshape_vector(x::Vector, shape::MomentsShape)
-    return MM.measure(x, shape.monomials)
+    return MM.moment_vector(x, shape.basis)
 end
-JuMP.dual_shape(shape::PolynomialShape) = MomentsShape(shape.monomials)
-JuMP.dual_shape(shape::MomentsShape) = PolynomialShape(shape.monomials)
+JuMP.dual_shape(shape::PolynomialShape) = MomentsShape(shape.basis)
+JuMP.dual_shape(shape::MomentsShape) = PolynomialShape(shape.basis)
 
 JuMP.reshape_set(::ZeroPolynomialSet, ::PolynomialShape) = ZeroPoly()
 function JuMP.moi_set(
     ::ZeroPoly,
-    monos::AbstractVector{<:MP.AbstractMonomial};
+    b::MB.SubBasis{MB.Monomial,M};
     domain::SS.AbstractSemialgebraicSet = SS.FullSpace(),
-    basis = MB.MonomialBasis,
-)
-    return ZeroPolynomialSet(domain, basis, monos)
+    basis = parent(b),
+) where {M}
+    return ZeroPolynomialSet(domain, basis, b)
 end
 
 """
@@ -66,7 +65,9 @@ end
 Return a list of bridges that may be needed to bridge `F`-in-`S` constraints but
 not the bridges that may be needed by constraints added by the bridges.
 """
-bridges(::Type{<:MOI.AbstractFunction}, ::Type{<:MOI.AbstractSet}) = []
+function bridges(::Type{<:MOI.AbstractFunction}, ::Type{<:MOI.AbstractSet})
+    return Tuple{Type,Type}[]
+end
 
 """
     bridges(S::Type{<:MOI.AbstractSet})
@@ -81,21 +82,27 @@ function bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{<:ZeroPolynomialSet{SS.FullSpace}},
 )
-    return [(Bridges.Constraint.ZeroPolynomialBridge, _coef_type(F))]
+    return Tuple{Type,Type}[(
+        Bridges.Constraint.ZeroPolynomialBridge,
+        coefficient_type_or_float(F),
+    )]
 end
 
 function bridges(
     F::Type{<:MOI.AbstractVectorFunction},
     ::Type{<:ZeroPolynomialSet{<:SS.AbstractAlgebraicSet}},
 )
-    return [(
+    return Tuple{Type,Type}[(
         Bridges.Constraint.ZeroPolynomialInAlgebraicSetBridge,
-        _coef_type(F),
+        coefficient_type_or_float(F),
     )]
 end
 
 function bridges(F::Type{<:MOI.AbstractVectorFunction}, ::Type{<:PlusMinusSet})
-    return [(Bridges.Constraint.PlusMinusBridge, _coef_type(F))]
+    return Tuple{Type,Type}[(
+        Bridges.Constraint.PlusMinusBridge,
+        coefficient_type_or_float(F),
+    )]
 end
 
 """
@@ -145,8 +152,13 @@ function bridgeable(c::JuMP.AbstractConstraint, S::Type{<:MOI.AbstractSet})
     return c
 end
 
-_coef_type(::Type{<:MOI.AbstractFunction}) = Float64
-_coef_type(::Type{<:MOI.Utilities.TypedLike{T}}) where {T} = T
+# TODO If `JuMP.value_type` is not `Float64`, we should
+#      redo `bridgeable`, `bridges` etc... in `JuMP.model_convert`
+#      the most important is that `MOI.Bridges.concrete_bridge_type`
+#      works so we should stick to the same coefficient type if there is
+#      one. If there is none, `Float64` should be fine.
+coefficient_type_or_float(::Type{<:MOI.AbstractFunction}) = Float64
+coefficient_type_or_float(::Type{<:MOI.Utilities.TypedLike{T}}) where {T} = T
 
 function bridgeable(
     c::JuMP.AbstractConstraint,
@@ -183,18 +195,24 @@ function non_constant(a::AbstractVector{T}) where {T}
     # also take care of `collect`ing into a `Vector`
     return convert(Vector{non_constant_type(T)}, a)
 end
-non_constant_coefficients(p) = non_constant(MP.coefficients(p))
+function non_constant_coefficients(p::MP.AbstractPolynomialLike)
+    return non_constant(MP.coefficients(p))
+end
+function non_constant_coefficients(p::SA.AlgebraElement)
+    MA.operate!(SA.canonical, SA.coeffs(p))
+    return non_constant(values(SA.coeffs(p)))
+end
 
 ## ZeroPoly
 function JuMP.build_constraint(
-    _error::Function,
-    p::MP.AbstractPolynomialLike,
+    error_fn::Function,
+    p::_AE_APL,
     s::ZeroPoly;
     domain::SS.AbstractSemialgebraicSet = SS.FullSpace(),
     kws...,
 )
     coefs = non_constant_coefficients(p)
-    monos = MP.monomials(p)
+    basis = MB.explicit_basis(p)
     if domain isa SS.BasicSemialgebraicSet
         # p(x) = 0 for all x in a basic semialgebraic set. We replace it by
         # p(x) ≤ 0 and p(x) ≥ 0 for all x in the basic semialgebraic set.
@@ -209,10 +227,10 @@ function JuMP.build_constraint(
             merge((domain = domain,), values(kws)),
             (:domain, values(kws)...),
         )
-        return Constraint(_error, p, s, all_kws)
+        return Constraint(error_fn, p, s, all_kws)
     else
-        set = JuMP.moi_set(s, monos; domain = domain, kws...)
-        constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
+        set = JuMP.moi_set(s, basis; domain = domain, kws...)
+        constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(basis))
         return bridgeable(
             constraint,
             JuMP.moi_function_type(typeof(coefs)),
@@ -221,31 +239,31 @@ function JuMP.build_constraint(
     end
 end
 function JuMP.build_constraint(
-    _error::Function,
-    p::MP.AbstractPolynomialLike,
+    error_fn::Function,
+    p::_AE_APL,
     s::MOI.EqualTo;
     kws...,
 )
-    return JuMP.build_constraint(_error, p - s.value, ZeroPoly(); kws...)
+    return JuMP.build_constraint(error_fn, p - s.value, ZeroPoly(); kws...)
 end
 
 # # `NonNegPoly` and `PosDefPolyMatrix`
 # The `model` is not given in `JuMP.build_constraint` so we create a custom
 # `Constraint` object and transform the `set` in `JuMP.add_constraint`.
-struct Constraint{FT,PT,ST<:PolynomialSet,KWT<:Iterators.Pairs} <:
+struct Constraint{F,PT,ST<:PolynomialSet,KWT<:Iterators.Pairs} <:
        JuMP.AbstractConstraint
-    _error::FT
+    error_fn::F
     polynomial_or_matrix::PT
     set::ST
     kws::KWT
 end
 function JuMP.build_constraint(
-    _error::Function,
+    error_fn::Function,
     polynomial_or_matrix,
     set::Union{NonNegPoly,PosDefPolyMatrix};
     kws...,
 )
-    return Constraint(_error, polynomial_or_matrix, set, kws)
+    return Constraint(error_fn, polynomial_or_matrix, set, kws)
 end
 
 # FIXME the domain will not appear in the printing, it should be a field of
@@ -259,8 +277,9 @@ function JuMP.add_constraint(
     cone = getdefault(model, NonNegPoly())
     coefs = non_constant_coefficients(constraint.polynomial_or_matrix)
     monos = MP.monomials(constraint.polynomial_or_matrix)
-    set = PlusMinusSet(JuMP.moi_set(cone, monos; constraint.kws...))
-    new_constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(monos))
+    basis = MB.SubBasis{MB.Monomial}(monos)
+    set = PlusMinusSet(JuMP.moi_set(cone, basis; constraint.kws...))
+    new_constraint = JuMP.VectorConstraint(coefs, set, PolynomialShape(basis))
     bridgeable_con = bridgeable(
         new_constraint,
         JuMP.moi_function_type(typeof(coefs)),
@@ -276,7 +295,7 @@ function JuMP.add_constraint(
 )
     set = getdefault(model, constraint.set)
     new_constraint = JuMP.build_constraint(
-        constraint._error,
+        constraint.error_fn,
         constraint.polynomial_or_matrix,
         set;
         constraint.kws...,
@@ -286,53 +305,53 @@ end
 
 # `NonNegPoly`
 function JuMP.build_constraint(
-    _error::Function,
-    p::MP.AbstractPolynomialLike,
+    error_fn::Function,
+    p::_AE_APL,
     s::MOI.GreaterThan;
     kws...,
 )
-    return JuMP.build_constraint(_error, p - s.lower, NonNegPoly(); kws...)
+    return JuMP.build_constraint(error_fn, p - s.lower, NonNegPoly(); kws...)
 end
 function JuMP.build_constraint(
-    _error::Function,
-    p::MP.AbstractPolynomialLike,
+    error_fn::Function,
+    p::_AE_APL,
     s::MOI.LessThan;
     kws...,
 )
-    return JuMP.build_constraint(_error, s.upper - p, NonNegPoly(); kws...)
+    return JuMP.build_constraint(error_fn, s.upper - p, NonNegPoly(); kws...)
 end
 
 # `PosDefPolyMatrix`
 # There is already a method for `AbstractMatrix` in `PSDCone` in `JuMP` so we
 # need a more specific here to avoid ambiguity
 function JuMP.build_constraint(
-    _error::Function,
-    p::AbstractMatrix{<:MP.AbstractPolynomialLike},
+    error_fn::Function,
+    p::AbstractMatrix{<:_AE_APL},
     s::PSDCone;
     kws...,
 )
-    return JuMP.build_constraint(_error, p, PosDefPolyMatrix(); kws...)
+    return JuMP.build_constraint(error_fn, p, PosDefPolyMatrix(); kws...)
 end
 
 # Needed for the syntax `@constraint(model, A >= B, PSDCone())`
 function JuMP.build_constraint(
-    _error::Function,
-    f::AbstractMatrix{<:MP.AbstractPolynomialLike},
+    error_fn::Function,
+    f::AbstractMatrix{<:_AE_APL},
     s::MOI.GreaterThan,
     extra::PSDCone,
 )
     @assert iszero(s.lower)
-    return JuMP.build_constraint(_error, f, extra)
+    return JuMP.build_constraint(error_fn, f, extra)
 end
 
 # Needed for the syntax `@constraint(model, A <= B, PSDCone())`
 function JuMP.build_constraint(
-    _error::Function,
-    f::AbstractMatrix{<:MP.AbstractPolynomialLike},
+    error_fn::Function,
+    f::AbstractMatrix{<:_AE_APL},
     s::MOI.LessThan,
     extra::PSDCone,
 )
     @assert iszero(s.upper)
     new_f = MA.operate!!(*, -1, f)
-    return JuMP.build_constraint(_error, new_f, extra)
+    return JuMP.build_constraint(error_fn, new_f, extra)
 end

@@ -168,6 +168,13 @@ function MOI.supports(
     return true
 end
 
+# function MOI.supports(
+#     ::Optimizer,
+#     ::MOI.ObjectiveFunction{<:MOI.ScalarNonlinearFunction},
+# )
+#     return false
+# end
+
 function MOI.set(
     model::Optimizer{T},
     ::MOI.ObjectiveFunction{F},
@@ -501,7 +508,17 @@ function _add_consistency_constraints!(
 	max_deg = length(monos)
 	v = vars[mono]
 	for a in keys(vars)
+		if MP.degree(a) <= 1
+			continue
+		end
 		va = vars[a]
+		key = convert(MOI.ScalarNonlinearFunction, one(T)*va*v)
+		if key in cache
+			println("pruned branch")
+			continue
+		end
+		push!(cache, key)
+
 		deg = MP.degree(a)+MP.degree(mono)
 		for b in reduce(vcat, monos[max(1, deg-max_deg):min(deg-1,max_deg)])
 			if b == a
@@ -521,7 +538,7 @@ function _add_consistency_constraints!(
 				push!(cache, key)
 				if mono*a == b*c
 					println("added $mono * $a == $b * $c")
-					push!(cache, key)
+					# push!(cache, key)
 					MOI.Utilities.normalize_and_add_constraint(
 						model,
 						MA.@rewrite(one(T)*v*va - one(T)*vb*vc),
@@ -552,7 +569,7 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
             monos = _add_monomials!(func, monos)
         end
     end
-    time = @elapsed if !isnothing(monos)
+    if !isnothing(monos)
 		max_deg = maximum(MP.degree.(monos))
         div = decompose(monos, model.quadratization_type)
         for mono in sort(collect(keys(div)))
@@ -575,12 +592,9 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
 			i = 1
 			l = length(keys(vars))
 			for mono in keys(vars)
-				if MP.degree(mono) <= 1
-					println("finished mono $i/$l")
-					i += 1
-					continue
+				if MP.degree(mono) > 1
+					_add_consistency_constraints!(model, vars, sorted_monos, cache, mono)
 				end
-				_add_consistency_constraints!(model, vars, sorted_monos, cache, mono)
 				println("finished mono $i/$l")
 				i += 1
 			end
@@ -605,9 +619,6 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
             )
         end
     end
-    file = open("perf.tmp", "w")
-    write(file, string(time))
-    close(file)
     return
 end
 

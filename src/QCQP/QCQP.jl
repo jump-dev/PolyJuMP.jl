@@ -2,13 +2,37 @@ module QCQP
 
 import MutableArithmetics as MA
 import MultivariatePolynomials as MP
+import DynamicPolynomials as DP
 import DataStructures
 import PolyJuMP
 
 abstract type AbstractQuadratizationMethod end
 struct GreedyQuadratization <: AbstractQuadratizationMethod end
 struct BasicQuadratization <: AbstractQuadratizationMethod end
+struct BasicGreedyQuadratization <: AbstractQuadratizationMethod end
 struct KACQuadratization <: AbstractQuadratizationMethod end
+
+
+@enum Decomposition begin
+	Greedy
+	Balanced
+	Basic
+end
+struct CompositeQuadratization <: AbstractQuadratizationMethod
+	main_decomposition::Decomposition
+	smart::Bool
+	greedy::Bool
+end
+
+function CompositeQuadratization()::CompositeQuadratization
+	return CompositeQuadratization(Greedy, true, false)
+end
+
+import MathOptInterface as MOI
+struct OptimalQuadratization <: AbstractQuadratizationMethod
+	optimizer::MOI.AbstractOptimizer
+end
+
 
 # TODO special case for squares ?
 function decompose(monos::AbstractVector{M}, ::GreedyQuadratization) where {M<:MP.AbstractMonomial}
@@ -50,8 +74,213 @@ function decompose(monos::AbstractVector{M}, ::GreedyQuadratization) where {M<:M
 end
 
 
-function decompose(monos::AbstractVector{M}, ::BasicQuadratization) where {M<:MP.AbstractMonomial}
-	println("RUNNING BASIC QUADRATIZATION")
+function kac_phase(monos::AbstractVector{M}; greed::Bool, multilinear::Bool) where {M<:MP.AbstractMonomial}
+    vars = MP.variables(monos)
+    quad = DataStructures.OrderedDict{M,Union{Nothing,M}}()
+
+	stack = DataStructures.Stack{M}()
+	for mono in monos
+		if MP.degree(mono) == 0
+			continue
+		end
+		quad[mono] = nothing
+		push!(stack, mono)
+	end
+
+	while !isempty(stack)
+		mono = pop!(stack)
+		deg = MP.degree(mono)
+		if deg <= 2 || get(quad, mono, nothing) !== nothing
+			continue
+		end
+
+		if greed
+			stop = false
+			for a in keys(quad)
+				if a != mono && MP.divides(a, mono)
+					b = MP.div_multiple(mono, a)
+					if haskey(quad, b)
+						quad[mono] = a
+						stop = true
+						break
+					end
+				end
+			end
+			if stop
+				continue
+			end
+		end
+
+		l, r = nothing, nothing
+		mono_vars = MP.variables(mono)
+		exps = MP.exponents(mono)
+		if maximum(exps) == 1 && multilinear
+			v = filter(x -> MP.degree(mono, x) == 1, mono_vars)
+			l = prod(v[1:deg÷2])
+			r = prod(v[deg÷2+1:deg])
+		elseif maximum(exps) == 1 && !multilinear
+			quad[mono] = nothing
+			break
+		elseif any((exps .% 2) .== 1)
+			l = MP.div_multiple(mono, mono)
+			r = copy(mono)
+			for (v, e) in MP.powers(mono)
+				if e % 2 == 1
+					l *= v
+					r = MP.div_multiple(r, v)
+				end
+			end
+		else
+			l = MP.div_multiple(mono, mono)
+			for (v, e) in MP.powers(mono)
+				l *= v^(e÷2)
+			end
+		end
+
+		if l !== nothing
+			quad[mono] = l
+			push!(stack, l)
+		end
+		if r !== nothing
+			push!(stack, r)
+		end
+	end
+
+	return quad
+end
+
+
+function smart_decompo_phase(monos::AbstractVector{M}; greed::Bool) where {M<:MP.AbstractMonomial}
+	return kac_phase(monos, greed=greed, multilinear=false)
+end
+
+
+function cut_in_half_phase(monos::AbstractVector{M}; greed::Bool) where {M<:MP.AbstractMonomial}
+	return kac_phase(monos, greed=greed, multilinear=true)
+end
+
+
+function greedy_phase(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
+    vars = MP.variables(monos)
+    quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
+        var => var for var in vars
+    )
+	for x in vars
+		for y in vars
+			quad[x*y] = x
+		end
+	end
+
+	var_to_mono = Dict{M, M}(var => var for var in vars)
+	mono_to_var = Dict{M, M}()
+
+	occurrence = DataStructures.PriorityQueue{M, Tuple{Int, M}}(Base.Order.Reverse)
+
+	aux_var_index = 1
+	monos_list = M[mono for mono in monos]
+	while any(x -> MP.degree(x) > 2, monos_list)
+		empty!(occurrence)
+		for mono in monos_list
+			if MP.degree(mono) <= 2
+				continue
+			end
+			vs = MP.variables(mono)
+			exps = MP.exponents(mono)
+			nonzeroidx = [i for i in eachindex(exps) if exps[i] > 0]
+			for k in eachindex(nonzeroidx)
+				i = nonzeroidx[k]
+				for j in nonzeroidx[k:end]
+					if i == j && exps[i] <= 1
+						continue
+					end
+					q = vs[i]*vs[j]
+					curr, _ = get(occurrence, q, (0, q))
+					occ = i == j ? exps[i]÷2 : min(exps[i], exps[j])
+					occurrence[q] = (curr + occ, q)
+				end
+			end
+		end
+
+		for (i, mono) in enumerate(monos_list)
+			if MP.degree(mono) <= 2
+				continue
+			end
+			for a in keys(occurrence)
+				if MP.divides(a, mono)
+					deg = 0
+					b = mono
+					while MP.divides(a, b)
+						deg += 1
+						b = MP.div_multiple(b, a)
+					end
+					if haskey(mono_to_var, a)
+						v = mono_to_var[a]
+					else
+						DP.@polyvar v[aux_var_index]
+						aux_var_index += 1
+						v = v[1]
+						var_to_mono[v] = a
+						mono_to_var[a] = v
+						# println("added $v -> $a")
+					end
+					monos_list[i] = b*v^deg
+					break
+				end
+			end
+		end
+	end
+
+	_evaluate(x) = begin
+		mono = var_to_mono[x]
+		vars = MP.variables(mono)
+		if MP.degree(mono) == 1
+			return x
+		else
+			nonzero_vars = filter(v -> MP.degree(mono, v) >= 1, vars)
+			if length(nonzero_vars) == 1
+				nonzero_vars = [nonzero_vars[1], nonzero_vars[1]]
+			end
+			return prod(_evaluate.(nonzero_vars), init=one(M))
+		end
+	end
+	
+	stack = DataStructures.Stack{M}()
+	for mono in monos_list
+		if MP.degree(mono) > 1
+			push!(stack, mono)
+		end
+	end
+
+	while !isempty(stack)
+		bilin = pop!(stack)
+		vars = filter(v -> MP.degree(bilin, v) >= 1, MP.variables(bilin))
+		a, b = length(vars) == 2 ? (vars[1], vars[2]) : (vars[1], vars[1])
+		a_mono, b_mono = _evaluate(a), _evaluate(b)
+		mono = a_mono * b_mono
+
+		# println("$a * $b == $a_mono * $b_mono")
+
+		if haskey(quad, mono) && !isnothing(quad[mono])
+			continue
+		end
+
+		quad[mono] = a_mono
+
+		if !haskey(quad, a_mono) && MP.degree(a_mono) > 2
+			quad[a_mono] = nothing
+			push!(stack, var_to_mono[a])
+		end
+		if !haskey(quad, b_mono) && MP.degree(b_mono) > 2
+			quad[b_mono] = nothing
+			push!(stack, var_to_mono[b])
+		end
+	end
+
+	return quad
+end
+
+
+function default_phase(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
     vars = MP.variables(monos)
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
         var => var for var in vars
@@ -95,77 +324,323 @@ function decompose(monos::AbstractVector{M}, ::BasicQuadratization) where {M<:MP
 	return quad
 end
 
+
+function decompose(monos::AbstractVector{M}, ::BasicQuadratization) where {M<:MP.AbstractMonomial}
+	println("RUNNING BASIC QUADRATIZATION")
+	quad = default_phase(monos)
+	return quad
+end
+
 # Inspired by https://www.sciencedirect.com/science/article/pii/S0098135422002472, by T. Karia, C. S. Adjiman, B. Chachuat => "KAC"
 function decompose(monos::AbstractVector{M}, ::KACQuadratization) where {M<:MP.AbstractMonomial}
 	println("RUNNING KAC QUADRATIZATION")
+	vars = MP.variables(monos)
+
+	quad = smart_decompo_phase(monos, greed=true)
+
+	monos = filter(x -> isnothing(quad[x]), collect(keys(quad)))
+	q = cut_in_half_phase(monos, greed=true)
+	
+	for (k, v) in q
+		if isnothing(get(quad, k, nothing))
+			quad[k] = v
+		end
+	end
+
+	for x in vars
+		quad[x] = x
+		for y in vars
+			quad[x*y] = x
+		end
+	end
+
+	return quad
+end
+
+
+function decompose(monos::AbstractVector{M}, ::BasicGreedyQuadratization) where {M<:MP.AbstractMonomial}
+	println("RUNNING BASIC GREEDY QUADRATIZATION")
+	quad = greedy_phase(monos)
+	return quad
+end
+
+
+function decompose(monos::AbstractVector{M}, method::OptimalQuadratization) where {M<:MP.AbstractMonomial}
+	println("RUNNING OPTIMAL QUADRATIZATION")
     vars = MP.variables(monos)
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
         var => var for var in vars
     )
+	deg = maximum(MP.degree.(monos))
+
+	# mono_to_var = Dict{M, MOI.VariableIndex}()
+	var_to_mono = DataStructures.OrderedDict{MOI.VariableIndex, M}()
+	var_divisor = DataStructures.OrderedDict{MOI.VariableIndex, Union{M,MOI.VariableIndex}}()
+
+	optimizer = method.optimizer
+	monos = filter(x -> MP.degree(x) >= 3, monos)
+	tmp = Set{M}()
+	# find all pairs of variables
+	for mono in monos
+		vs = MP.variables(mono)
+		exps = MP.exponents(mono)
+		nonzeroidx = [i for i in eachindex(exps) if exps[i] > 0]
+		for k in eachindex(nonzeroidx)
+			i = nonzeroidx[k]
+			for j in nonzeroidx[k:end]
+				bilin = vs[i]*vs[j]
+				if (i == j && exps[i] <= 1) || bilin in tmp
+					continue
+				end
+				new_var, _ = MOI.add_constrained_variable(optimizer, MOI.ZeroOne())
+				var_to_mono[new_var] = bilin
+				var_divisor[new_var] = MP.div_multiple(bilin, vs[j])
+				push!(tmp, bilin)
+			end
+		end
+	end
+	empty!(tmp)
+
+	println("found all pairs...")
+
+	# find all pairs of aux variables (for smalled search space?)
+	# for mono in monos
+	# 	for a in keys(mono_to_var)
+	# 		for b in keys(mono_to_var)
+	# 		end
+	# 	end
+	# end
+	
+	explored_pairs = Set{Tuple{MOI.VariableIndex,Union{MOI.VariableIndex,eltype(vars)}}}()
+	curr_deg = 2
+	while curr_deg < deg-1
+		aux_vars = collect(keys(var_to_mono))  # it is possible to optimize here by creating a vector and pushing to it instead of collecting every time I think
+		# combined_iter = Iterators.flatten((keys(mono_to_var), vars))
+		for (i, va) in enumerate(aux_vars)
+			a = var_to_mono[va]
+			for vb in aux_vars[i:end]
+				b = var_to_mono[vb]
+				if (va, vb) in explored_pairs || (vb, va) in explored_pairs
+					continue
+				end
+				push!(explored_pairs, (va, vb))
+				stop = true
+				for mono in monos
+					if MP.divides(a*b, mono)
+						stop = false
+						break
+					end
+				end
+				if stop
+					continue
+				end
+
+				if MP.degree(a*b) >= deg
+					continue
+				end
+				new_var, _ = MOI.add_constrained_variable(optimizer, MOI.ZeroOne())
+
+				x = MOI.ScalarAffineTerm(1.0, new_var)
+				y = MOI.ScalarAffineTerm(-1.0, va)
+				MOI.add_constraint(optimizer, MOI.ScalarAffineFunction([x, y], 0.0), MOI.LessThan(0.0))
+
+				x = MOI.ScalarAffineTerm(1.0, new_var)
+				y = MOI.ScalarAffineTerm(-1.0, vb)
+				MOI.add_constraint(optimizer, MOI.ScalarAffineFunction([x, y], 0.0), MOI.LessThan(0.0))
+
+				var_to_mono[new_var] = a*b
+				var_divisor[new_var] = va
+			end
+			for v in vars
+				if (va, v) in explored_pairs
+					continue
+				end
+				push!(explored_pairs, (va, v))
+				stop = true
+				for mono in monos
+					if MP.divides(a*v, mono)
+						stop = false
+						break
+					end
+				end
+				if stop
+					continue
+				end
+
+				new_var, _ = MOI.add_constrained_variable(optimizer, MOI.ZeroOne())
+
+				x = MOI.ScalarAffineTerm(1.0, new_var)
+				y = MOI.ScalarAffineTerm(-1.0, va)
+				MOI.add_constraint(optimizer, MOI.ScalarAffineFunction([x, y], 0.0), MOI.LessThan(0.0))
+
+				var_to_mono[new_var] = a*v
+				var_divisor[new_var] = va
+			end
+		end
+		println("iteration deg = $curr_deg out of $deg done...")
+		curr_deg *= 2
+	end
+
+	println("done with variable creation...")
+
+	mono_to_vars = Dict{M, Vector{MOI.VariableIndex}}()
+	for (v, m) in var_to_mono
+		if !haskey(mono_to_vars, m)
+			mono_to_vars[m] = MOI.VariableIndex[]
+		end
+		push!(mono_to_vars[m], v)
+	end
+
+	# mono_pairs = Dict{M, DataStructures.PriorityQueue{M, Bool}}()
+	for mono in monos
+		quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
+		affine_terms = MOI.ScalarAffineTerm{Float64}[]
+		# mono_pairs[mono] = DataStructures.PriorityQueue{MOI.VariableIndex,Bool}()
+		for (a, vs) in mono_to_vars
+			if MP.divides(a, mono)
+				b = MP.div_multiple(mono, a)
+				if b == a || MP.degree(b) == 1
+					for v in vs
+						push!(affine_terms, MOI.ScalarAffineTerm(1.0, v))
+					end
+					# if b == a
+					# 	mono_pairs[mono][a] = true
+					# end
+				elseif MP.degree(b) > 1
+					for va in vs
+						for vb in mono_to_vars[b]
+							push!(quad_terms, MOI.ScalarQuadraticTerm(1.0, va, vb))
+						end
+					end
+					# mono_pairs[mono][a] = false
+				end
+			end
+		end
+		MOI.add_constraint(optimizer, MOI.ScalarQuadraticFunction(quad_terms, affine_terms, 0.0), MOI.GreaterThan(1.0))
+	end
+
+	println("done with constraint creation...")
+
+	affine_terms = MOI.ScalarAffineTerm{Float64}[]
+	for var in keys(var_to_mono)
+		push!(affine_terms, MOI.ScalarAffineTerm(1.0, var))
+	end
+	obj = MOI.ScalarAffineFunction(affine_terms, 0.0)
+	MOI.set(optimizer, MOI.ObjectiveFunction{typeof(obj)}(), obj)
+	MOI.set(optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+
+	MOI.optimize!(optimizer)
+
+	# println(optimizer)
+
+	count_new_vars = 0
+	active_vars = MOI.VariableIndex[]
+	for (var, mono) in var_to_mono
+		active = MOI.get(optimizer, MOI.VariablePrimal(), var)
+		if active ≈ 1
+			println("$mono is active")
+			if haskey(quad, mono)
+				println("[WARNING] quad already has $mono, which means that $mono was activated twice...")
+			end
+			if var_divisor[var] isa M
+				quad[mono] = var_divisor[var]
+			else
+				quad[mono] = var_to_mono[var_divisor[var]]
+			end
+			count_new_vars += 1
+			push!(active_vars, var)
+		end
+	end
+	println("should generate $count_new_vars new variables")
+	
+	mono_set = Set{M}(monos)
+	for (i, va) in enumerate(active_vars)
+		a = var_to_mono[va]
+		for vb in active_vars[i:end]
+			b = var_to_mono[vb]
+			mono = a*b
+			if mono in mono_set && !haskey(quad, mono)
+				quad[mono] = a
+			end
+		end
+	end
+	for mono in monos
+		if haskey(quad, mono)
+			continue
+		end
+		for (var, exp) in MP.powers(mono)
+			if exp > 0 && haskey(quad, MP.div_multiple(mono, var))
+				quad[mono] = MP.div_multiple(mono, var)
+				break
+			end
+		end
+	end
+	# for mono in monos
+	# 	if !haskey(quad, mono)
+	# 		quad[mono] = nothing
+	# 	end
+	# end
+	# for mono in keys(quad)
+	# 	if quad[mono] !== nothing
+	# 		continue
+	# 	end
+	# 	# for b in mono_pairs[mono]
+	# 	for b in keys(quad)
+	# 		# println("testing $mono decomposed as $b and $mono/$b...")
+	# 		if MP.divides(b, mono) && haskey(quad, MP.div_multiple(mono, b))
+	# 			# println("yay!")
+	# 			quad[mono] = b
+	# 			break
+	# 		end
+	# 	end
+	# end
+
 	for x in vars
 		for y in vars
 			quad[x*y] = x
 		end
 	end
 
-	stack = DataStructures.Stack{M}(length(monos))
-	for mono in monos
-		push!(stack, mono)
+	for mono in keys(quad)
+		if quad[mono] === nothing
+			println("$mono doesn't have a divisor")
+		end
 	end
 
-	while !isempty(stack)
-		mono = pop!(stack)
-		deg = MP.degree(mono)
-		if deg <= 2 || haskey(quad, mono)
-			continue
-		end
+	MOI.empty!(optimizer)
 
-		stop = false
-		for a in keys(quad)
-			if MP.divides(a, mono)
-				b = MP.div_multiple(mono, a)
-				# println("$a divides $mono and gives $b")
-				if haskey(quad, b)
-					quad[mono] = a
-					stop = true
-					break
-				elseif MP.degree(a) > 1
-					quad[mono] = a
-					push!(stack, b)
-					stop = true
-					break
-				end
-			end
-		end
-		if stop
-			continue
-		end
+	return quad
+end
 
-		l, r = nothing, nothing
-		if maximum(mono.z) == 1
-			v = filter(x -> MP.divides(x, mono), mono.vars)
-			l = prod(v[1:deg÷2])
-			r = prod(v[deg÷2+1:deg])
-		elseif any(mono.z .% 2)
-			l = MP.div_multiple(mono, mono)
-			r = copy(mono)
-			for i in 1:length(mono.vars)
-				if r.z[i] % 2
-					l *= r.vars[i]
-					r.z[i] -= 1
-				end
-			end
-		else
-			l = copy(mono)
-			l.z ./= 2
-		end
 
-		if l !== nothing
-			quad[mono] = l
-			push!(stack, l)
+function decompose(monos::AbstractVector{M}, method::CompositeQuadratization) where {M<:MP.AbstractMonomial}
+	println("RUNNING COMPOSITE QUADRATIZATION")
+    vars = MP.variables(monos)
+    quad = DataStructures.OrderedDict{M,Union{Nothing,M}}()
+
+	if method.smart
+		quad = smart_decompo_phase(monos, greed=method.greedy)
+		monos = filter(x -> isnothing(quad[x]), collect(keys(quad)))
+	end
+
+	if method.main_decomposition == Greedy
+		q = greedy_phase(monos)
+	elseif method.main_decomposition == Balanced && method.smart
+		q = cut_in_half_phase(monos, greed=method.greedy)
+	else
+		q = default_phase(monos)
+	end
+
+	for (k, v) in q
+		if isnothing(get(quad, k, nothing))
+			quad[k] = v
 		end
-		if r !== nothing
-			push!(stack, r)
+	end
+
+	for x in vars
+		quad[x] = x
+		for y in vars
+			quad[x*y] = x
 		end
 	end
 

@@ -198,6 +198,16 @@ function MOI.supports_constraint(
     )
 end
 
+function MOI.get(
+    model::Optimizer{T},
+    ::MOI.ConstraintBridgingCost{<:PolyJuMP.ScalarPolynomialFunction{T},S},
+) where {T,S<:MOI.AbstractScalarSet}
+    return MOI.get(
+        model.model,
+        MOI.ConstraintBridgingCost{MOI.ScalarQuadraticFunction{T},S}(),
+    )
+end
+
 function MOI.add_constraint(
     model::Optimizer,
     func::MOI.AbstractFunction,

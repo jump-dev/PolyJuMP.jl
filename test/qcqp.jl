@@ -373,6 +373,26 @@ function test_inner_bridge(x, y, T)
           MOI.get(inner, MOI.ListOfModelAttributesSet())
 end
 
+function test_constraint_bridging_cost_polynomial(x, y, T)
+    inner = MOI.Utilities.MockOptimizer(Model{T}())
+    optimizer = PolyJuMP.QCQP.Optimizer{T}(inner)
+    F = typeof(
+        PolyJuMP.ScalarPolynomialFunction(
+            one(T) * x^3 - x * y^2,
+            [MOI.VariableIndex(1), MOI.VariableIndex(2)],
+        ),
+    )
+    for S in
+        (MOI.LessThan{T}, MOI.GreaterThan{T}, MOI.EqualTo{T}, MOI.Interval{T})
+        @test MOI.supports_constraint(optimizer, F, S)
+        @test MOI.get(optimizer, MOI.ConstraintBridgingCost{F,S}()) == MOI.get(
+            optimizer,
+            MOI.ConstraintBridgingCost{MOI.ScalarQuadraticFunction{T},S}(),
+        )
+    end
+    return
+end
+
 function runtests(x, y)
     for name in names(@__MODULE__; all = true)
         if startswith("$name", "test_")

@@ -293,7 +293,7 @@ function test_variable_primal(x, y, T)
         T,
         MOI.instantiate(
             () -> PolyJuMP.QCQP.Optimizer{T}(optimizer),
-            with_bridge_type=T,
+            with_bridge_type = T,
         ),
     )
     JuMP.@variable(model, 1 <= a <= 3)
@@ -324,7 +324,7 @@ function test_name(_, _, T)
     inner = Model{T}()
     qcqp = MOI.instantiate(
         () -> PolyJuMP.QCQP.Optimizer{T}(inner),
-        with_bridge_type=T,
+        with_bridge_type = T,
     )
     idxmap = MOI.copy_to(qcqp, JuMP.backend(model))
     attr = MOI.VariableName()
@@ -382,12 +382,8 @@ function test_constraint_bridging_cost_polynomial(x, y, T)
             [MOI.VariableIndex(1), MOI.VariableIndex(2)],
         ),
     )
-    for S in (
-        MOI.LessThan{T},
-        MOI.GreaterThan{T},
-        MOI.EqualTo{T},
-        MOI.Interval{T},
-    )
+    for S in
+        (MOI.LessThan{T}, MOI.GreaterThan{T}, MOI.EqualTo{T}, MOI.Interval{T})
         @test MOI.supports_constraint(optimizer, F, S)
         @test MOI.get(optimizer, MOI.ConstraintBridgingCost{F,S}()) == MOI.get(
             optimizer,
@@ -398,7 +394,7 @@ function test_constraint_bridging_cost_polynomial(x, y, T)
 end
 
 function runtests(x, y)
-    for name in names(@__MODULE__; all=true)
+    for name in names(@__MODULE__; all = true)
         if startswith("$name", "test_")
             @testset "$(name) $T" for T in [Int, Float64]
                 getfield(@__MODULE__, name)(x, y, T)

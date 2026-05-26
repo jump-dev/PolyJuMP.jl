@@ -135,11 +135,34 @@ function _concrete(
         S,
     )
 end
+
+# Dispatched assertion that mirrors `_concrete`: a bridge listed in
+# `bridges(S)` must, per MOI's contract on `concrete_bridge_type`, support its
+# source set before `concrete_bridge_type` (and the downstream
+# `added_*_types`) can be called. We dispatch on the bridge supertype so the
+# right `supports_*` method is queried.
+function _supports(
+    bridge_type::Type{<:MOI.Bridges.Variable.AbstractBridge},
+    S::Type{<:MOI.AbstractSet},
+)
+    return MOI.Bridges.Variable.supports_constrained_variable(bridge_type, S)
+end
+function _supports(
+    bridge_type::Type{<:MOI.Bridges.Constraint.AbstractBridge},
+    S::Type{<:MOI.AbstractSet},
+)
+    return MOI.supports_constraint(bridge_type, MOI.VectorOfVariables, S)
+end
 function bridgeable(c::JuMP.AbstractConstraint, S::Type{<:MOI.AbstractSet})
     bridge_types = bridges(S)
     for bridge_type in bridge_types
         BT, T = bridge_type
         c = BridgeableConstraint(c, BT; coefficient_type = T)
+        # `concrete_bridge_type` documents that it may only be called when
+        # the bridge's `supports_*` predicate is `true`.
+        # Otherwise, it just return `BT{T}` for which `added_constrained_variable_types`
+        # is not implemented and that gives cryptic error.
+        @assert _supports(BT{T}, S)
         concrete_bridge_type = _concrete(BT{T}, S)
         for (ST,) in
             MOI.Bridges.added_constrained_variable_types(concrete_bridge_type)
@@ -169,6 +192,12 @@ function bridgeable(
     for bridge_type in bridge_types
         BT, T = bridge_type
         c = BridgeableConstraint(c, BT, coefficient_type = T)
+        # Same invariant as the variable version above: a bridge listed in
+        # `bridges(F, S)` must actually support `F`-in-`S` per MOI's contract
+        # on `concrete_bridge_type`. Failing this assertion means the call
+        # site listed a bridge in `bridges(F, S)` that does not bridge `F` in
+        # `S`.
+        @assert MOI.supports_constraint(BT{T}, F, S)
         concrete_bridge_type =
             MOI.Bridges.Constraint.concrete_bridge_type(BT{T}, F, S)
         for (ST,) in

@@ -36,6 +36,13 @@ function PolyJuMP.bridges(
         PolyJuMP.coefficient_type_or_float(F),
     )]
 end
+function MOI.supports_constraint(
+    ::Type{<:DummyNonNegBridge},
+    ::Type{<:MOI.AbstractVectorFunction},
+    ::Type{<:NonNeg},
+)
+    return true
+end
 function MOI.Bridges.added_constrained_variable_types(
     ::Type{<:DummyNonNegBridge},
 )

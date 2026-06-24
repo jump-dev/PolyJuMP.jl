@@ -208,6 +208,7 @@ function MOI.supports(
 ) where {T}
     return true
 end
+
 function MOI.set(
     model::Model{T},
     ::MOI.ObjectiveFunction,
@@ -215,4 +216,94 @@ function MOI.set(
 ) where {T}
     model.objective_function = _polynomial(model.variables, func)
     return
+end
+
+function _add_to_system(_, lagrangian, ::SS.FullSpace, ::Bool)
+    return lagrangian
+end
+
+function _add_to_system(
+    system,
+    lagrangian,
+    set::SS.AlgebraicSet,
+    maximization::Bool,
+)
+    n = SS.nequalities(set)
+    if iszero(n)
+        return
+    end
+    DynamicPolynomials.@polyvar λ[1:n]
+    for i in eachindex(λ)
+        p = SS.equalities(set)[i]
+        SS.add_equality!(system, p)
+        if maximization
+            lagrangian = MA.add_mul!!(lagrangian, λ[i], p)
+        else
+            lagrangian = MA.sub_mul!!(lagrangian, λ[i], p)
+        end
+    end
+    return lagrangian
+end
+
+function _add_to_system(
+    system,
+    lagrangian,
+    set::SS.BasicSemialgebraicSet,
+    maximization::Bool,
+)
+    lagrangian = _add_to_system(system, lagrangian, set.V, maximization)
+    DynamicPolynomials.@polyvar σ[1:PolyJuMP._nineq(set)]
+    for i in eachindex(σ)
+        p = SS.inequalities(set)[i]
+        SS.add_equality!(system, σ[i] * p)
+        if maximization
+            lagrangian = MA.add_mul!!(lagrangian, σ[i]^2, p)
+        else
+            lagrangian = MA.sub_mul!!(lagrangian, σ[i]^2, p)
+        end
+    end
+    return lagrangian
+end
+
+function lagrangian_kkt(
+    objective_sense::MOI.OptimizationSense,
+    objective_function::MP.AbstractPolynomialLike{T},
+    set;
+    solver = nothing,
+    variables = nothing,
+) where {T}
+    if isnothing(solver)
+        system = SS.AlgebraicSet{T,PolyJuMP.PolyType{T}}()
+    else
+        I = SS.PolynomialIdeal{T,PolyJuMP.PolyType{T}}()
+        system = SS.AlgebraicSet(I, solver)
+    end
+    if objective_sense == MOI.FEASIBILITY_SENSE
+        lagrangian = MA.Zero()
+    else
+        lagrangian = MA.mutable_copy(objective_function)
+    end
+    lagrangian = _add_to_system(
+        system,
+        lagrangian,
+        set,
+        objective_sense == MOI.MAX_SENSE,
+    )
+    if !(lagrangian isa MA.Zero)
+        ∇x = MP.differentiate(lagrangian, MP.variables(lagrangian))
+        for p in ∇x
+            SS.add_equality!(system, p)
+        end
+    end
+    return lagrangian, system
+end
+
+function lagrangian_kkt(model::Model{T}, solver = nothing) where {T}
+    return lagrangian_kkt(
+        model.objective_sense,
+        model.objective_function,
+        model.set;
+        solver,
+        variables = MP.variables(model),
+    )
 end

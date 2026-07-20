@@ -89,8 +89,7 @@ end
 function test_optimizer_attributes(x, y, T, solver)
     optimizer = PolyJuMP.SAGE.Optimizer{T}(solver)
     @test MOI.get(optimizer, MOI.SolverName()) == "PolyJuMP.SAGE"
-    @test MOI.get(optimizer, MOI.TerminationStatus()) ==
-          MOI.OPTIMIZE_NOT_CALLED
+    @test MOI.get(optimizer, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
     @test MOI.get(optimizer, MOI.ResultCount()) == 0
     list = MOI.get(optimizer, MOI.Bridges.ListOfNonstandardBridges{T}())
     @test PolyJuMP.Bridges.Constraint.ToPolynomialBridge{T} in list

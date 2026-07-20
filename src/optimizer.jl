@@ -234,10 +234,7 @@ function MOI.optimize!(model::AbstractRelaxationOptimizer)
     return
 end
 
-function MOI.get(
-    model::AbstractRelaxationOptimizer,
-    ::MOI.TerminationStatus,
-)
+function MOI.get(model::AbstractRelaxationOptimizer, ::MOI.TerminationStatus)
     if isnothing(model.relaxation)
         return MOI.OPTIMIZE_NOT_CALLED
     end
@@ -255,7 +252,9 @@ function MOI.get(model::AbstractRelaxationOptimizer, ::MOI.ObjectiveBound)
     return JuMP.objective_value(model.relaxation)
 end
 
-MOI.get(model::AbstractRelaxationOptimizer, ::MOI.SolveTimeSec) = model.solve_time
+function MOI.get(model::AbstractRelaxationOptimizer, ::MOI.SolveTimeSec)
+    return model.solve_time
+end
 
 MOI.get(::AbstractRelaxationOptimizer, ::MOI.ResultCount) = 0
 

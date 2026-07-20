@@ -63,7 +63,7 @@ This allows mixing SAGE and SOS constraints in the same model.
 
 ### Polynomial optimization
 
-PolyJuMP also allows solving polynomial optimization problems using the `QCQP` and `KKT` solvers.
+PolyJuMP also allows solving polynomial optimization problems using the `QCQP`, `KKT` and `SAGE` solvers.
 Polynomial optimization problems do not involve any symbolic variables from DynamicPolynomials or TypedPolynomials,
 instead all variables are JuMP decision variables.
 
@@ -88,6 +88,35 @@ model = Model(optimizer_with_attributes(
     "solver" => HomotopyContinuation.SemialgebraicSetsHCSolver(),
 ))
 ```
+
+The `SAGE` solver computes a bound on the optimal objective value using the
+SAGE relaxation of the problem: it certifies the nonnegativity of the
+Lagrangian with the SAGE cone, using one SAGE multiplier for each inequality
+constraint and one free polynomial multiplier for each equality constraint.
+It is parametrized by an inner solver for the resulting relative entropy
+program. For instance, to compute a lower bound on the minimum of the Motzkin
+polynomial with `ECOS.Optimizer` as inner solver, use:
+```julia
+using JuMP, PolyJuMP, ECOS
+model = Model(() -> PolyJuMP.SAGE.Optimizer(ECOS.Optimizer))
+@variable(model, x)
+@variable(model, y)
+@objective(model, Min, x^4 * y^2 + x^2 * y^4 + 1 - 3 * x^2 * y^2)
+optimize!(model)
+objective_bound(model) # ≈ 0
+```
+As only a bound is computed, it is returned as `MOI.ObjectiveBound` and no
+primal solution is available: `result_count(model)` is zero.
+The maximum degree of the multiplier of a constraint is chosen with the
+`PolyJuMP.MultiplierMaxdegree` constraint attribute:
+```julia
+@constraint(model, con, x^2 >= 1)
+MOI.set(model, PolyJuMP.MultiplierMaxdegree(), con, 2)
+```
+The `SumOfSquares.Optimizer` of [SumOfSquares.jl](https://github.com/jump-dev/SumOfSquares.jl)
+is the analogous solver certifying the nonnegativity of the Lagrangian with
+the SOS cone instead; increasing the `PolyJuMP.MultiplierMaxdegree` attributes
+then gives the higher levels of the Lasserre hierarchy.
 
 ## Documentation
 

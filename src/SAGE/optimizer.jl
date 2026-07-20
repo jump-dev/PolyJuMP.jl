@@ -150,7 +150,9 @@ function PolyJuMP.recover_solutions(
     for (k, j) in enumerate(cols)
         mags[j] = exp(y[k])
     end
-    As = Bool[isodd(MP.degree(monos[i], vars[j])) for i in rows, j in eachindex(vars)]
+    As = Bool[
+        isodd(MP.degree(monos[i], vars[j])) for i in rows, j in eachindex(vars)
+    ]
     bs = Bool[v[i] < 0 for i in rows]
     signs = _mod2_solve(As, bs)
     if isnothing(signs)
@@ -161,7 +163,10 @@ function PolyJuMP.recover_solutions(
         z, nullspace = signs
         # Flipping the sign of a variable of magnitude zero gives the same
         # solution so we do not enumerate these
-        filter!(w -> any(j -> w[j] && !iszero(mags[j]), eachindex(mags)), nullspace)
+        filter!(
+            w -> any(j -> w[j] && !iszero(mags[j]), eachindex(mags)),
+            nullspace,
+        )
         patterns = [z]
         for w in nullspace
             append!(patterns, [p .⊻ w for p in patterns])
@@ -171,8 +176,7 @@ function PolyJuMP.recover_solutions(
     for pattern in patterns
         values = zeros(T, length(x))
         for (j, var) in enumerate(vars)
-            values[findfirst(isequal(var), x)] =
-                pattern[j] ? -mags[j] : mags[j]
+            values[findfirst(isequal(var), x)] = pattern[j] ? -mags[j] : mags[j]
         end
         push!(
             solutions,

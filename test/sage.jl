@@ -120,7 +120,8 @@ function test_optimizer_motzkin(x, y, T, solver)
         @test objective_value(model; result = i) ≈ 0 atol = 1e-3
     end
     signs = [(value(a; result = i) > 0, value(b; result = i) > 0) for i in 1:4]
-    @test sort(signs) == [(false, false), (false, true), (true, false), (true, true)]
+    @test sort(signs) ==
+          [(false, false), (false, true), (true, false), (true, true)]
 end
 
 function test_optimizer_asymmetric(x, y, T, solver)

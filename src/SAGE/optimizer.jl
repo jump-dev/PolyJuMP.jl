@@ -96,7 +96,7 @@ function _mod2_solve(A::Matrix{Bool}, b::Vector{Bool})
 end
 
 """
-    PolyJuMP._recover_solutions(model::Optimizer, relaxation, cref, lagrangian)
+    PolyJuMP.recover_solutions(model::Optimizer, relaxation, cref, lagrangian)
 
 Recover candidate solutions from the dual `v` of the SAGE constraint `cref`
 of the Lagrangian, following [MCW21, Section 4.2] whose reference
@@ -115,7 +115,7 @@ magnitude zero. The signs are recovered from the linear system
 undetermined (e.g., for sign-symmetric problems), one candidate per element
 of the affine solution set is returned.
 """
-function PolyJuMP._recover_solutions(
+function PolyJuMP.recover_solutions(
     model::Optimizer{T},
     relaxation::JuMP.GenericModel{T},
     cref::JuMP.ConstraintRef,

@@ -149,7 +149,7 @@ relaxation and is returned as the `MOI.ObjectiveBound`. The degrees of the
 multipliers `σ_i` and `μ_j` are given by the [`MultiplierMaxdegree`](@ref)
 constraint attribute. Candidate primal solutions may in addition be recovered
 from the solution of the relaxation by implementing
-[`_recover_solutions`](@ref); the `MOI.ResultCount` is the number of
+[`recover_solutions`](@ref); the `MOI.ResultCount` is the number of
 recovered candidates.
 
 Subtypes should be mutable structs with the fields
@@ -162,7 +162,7 @@ solutions::Vector{PolyJuMP.Solution{T}}
 feasibility_tolerance::T
 solve_time::Float64
 ```
-and implement [`nonnegativity_cone`](@ref).
+and implement [`nonnegativity_cone`](@ref) and [`recover_solutions`](@ref).
 """
 abstract type AbstractRelaxationOptimizer{T} <: AbstractPolynomialOptimizer{T} end
 
@@ -183,7 +183,7 @@ function _invalidate!(model::AbstractRelaxationOptimizer)
 end
 
 """
-    _recover_solutions(
+    recover_solutions(
         model::AbstractRelaxationOptimizer{T},
         relaxation::JuMP.GenericModel{T},
         cref::JuMP.ConstraintRef,
@@ -192,8 +192,8 @@ end
 
 Return a vector of candidate [`Solution`](@ref)s recovered from the solution
 of `relaxation`, where `cref` is the constraint of the `lagrangian` polynomial
-in the cone [`nonnegativity_cone`](@ref). The default implementation does not
-recover any solution; `PolyJuMP.SAGE.Optimizer` implements the recovery from
+in the cone [`nonnegativity_cone`](@ref). Return an empty vector if no
+solution is recovered; `PolyJuMP.SAGE.Optimizer` implements the recovery from
 the dual of `cref` of [MCW21, Section 4.2].
 
 [MCW21] Murray, Riley, Venkat Chandrasekaran, and Adam Wierman.
@@ -201,14 +201,7 @@ the dual of `cref` of [MCW21, Section 4.2].
 Mathematical Programming Computation 13 (2021): 257-295.
 https://arxiv.org/pdf/1907.00814.pdf
 """
-function _recover_solutions(
-    ::AbstractRelaxationOptimizer{T},
-    ::JuMP.GenericModel{T},
-    ::JuMP.ConstraintRef,
-    lagrangian,
-) where {T}
-    return Solution{T}[]
-end
+function recover_solutions end
 
 function MOI.empty!(model::AbstractRelaxationOptimizer)
     MOI.empty!(model.model)
@@ -305,7 +298,7 @@ function _optimize!(model::AbstractRelaxationOptimizer{T}) where {T}
     JuMP.set_objective(relaxation, sense, t)
     JuMP.optimize!(relaxation)
     model.relaxation = relaxation
-    model.solutions = _recover_solutions(model, relaxation, cref, lagrangian)
+    model.solutions = recover_solutions(model, relaxation, cref, lagrangian)
     postprocess!(model.solutions, pop, nothing)
     return
 end

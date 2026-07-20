@@ -87,6 +87,8 @@ function test_domain(x, y, T, solver)
 end
 
 function test_optimizer_attributes(x, y, T, solver)
+    # We don't specify `T` to test the fallback
+    @test PolyJuMP.SAGE.Optimizer(solver) isa PolyJuMP.SAGE.Optimizer{Float64}
     optimizer = PolyJuMP.SAGE.Optimizer{T}(solver)
     @test MOI.get(optimizer, MOI.SolverName()) == "PolyJuMP.SAGE"
     @test MOI.get(optimizer, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
@@ -94,6 +96,11 @@ function test_optimizer_attributes(x, y, T, solver)
     list = MOI.get(optimizer, MOI.Bridges.ListOfNonstandardBridges{T}())
     @test PolyJuMP.Bridges.Constraint.ToPolynomialBridge{T} in list
     @test PolyJuMP.Bridges.Objective.ToPolynomialBridge{T} in list
+    @test MOI.supports_incremental_interface(optimizer)
+    src = MOI.Utilities.Model{T}()
+    v = MOI.add_variable(src)
+    index_map = MOI.copy_to(optimizer, src)
+    @test MOI.is_valid(optimizer, index_map[v])
 end
 
 function test_optimizer_motzkin(x, y, T, solver)
@@ -113,11 +120,17 @@ function test_optimizer_constrained(x, y, T, solver)
     @variable(model, a)
     @objective(model, Min, a^2)
     @constraint(model, con, a^2 >= 1)
+    # Setting the attribute before `optimize!` covers its `MOI.supports`
+    # which is checked when the cache is copied to the optimizer
+    MOI.set(model, PolyJuMP.MultiplierMaxdegree(), con, 2)
+    @test MOI.get(model, PolyJuMP.MultiplierMaxdegree(), con) == 2
     optimize!(model)
     @test termination_status(model) == MOI.OPTIMAL
     @test objective_bound(model) ≈ 1 rtol = 1e-3
-    MOI.set(model, PolyJuMP.MultiplierMaxdegree(), con, 2)
-    @test MOI.get(model, PolyJuMP.MultiplierMaxdegree(), con) == 2
+    # Setting it after `optimize!` covers the direct forwarding to the
+    # attached optimizer
+    MOI.set(model, PolyJuMP.MultiplierMaxdegree(), con, 0)
+    @test MOI.get(model, PolyJuMP.MultiplierMaxdegree(), con) == 0
     optimize!(model)
     @test termination_status(model) == MOI.OPTIMAL
     @test objective_bound(model) ≈ 1 rtol = 1e-3

@@ -182,4 +182,6 @@ function PolyJuMP.bridges(
     )]
 end
 
+include("optimizer.jl")
+
 end

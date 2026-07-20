@@ -86,6 +86,54 @@ function test_domain(x, y, T, solver)
     @test_throws ErrorException @constraint(model, c3, p >= α, domain = S)
 end
 
+function test_optimizer_attributes(x, y, T, solver)
+    optimizer = PolyJuMP.SAGE.Optimizer{T}(solver)
+    @test MOI.get(optimizer, MOI.SolverName()) == "PolyJuMP.SAGE"
+    @test MOI.get(optimizer, MOI.TerminationStatus()) ==
+          MOI.OPTIMIZE_NOT_CALLED
+    @test MOI.get(optimizer, MOI.ResultCount()) == 0
+    list = MOI.get(optimizer, MOI.Bridges.ListOfNonstandardBridges{T}())
+    @test PolyJuMP.Bridges.Constraint.ToPolynomialBridge{T} in list
+    @test PolyJuMP.Bridges.Objective.ToPolynomialBridge{T} in list
+end
+
+function test_optimizer_motzkin(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    @variable(model, b)
+    @objective(model, Min, a^4 * b^2 + a^2 * b^4 + 1 - 3 * a^2 * b^2)
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test primal_status(model) == MOI.NO_SOLUTION
+    @test result_count(model) == 0
+    @test objective_bound(model) ≈ 0 atol = 1e-3
+end
+
+function test_optimizer_constrained(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    @objective(model, Min, a^2)
+    @constraint(model, con, a^2 >= 1)
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) ≈ 1 rtol = 1e-3
+    MOI.set(model, PolyJuMP.MultiplierMaxdegree(), con, 2)
+    @test MOI.get(model, PolyJuMP.MultiplierMaxdegree(), con) == 2
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) ≈ 1 rtol = 1e-3
+end
+
+function test_optimizer_equality_max(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    @objective(model, Max, 2 - a^2)
+    @constraint(model, a^2 == 1)
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) ≈ 1 rtol = 1e-3
+end
+
 import ECOS
 const SOLVERS =
     [optimizer_with_attributes(ECOS.Optimizer, MOI.Silent() => true)]

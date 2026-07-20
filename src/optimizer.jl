@@ -145,10 +145,12 @@ s.t. f - t - Σ_i σ_i * g_i - Σ_j μ_j * h_j ∈ C
 where `μ_j` are free polynomials and `C` is the cone of certified nonnegative
 polynomials returned by [`nonnegativity_cone`](@ref)
 (and conversely for a `max` problem). The bound is the objective value of this
-relaxation and is returned as the `MOI.ObjectiveBound`; no primal solution is
-computed so the `MOI.ResultCount` is zero. The degrees of the multipliers
-`σ_i` and `μ_j` are given by the [`MultiplierMaxdegree`](@ref) constraint
-attribute.
+relaxation and is returned as the `MOI.ObjectiveBound`. The degrees of the
+multipliers `σ_i` and `μ_j` are given by the [`MultiplierMaxdegree`](@ref)
+constraint attribute. Candidate primal solutions may in addition be recovered
+from the solution of the relaxation by implementing
+[`_recover_solutions`](@ref); the `MOI.ResultCount` is the number of
+recovered candidates.
 
 Subtypes should be mutable structs with the fields
 ```julia
@@ -156,6 +158,8 @@ model::PolyJuMP.Model{T}
 multiplier_maxdegree::Dict{MOI.ConstraintIndex,Int}
 solver::Any
 relaxation::Union{Nothing,JuMP.GenericModel{T}}
+solutions::Vector{PolyJuMP.Solution{T}}
+feasibility_tolerance::T
 solve_time::Float64
 ```
 and implement [`nonnegativity_cone`](@ref).
@@ -173,8 +177,37 @@ function nonnegativity_cone end
 
 function _invalidate!(model::AbstractRelaxationOptimizer)
     model.relaxation = nothing
+    empty!(model.solutions)
     model.solve_time = NaN
     return
+end
+
+"""
+    _recover_solutions(
+        model::AbstractRelaxationOptimizer{T},
+        relaxation::JuMP.GenericModel{T},
+        cref::JuMP.ConstraintRef,
+        lagrangian,
+    ) where {T}
+
+Return a vector of candidate [`Solution`](@ref)s recovered from the solution
+of `relaxation`, where `cref` is the constraint of the `lagrangian` polynomial
+in the cone [`nonnegativity_cone`](@ref). The default implementation does not
+recover any solution; `PolyJuMP.SAGE.Optimizer` implements the recovery from
+the dual of `cref` of [MCW21, Section 4.2].
+
+[MCW21] Murray, Riley, Venkat Chandrasekaran, and Adam Wierman.
+"Signomials and polynomial optimization via relative entropy and partial dualization."
+Mathematical Programming Computation 13 (2021): 257-295.
+https://arxiv.org/pdf/1907.00814.pdf
+"""
+function _recover_solutions(
+    ::AbstractRelaxationOptimizer{T},
+    ::JuMP.GenericModel{T},
+    ::JuMP.ConstraintRef,
+    lagrangian,
+) where {T}
+    return Solution{T}[]
 end
 
 function MOI.empty!(model::AbstractRelaxationOptimizer)
@@ -267,11 +300,13 @@ function _optimize!(model::AbstractRelaxationOptimizer{T}) where {T}
         JuMP.@constraint(relaxation, σ in cone)
         lagrangian -= σ * g
     end
-    JuMP.@constraint(relaxation, lagrangian in cone)
+    cref = JuMP.@constraint(relaxation, lagrangian in cone)
     sense = pop.objective_sense == MOI.MAX_SENSE ? MOI.MIN_SENSE : MOI.MAX_SENSE
     JuMP.set_objective(relaxation, sense, t)
     JuMP.optimize!(relaxation)
     model.relaxation = relaxation
+    model.solutions = _recover_solutions(model, relaxation, cref, lagrangian)
+    postprocess!(model.solutions, pop, nothing)
     return
 end
 
@@ -293,8 +328,30 @@ function MOI.get(model::AbstractRelaxationOptimizer, ::MOI.ObjectiveBound)
     return JuMP.objective_value(model.relaxation)
 end
 
-MOI.get(::AbstractRelaxationOptimizer, ::MOI.ResultCount) = 0
+function MOI.get(model::AbstractRelaxationOptimizer, ::MOI.ResultCount)
+    return length(model.solutions)
+end
 
-MOI.get(::AbstractRelaxationOptimizer, ::MOI.PrimalStatus) = MOI.NO_SOLUTION
+function MOI.get(model::AbstractRelaxationOptimizer, attr::MOI.ObjectiveValue)
+    MOI.check_result_index_bounds(model, attr)
+    return model.solutions[attr.result_index].objective_value
+end
+
+function MOI.get(
+    model::AbstractRelaxationOptimizer,
+    attr::MOI.VariablePrimal,
+    vi::MOI.VariableIndex,
+)
+    MOI.throw_if_not_valid(model, vi)
+    MOI.check_result_index_bounds(model, attr)
+    return model.solutions[attr.result_index].values[vi.value]
+end
+
+function MOI.get(model::AbstractRelaxationOptimizer, attr::MOI.PrimalStatus)
+    if attr.result_index in 1:length(model.solutions)
+        return model.solutions[attr.result_index].status
+    end
+    return MOI.NO_SOLUTION
+end
 
 MOI.get(::AbstractRelaxationOptimizer, ::MOI.DualStatus) = MOI.NO_SOLUTION

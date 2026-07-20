@@ -110,9 +110,46 @@ function test_optimizer_motzkin(x, y, T, solver)
     @objective(model, Min, a^4 * b^2 + a^2 * b^4 + 1 - 3 * a^2 * b^2)
     optimize!(model)
     @test termination_status(model) == MOI.OPTIMAL
-    @test primal_status(model) == MOI.NO_SOLUTION
-    @test result_count(model) == 0
     @test objective_bound(model) ≈ 0 atol = 1e-3
+    # The four minimizers `(±1, ±1)` are recovered from the dual
+    @test result_count(model) == 4
+    @test primal_status(model) == MOI.FEASIBLE_POINT
+    for i in 1:4
+        @test abs(value(a; result = i)) ≈ 1 rtol = 1e-3
+        @test abs(value(b; result = i)) ≈ 1 rtol = 1e-3
+        @test objective_value(model; result = i) ≈ 0 atol = 1e-3
+    end
+    signs = [(value(a; result = i) > 0, value(b; result = i) > 0) for i in 1:4]
+    @test sort(signs) == [(false, false), (false, true), (true, false), (true, true)]
+end
+
+function test_optimizer_asymmetric(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    @objective(model, Min, a^2 - 2a + 3)
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) ≈ 2 rtol = 1e-3
+    # The unique minimizer `1` is recovered from the dual; its sign
+    # tests the sign conventions of the `MOI.ConstraintDual` of the bridges
+    @test result_count(model) == 1
+    @test primal_status(model) == MOI.FEASIBLE_POINT
+    @test value(a) ≈ 1 rtol = 1e-3
+    @test objective_value(model) ≈ 2 rtol = 1e-3
+end
+
+function test_optimizer_zero_solution(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    @objective(model, Min, a^2 + 1)
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) ≈ 1 rtol = 1e-3
+    # `a²` has zero moment in the dual so the magnitude of `a` is zero
+    @test result_count(model) == 1
+    @test primal_status(model) == MOI.FEASIBLE_POINT
+    @test value(a) ≈ 0 atol = 1e-3
+    @test objective_value(model) ≈ 1 rtol = 1e-3
 end
 
 function test_optimizer_constrained(x, y, T, solver)
@@ -134,6 +171,10 @@ function test_optimizer_constrained(x, y, T, solver)
     optimize!(model)
     @test termination_status(model) == MOI.OPTIMAL
     @test objective_bound(model) ≈ 1 rtol = 1e-3
+    # The minimizers `±1` are recovered from the dual
+    @test result_count(model) == 2
+    @test primal_status(model) == MOI.FEASIBLE_POINT
+    @test sort([value(a; result = i) for i in 1:2]) ≈ [-1, 1] rtol = 1e-3
 end
 
 function test_optimizer_equality_max(x, y, T, solver)
@@ -144,6 +185,11 @@ function test_optimizer_equality_max(x, y, T, solver)
     optimize!(model)
     @test termination_status(model) == MOI.OPTIMAL
     @test objective_bound(model) ≈ 1 rtol = 1e-3
+    # The maximizers `±1` are recovered from the dual
+    @test result_count(model) == 2
+    @test primal_status(model) == MOI.FEASIBLE_POINT
+    @test sort([value(a; result = i) for i in 1:2]) ≈ [-1, 1] rtol = 1e-3
+    @test objective_value(model) ≈ 1 rtol = 1e-3
 end
 
 import ECOS

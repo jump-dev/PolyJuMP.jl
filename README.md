@@ -90,9 +90,10 @@ model = Model(optimizer_with_attributes(
 ```
 
 The `SAGE` solver computes a bound on the optimal objective value using the
-SAGE relaxation of the problem: it certifies the nonnegativity of the
-Lagrangian with the SAGE cone, using one SAGE multiplier for each inequality
-constraint and one free polynomial multiplier for each equality constraint.
+SAGE relaxation of the problem [CP16, MCW21]: it certifies the nonnegativity
+of the Lagrangian with the SAGE cone, using one SAGE multiplier for each
+inequality constraint and one free polynomial multiplier for each equality
+constraint.
 It is parametrized by an inner solver for the resulting relative entropy
 program. For instance, to compute a lower bound on the minimum of the Motzkin
 polynomial with `ECOS.Optimizer` as inner solver, use:
@@ -105,8 +106,16 @@ model = Model(() -> PolyJuMP.SAGE.Optimizer(ECOS.Optimizer))
 optimize!(model)
 objective_bound(model) # ≈ 0
 ```
-As only a bound is computed, it is returned as `MOI.ObjectiveBound` and no
-primal solution is available: `result_count(model)` is zero.
+The bound is returned as `MOI.ObjectiveBound`. In addition, candidate
+solutions are recovered from the dual of the SAGE constraint, which is a
+vector of pseudo-moments, following [MCW21, Section 4.2] (see also its
+reference implementation `poly_solrec` in
+[sageopt](https://github.com/rileyjmurray/sageopt)); `result_count(model)`
+gives the number of candidates found, sorted by feasibility and objective
+value. In the example above, the four minimizers `(±1, ±1)` are recovered:
+```julia
+value(x; result = 1), value(y; result = 1) # ≈ (1, 1)
+```
 The maximum degree of the multiplier of a constraint is chosen with the
 `PolyJuMP.MultiplierMaxdegree` constraint attribute:
 ```julia
@@ -117,6 +126,15 @@ The `SumOfSquares.Optimizer` of [SumOfSquares.jl](https://github.com/jump-dev/Su
 is the analogous solver certifying the nonnegativity of the Lagrangian with
 the SOS cone instead; increasing the `PolyJuMP.MultiplierMaxdegree` attributes
 then gives the higher levels of the Lasserre hierarchy.
+
+[CP16] Chandrasekaran, Venkat, and Parikshit Shah.
+*Relative entropy relaxations for signomial optimization.*
+SIAM Journal on Optimization 26.2 (2016): 1147-1173.
+
+[MCW21] Murray, Riley, Venkat Chandrasekaran, and Adam Wierman.
+*Signomials and polynomial optimization via relative entropy and partial
+dualization.* Mathematical Programming Computation 13 (2021): 257-295.
+[arXiv:1907.00814](https://arxiv.org/abs/1907.00814)
 
 ## Documentation
 

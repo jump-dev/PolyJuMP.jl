@@ -131,12 +131,10 @@ function PolyJuMP.recover_solutions(
         JuMP.index(cref),
     )
     monos = MP.monomials(lagrangian)
+    # The constant monomial is always present since `lagrangian` contains `t`
     i0 = findfirst(iszero ∘ MP.degree, monos)
-    ztol = sqrt(Base.rtoldefault(T))
-    if isnothing(i0) || abs(v[i0]) < ztol
-        return solutions
-    end
     v /= v[i0]
+    ztol = sqrt(Base.rtoldefault(T))
     vars = MP.variables(lagrangian)
     rows = [i for i in eachindex(v) if i != i0 && abs(v[i]) > ztol]
     cols = filter(eachindex(vars)) do j

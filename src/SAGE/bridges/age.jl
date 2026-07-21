@@ -103,6 +103,32 @@ function MOI.Bridges.added_constraint_types(
     return [(F, MOI.EqualTo{T}), (G, MOI.RelativeEntropyCone)]
 end
 
+# The coefficients `c` of the AGE constraint only appear in the relative
+# entropy constraint `(c_k + ∑ν, c_{-k}, ν) ∈ RelativeEntropyCone` where `k`
+# is the index of the distinguished monomial. The dual is the adjoint of this
+# map applied to the dual `(u, v, w)` of the relative entropy constraint,
+# that is, `u` for the entry `k` and `v` for the other entries. This is the
+# dual AGE cone characterization given by the conic duality of the relative
+# entropy formulation [MCW21, (2)].
+function MOI.get(
+    model::MOI.ModelLike,
+    attr::MOI.ConstraintDual,
+    bridge::AGEBridge,
+)
+    dual = MOI.get(model, attr, bridge.relative_entropy_constraint)
+    m = div(length(dual) + 1, 2)
+    v = Vector{eltype(dual)}(undef, m)
+    v[bridge.k] = dual[1]
+    j = 1
+    for i in 1:m
+        if i != bridge.k
+            j += 1
+            v[i] = dual[j]
+        end
+    end
+    return v
+end
+
 function MOI.Bridges.Constraint.concrete_bridge_type(
     ::Type{<:AGEBridge{T}},
     H::Type{<:MOI.AbstractVectorFunction},

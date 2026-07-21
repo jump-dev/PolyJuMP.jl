@@ -86,6 +86,196 @@ function test_domain(x, y, T, solver)
     @test_throws ErrorException @constraint(model, c3, p >= α, domain = S)
 end
 
+function test_optimizer_attributes(x, y, T, solver)
+    # We don't specify `T` to test the fallback
+    @test PolyJuMP.SAGE.Optimizer(solver) isa PolyJuMP.SAGE.Optimizer{Float64}
+    optimizer = PolyJuMP.SAGE.Optimizer{T}(solver)
+    @test MOI.get(optimizer, MOI.SolverName()) == "PolyJuMP.SAGE"
+    @test MOI.get(optimizer, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+    @test MOI.get(optimizer, MOI.RawStatusString()) ==
+          "`optimize!` has not yet been called"
+    @test MOI.get(optimizer, MOI.ResultCount()) == 0
+    @test MOI.get(optimizer, MOI.PrimalStatus()) == MOI.NO_SOLUTION
+    @test MOI.get(optimizer, MOI.DualStatus()) == MOI.NO_SOLUTION
+    @test isnan(MOI.get(optimizer, MOI.SolveTimeSec()))
+    list = MOI.get(optimizer, MOI.Bridges.ListOfNonstandardBridges{T}())
+    @test PolyJuMP.Bridges.Constraint.ToPolynomialBridge{T} in list
+    @test PolyJuMP.Bridges.Objective.ToPolynomialBridge{T} in list
+    @test MOI.supports_incremental_interface(optimizer)
+    src = MOI.Utilities.Model{T}()
+    v = MOI.add_variable(src)
+    index_map = MOI.copy_to(optimizer, src)
+    @test MOI.is_valid(optimizer, index_map[v])
+    # The attribute getter of the optimizer is not covered through JuMP as
+    # the value is then cached by `MOI.Utilities.CachingOptimizer`
+    func = PolyJuMP.ScalarPolynomialFunction(
+        MP.polynomial(one(T) * x^2),
+        [index_map[v]],
+    )
+    ci = MOI.add_constraint(optimizer, func, MOI.GreaterThan(one(T)))
+    attr = PolyJuMP.MultiplierMaxdegree()
+    @test MOI.supports(optimizer, attr, typeof(ci))
+    @test isnothing(MOI.get(optimizer, attr, ci))
+    MOI.set(optimizer, attr, ci, 2)
+    @test MOI.get(optimizer, attr, ci) == 2
+    @test !MOI.is_empty(optimizer)
+    MOI.empty!(optimizer)
+    @test MOI.is_empty(optimizer)
+end
+
+function test_age_dual(x, y, T, solver)
+    model = Model(solver)
+    @variable(model, γ)
+    @objective(model, Max, γ)
+    # By the AM-GM inequality, `x^2 * y + x * y^2 + 1 >= 3 * x * y` for
+    # `x, y >= 0` with equality at `(1, 1)`
+    con = @constraint(
+        model,
+        x^2 * y + x * y^2 + 1 - γ * x * y in PolyJuMP.SAGE.Signomials(x * y)
+    )
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test value(γ) ≈ 3 rtol = 1e-3
+    # The dual is the vector of moments of `exp` evaluated at the optimal
+    # solution `(1, 1)`, up to the sign convention of duals of `Max` problems
+    v = MOI.get(backend(model), MOI.ConstraintDual(), JuMP.index(con))
+    @test abs.(v) ≈ ones(4) rtol = 1e-3
+end
+
+function test_optimizer_mod2_solve(x, y, T, solver)
+    # `0 * z = 1` is infeasible
+    @test isnothing(PolyJuMP.SAGE._mod2_solve(fill(false, 1, 1), [true]))
+    z, nullspace = PolyJuMP.SAGE._mod2_solve(fill(true, 1, 1), [true])
+    @test z == [true]
+    @test isempty(nullspace)
+end
+
+function test_optimizer_feasibility(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    @constraint(model, a^2 >= 1)
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) ≈ 0 atol = 1e-4
+end
+
+function test_optimizer_unbounded(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    # Unbounded below so the relaxation is infeasible
+    @objective(model, Min, a)
+    optimize!(model)
+    @test termination_status(model) != MOI.OPTIMAL
+    @test result_count(model) == 0
+    @test primal_status(model) == MOI.NO_SOLUTION
+end
+
+function test_optimizer_not_tight(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    # `(a + 1)^2 * (a - 2)^2` whose signomial representative
+    # `a^4 - 2|a|^3 - 3a^2 - 4|a| + 4` is negative at `1` so the relaxation
+    # is not tight and the dual is not a pseudo-moment vector
+    @objective(model, Min, a^4 - 2a^3 - 3a^2 + 4a + 4)
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) <= 1e-3
+end
+
+function test_optimizer_motzkin(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    @variable(model, b)
+    @objective(model, Min, a^4 * b^2 + a^2 * b^4 + 1 - 3 * a^2 * b^2)
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) ≈ 0 atol = 1e-3
+    # The four minimizers `(±1, ±1)` are recovered from the dual
+    @test result_count(model) == 4
+    @test primal_status(model) == MOI.FEASIBLE_POINT
+    @test !isempty(raw_status(model))
+    @test solve_time(model) >= 0
+    for i in 1:4
+        @test abs(value(a; result = i)) ≈ 1 rtol = 1e-3
+        @test abs(value(b; result = i)) ≈ 1 rtol = 1e-3
+        @test objective_value(model; result = i) ≈ 0 atol = 1e-3
+    end
+    signs = [(value(a; result = i) > 0, value(b; result = i) > 0) for i in 1:4]
+    @test sort(signs) ==
+          [(false, false), (false, true), (true, false), (true, true)]
+end
+
+function test_optimizer_asymmetric(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    @objective(model, Min, a^2 - 2a + 3)
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) ≈ 2 rtol = 1e-3
+    # The unique minimizer `1` is recovered from the dual; its sign
+    # tests the sign conventions of the `MOI.ConstraintDual` of the bridges
+    @test result_count(model) == 1
+    @test primal_status(model) == MOI.FEASIBLE_POINT
+    @test value(a) ≈ 1 rtol = 1e-3
+    @test objective_value(model) ≈ 2 rtol = 1e-3
+end
+
+function test_optimizer_zero_solution(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    @objective(model, Min, a^2 + 1)
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) ≈ 1 rtol = 1e-3
+    # `a²` has zero moment in the dual so the magnitude of `a` is zero
+    @test result_count(model) == 1
+    @test primal_status(model) == MOI.FEASIBLE_POINT
+    @test value(a) ≈ 0 atol = 1e-3
+    @test objective_value(model) ≈ 1 rtol = 1e-3
+end
+
+function test_optimizer_constrained(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    @objective(model, Min, a^2)
+    @constraint(model, con, a^2 >= 1)
+    # Setting the attribute before `optimize!` covers its `MOI.supports`
+    # which is checked when the cache is copied to the optimizer
+    MOI.set(model, PolyJuMP.MultiplierMaxdegree(), con, 2)
+    @test MOI.get(model, PolyJuMP.MultiplierMaxdegree(), con) == 2
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) ≈ 1 rtol = 1e-3
+    # Setting it after `optimize!` covers the direct forwarding to the
+    # attached optimizer
+    MOI.set(model, PolyJuMP.MultiplierMaxdegree(), con, 0)
+    @test MOI.get(model, PolyJuMP.MultiplierMaxdegree(), con) == 0
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) ≈ 1 rtol = 1e-3
+    # The minimizers `±1` are recovered from the dual
+    @test result_count(model) == 2
+    @test primal_status(model) == MOI.FEASIBLE_POINT
+    @test sort([value(a; result = i) for i in 1:2]) ≈ [-1, 1] rtol = 1e-3
+end
+
+function test_optimizer_equality_max(x, y, T, solver)
+    model = Model(() -> PolyJuMP.SAGE.Optimizer{T}(solver))
+    @variable(model, a)
+    @objective(model, Max, 2 - a^2)
+    @constraint(model, eq, a^2 == 1)
+    # Covers the degree of a multiplier of an equality constraint
+    MOI.set(model, PolyJuMP.MultiplierMaxdegree(), eq, 0)
+    optimize!(model)
+    @test termination_status(model) == MOI.OPTIMAL
+    @test objective_bound(model) ≈ 1 rtol = 1e-3
+    # The maximizers `±1` are recovered from the dual
+    @test result_count(model) == 2
+    @test primal_status(model) == MOI.FEASIBLE_POINT
+    @test sort([value(a; result = i) for i in 1:2]) ≈ [-1, 1] rtol = 1e-3
+    @test objective_value(model) ≈ 1 rtol = 1e-3
+end
+
 import ECOS
 const SOLVERS =
     [optimizer_with_attributes(ECOS.Optimizer, MOI.Silent() => true)]

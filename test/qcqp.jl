@@ -16,25 +16,87 @@ function test_solver_name(_, _, _)
     @test MOI.get(optimizer, MOI.SolverName()) == "PolyJuMP.QCQP with Mock"
 end
 
-function _test_decompose(monos, exps)
+function _test_decompose(monos, args...)
     vars = MP.variables(monos)
     M = eltype(monos)
-    expected = PolyJuMP.QCQP.DataStructures.OrderedDict{M,M}(
-        var => var for var in vars
-    )
-    for exp in exps
-        expected[exp[1]] = exp[2]
-    end
-    quad = PolyJuMP.QCQP.decompose(monos)
-    @test quad == expected
+    expected = PolyJuMP.QCQP.DataStructures.OrderedDict{M,M}()
+	for x in vars
+		expected[x] = x
+		for y in vars
+			expected[x*y] = x
+		end
+	end
+	for (quad, exps) in args
+		for exp in exps
+			expected[exp[1]] = exp[2]
+		end
+		quad = PolyJuMP.QCQP.decompose(monos, quad)
+		@test quad == expected
+	end
 end
 
 function test_decompose(x, y, _)
-    _test_decompose([x * y], [x * y => y])
-    return _test_decompose(
-        [x^2, y^3, x^2 * y^3],
-        [x^2 => x, y^2 => y, x^2 * y^3 => y^3, y^3 => y^2],
+    monos = [x^2, y^3, x^2 * y^3]
+
+    # decompo=Basic (i.e. fallback_phase) never introduces auxiliary
+    # variables, only auxiliary *monomials* (like x^2*y^2 below), so it is
+    # safe under both polynomial backends.
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=false, variable_reuse=false) =>
+			[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x^2],
     )
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=true, variable_reuse=false) =>
+			[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x * y],
+    )
+
+    # variable_reuse is only consulted inside kac_phase (smart_decompo_phase /
+    # cut_in_half_phase), so it must be a strict no-op whenever smart=false.
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=false, variable_reuse=true) =>
+			[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x^2],
+    )
+
+    # With smart=true and variable_reuse=true, kac_phase reuses the already
+    # known factor x^2 to quadratize x^2*y^3 directly, so no x^2*y^2
+    # auxiliary monomial is ever introduced (unlike the variable_reuse=false
+    # case above).
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=true, variable_reuse=true) =>
+			[y^3 => y, x^2 * y^3 => x^2],
+    )
+
+    # decompo=Greedy/Balanced only diverge from Basic once smart_decompo_phase
+    # leaves behind a degree>2 residual for greedy_phase/cut_in_half_phase to
+    # actually decompose. On this fixture smart=true always reduces every
+    # monomial down to x^2 (degree 2) before either phase runs, so all three
+    # decompo values agree here.
+    for decompo in (PolyJuMP.QCQP.Greedy, PolyJuMP.QCQP.Balanced)
+        _test_decompose(
+            monos,
+			PolyJuMP.QCQP.CompositeQuadratization(decompo=decompo, smart=true, variable_reuse=false) =>
+				[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x * y],
+        )
+        _test_decompose(
+            monos,
+			PolyJuMP.QCQP.CompositeQuadratization(decompo=decompo, smart=true, variable_reuse=true) =>
+				[y^3 => y, x^2 * y^3 => x^2],
+        )
+    end
+
+    # decompo=Greedy with smart=false is intentionally NOT tested here.
+    # greedy_phase (QCQP.jl:218) creates auxiliary variables via a hardcoded
+    # `DynamicPolynomials.@polyvar`, regardless of which polynomial library
+    # `monos` actually comes from. On this exact fixture that line is reached
+    # (x^2*y^3 needs a genuine new auxiliary variable once smart=false skips
+    # the kac_phase pre-reduction), so under the TypedPolynomials testset
+    # this should insert a DynamicPolynomials variable into a `Dict{M,M}`
+    # keyed on TypedPolynomials monomials -- a portability bug, not something
+    # to test around.
 end
 
 MOI.Utilities.@model(

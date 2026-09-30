@@ -125,7 +125,10 @@ MOI.set(model, PolyJuMP.MultiplierMaxdegree(), con, 2)
 The `SumOfSquares.Optimizer` of [SumOfSquares.jl](https://github.com/jump-dev/SumOfSquares.jl)
 is the analogous solver certifying the nonnegativity of the Lagrangian with
 the SOS cone instead; increasing the `PolyJuMP.MultiplierMaxdegree` attributes
-then gives the higher levels of the Lasserre hierarchy.
+then gives the higher levels of the Lasserre hierarchy and the candidate
+solutions are recovered from the atoms of the moment matrix given by the dual
+of the SOS constraint, using
+[MultivariateMoments](https://github.com/JuliaAlgebra/MultivariateMoments.jl).
 
 [CP16] Chandrasekaran, Venkat, and Parikshit Shah.
 *Relative entropy relaxations for signomial optimization.*

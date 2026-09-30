@@ -1,3 +1,18 @@
+"""
+    mutable struct Model{T} <: MOI.ModelLike
+
+Model storing a polynomial optimization problem
+```
+min  f(x)
+s.t. x ∈ S
+```
+where `f` is the polynomial of the field `objective_function` (or `nothing`
+for a feasibility problem) whose optimization sense is given by the field
+`objective_sense`, and `S` is the semialgebraic set of the field `set`,
+starting from `SemialgebraicSets.FullSpace()` and intersected with each added
+polynomial constraint. The field `variables` maps each `MOI.VariableIndex` to
+the corresponding polynomial variable.
+"""
 mutable struct Model{T} <: MOI.ModelLike
     variables::Dict{MOI.VariableIndex,VarType}
     objective_sense::MOI.OptimizationSense
@@ -17,6 +32,29 @@ function MP.variables(model::Model)
     return sort!(collect(values(model.variables)), rev = true)
 end
 
+"""
+    struct Solution{T}
+        values::Vector{T}
+        objective_value::T
+        max_constraint_violation::T
+        status::MOI.ResultStatusCode
+    end
+
+Candidate solution of the polynomial optimization problem stored in a
+[`Model`](@ref), where `values` are the values of the variables sorted as
+`MP.variables(model)`, `objective_value` is the value of the objective
+function at `values`, `max_constraint_violation` is the maximum violation of
+the constraints at `values` and `status` is `MOI.FEASIBLE_POINT`,
+`MOI.NEARLY_FEASIBLE_POINT` or `MOI.INFEASIBLE_POINT` depending on
+`max_constraint_violation`.
+
+    Solution(values::Vector{T}, model::Model{T}, feasibility_tolerance::T)
+
+Compute the solution with values `values` for `model`, where `status` is
+`MOI.FEASIBLE_POINT` if `max_constraint_violation < feasibility_tolerance`,
+`MOI.NEARLY_FEASIBLE_POINT` if it is smaller than `100feasibility_tolerance`
+and `MOI.INFEASIBLE_POINT` otherwise.
+"""
 struct Solution{T}
     values::Vector{T}
     objective_value::T

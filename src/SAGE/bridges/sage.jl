@@ -69,6 +69,21 @@ function MOI.Bridges.Constraint.concrete_bridge_type(
     return SAGEBridge{T,F,G}
 end
 
+# The signomial SAGE constraint `func ∈ SAGE` is reformulated into the
+# equality constraints `∑_k ν[k, i] - func_i = 0` in which `func` appears
+# with coefficient `-1` so the dual is `-μ` where `μ` is the dual of these
+# equality constraints; this is the adjoint of the reformulation map.
+# Since the SAGE cone is the sum of the AGE cones, its dual is the
+# intersection of the duals of the AGE cones and indeed, at the optimum, the
+# dual of each constraint `ν[k, :] ∈ AGE` also equals `-μ`.
+function MOI.get(
+    model::MOI.ModelLike,
+    attr::MOI.ConstraintDual,
+    bridge::SAGEBridge,
+)
+    return [-MOI.get(model, attr, ci) for ci in bridge.equality_constraints]
+end
+
 function MOI.get(
     model::MOI.ModelLike,
     attr::DecompositionAttribute,

@@ -13,7 +13,7 @@ Base.@kwdef mutable struct Options{T}
     feasibility_tolerance::T = Base.rtoldefault(T)
 end
 
-mutable struct Optimizer{T} <: MOI.AbstractOptimizer
+mutable struct Optimizer{T} <: PolyJuMP.AbstractPolynomialOptimizer{T}
     model::PolyJuMP.Model{T}
     options::Options{T}
     # Result
@@ -40,34 +40,6 @@ Optimizer() = Optimizer{Float64}()
 
 MOI.get(::Optimizer, ::MOI.SolverName) = "PolyJuMP.KKT"
 
-MOI.is_empty(model::Optimizer) = MOI.is_empty(model.model)
-
-function MOI.empty!(model::Optimizer)
-    MOI.empty!(model.model)
-    invalidate_solutions!(model)
-    return
-end
-
-function MOI.supports(model::Optimizer, attr::MOI.AbstractModelAttribute)
-    return MOI.supports(model.model, attr)
-end
-
-function MOI.set(model::Optimizer, attr::MOI.AbstractModelAttribute, value)
-    MOI.set(model.model, attr, value)
-    invalidate_solutions!(model)
-    return
-end
-
-function MOI.get(
-    model::Optimizer,
-    attr::Union{
-        MOI.AbstractModelAttribute,
-        MOI.Bridges.ListOfNonstandardBridges,
-    },
-)
-    return MOI.get(model.model, attr)
-end
-
 function MOI.supports(::Optimizer{T}, attr::MOI.RawOptimizerAttribute) where {T}
     return hasfield(Options{T}, Symbol(attr.name))
 end
@@ -87,42 +59,12 @@ function MOI.get(model::Optimizer, attr::MOI.RawOptimizerAttribute)
     return getfield(model.options, Symbol(attr.name))
 end
 
-function invalidate_solutions!(model::Optimizer)
+function PolyJuMP._invalidate!(model::Optimizer)
     empty!(model.solutions)
     model.solve_time = NaN
     model.termination_status = MOI.OPTIMIZE_NOT_CALLED
     model.raw_status = ""
     return
-end
-
-MOI.is_valid(model::Optimizer, i::MOI.Index) = MOI.is_valid(model.model, i)
-
-function MOI.add_variable(model::Optimizer)
-    invalidate_solutions!(model)
-    return MOI.add_variable(model.model)
-end
-
-function MOI.supports_constraint(
-    model::Optimizer,
-    ::Type{F},
-    ::Type{S},
-) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    return MOI.supports_constraint(model.model, F, S)
-end
-
-function MOI.add_constraint(
-    model::Optimizer,
-    func::MOI.AbstractFunction,
-    set::MOI.AbstractSet,
-)
-    ci = MOI.add_constraint(model.model, func, set)
-    invalidate_solutions!(model)
-    return ci
-end
-
-MOI.supports_incremental_interface(::Optimizer) = true
-function MOI.copy_to(dest::Optimizer, src::MOI.ModelLike)
-    return MOI.Utilities.default_copy_to(dest, src)
 end
 
 function _add_to_system(system, lagrangian, ::SS.FullSpace, ::Bool)
@@ -176,7 +118,7 @@ function _square(x::Vector{T}, n) where {T}
     return T[(i + n in eachindex(x)) ? x[i] : x[i]^2 for i in eachindex(x)]
 end
 
-function _optimize!(model::Optimizer{T}) where {T}
+function PolyJuMP._optimize!(model::Optimizer{T}) where {T}
     if isnothing(model.options.solver)
         system = SS.AlgebraicSet{T,PolyJuMP.PolyType{T}}()
     else
@@ -241,12 +183,6 @@ function _optimize!(model::Optimizer{T}) where {T}
     end
     return
 end
-
-function MOI.optimize!(model::Optimizer)
-    return model.solve_time = @elapsed _optimize!(model)
-end
-
-MOI.get(model::Optimizer, ::MOI.SolveTimeSec) = model.solve_time
 
 function MOI.get(model::Optimizer, ::MOI.RawStatusString)
     if model.termination_status === MOI.OPTIMIZE_NOT_CALLED

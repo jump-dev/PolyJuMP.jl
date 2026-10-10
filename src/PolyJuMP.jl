@@ -34,6 +34,7 @@ include("data.jl")
 include("default.jl")
 
 include("model.jl")
+include("optimizer.jl")
 include("KKT/KKT.jl")
 include("QCQP/QCQP.jl")
 include("SAGE/SAGE.jl")

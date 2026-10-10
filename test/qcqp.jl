@@ -16,24 +16,34 @@ function test_solver_name(_, _, _)
     @test MOI.get(optimizer, MOI.SolverName()) == "PolyJuMP.QCQP with Mock"
 end
 
-function _test_decompose(monos, exps)
+function _test_decompose(monos, args...)
     vars = MP.variables(monos)
     M = eltype(monos)
-    expected = PolyJuMP.QCQP.DataStructures.OrderedDict{M,M}(
-        var => var for var in vars
-    )
-    for exp in exps
-        expected[exp[1]] = exp[2]
-    end
-    quad = PolyJuMP.QCQP.decompose(monos)
-    @test quad == expected
+    expected = PolyJuMP.QCQP.DataStructures.OrderedDict{M,M}()
+	for x in vars
+		expected[x] = x
+		for y in vars
+			expected[x*y] = x
+		end
+	end
+	for (quad, exps) in args
+		for exp in exps
+			expected[exp[1]] = exp[2]
+		end
+		quad = PolyJuMP.QCQP.decompose(monos, quad)
+		@test quad == expected
+	end
 end
 
 function test_decompose(x, y, _)
-    _test_decompose([x * y], [x * y => y])
-    return _test_decompose(
+    _test_decompose(
         [x^2, y^3, x^2 * y^3],
-        [x^2 => x, y^2 => y, x^2 * y^3 => y^3, y^3 => y^2],
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=false, variable_reuse=false) =>
+			[x^2 => x, y^2 => y, x^2 * y^3 => y^3, y^3 => y^2],
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=true, variable_reuse=false) =>
+			[x^2 => x, y^2 => y, x^2 * y^3 => y^3, y^3 => y^2],
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=false, variable_reuse=false) =>
+			[x^2 => x, y^2 => y, x^2 * y^3 => y^3, y^3 => y^2],
     )
 end
 

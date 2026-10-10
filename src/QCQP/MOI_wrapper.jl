@@ -28,7 +28,7 @@ function Optimizer{T}(optimizer::MOI.ModelLike) where {T}
         nothing,
         DataStructures.OrderedDict{Type,MOI.Utilities.VectorOfConstraints}(),
         Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
-		BasicQuadratization(),
+		CompositeQuadratization(),
 		false
     )
 end
@@ -571,7 +571,12 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
     end
     if !isnothing(monos)
 		max_deg = maximum(MP.degree.(monos))
-        div = decompose(monos, model.quadratization_type)
+		verbose = if MOI.supports(model, MOI.Silent())
+			!MOI.get(model, MOI.Silent())
+		else
+			true
+		end
+		div = decompose(monos, model.quadratization_type, verbose=verbose)
         for mono in sort(collect(keys(div)))
             if haskey(vars, mono)
                 continue
@@ -581,7 +586,9 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
             b = MP.div_multiple(mono, a)
             monomial_variable_index(model, vars, div, b)
         end
-		println("DONE WITH QUAD")
+		if verbose
+			println("Done with quadratization!")
+		end
 		if model.consistency_constraints
 			cache = Set{MOI.ScalarNonlinearFunction}()
 			sorted_monos = Vector[[] for _ in 1:max_deg]

@@ -8,9 +8,6 @@ import PolyJuMP
 
 abstract type AbstractQuadratizationMethod end
 struct GreedyQuadratization <: AbstractQuadratizationMethod end
-struct BasicQuadratization <: AbstractQuadratizationMethod end
-struct BasicGreedyQuadratization <: AbstractQuadratizationMethod end
-struct KACQuadratization <: AbstractQuadratizationMethod end
 
 
 @enum Decomposition begin
@@ -19,14 +16,12 @@ struct KACQuadratization <: AbstractQuadratizationMethod end
 	Basic
 end
 struct CompositeQuadratization <: AbstractQuadratizationMethod
-	main_decomposition::Decomposition
+	decomposition::Decomposition
 	smart::Bool
-	greedy::Bool
+	variable_reuse::Bool
+	CompositeQuadratization(;decompo=Greedy, smart=true, variable_reuse=false) = new(decompo, smart, variable_reuse)
 end
 
-function CompositeQuadratization()::CompositeQuadratization
-	return CompositeQuadratization(Greedy, true, false)
-end
 
 import MathOptInterface as MOI
 struct OptimalQuadratization <: AbstractQuadratizationMethod
@@ -35,7 +30,7 @@ end
 
 
 # TODO special case for squares ?
-function decompose(monos::AbstractVector{M}, ::GreedyQuadratization) where {M<:MP.AbstractMonomial}
+function decompose(monos::AbstractVector{M}, ::GreedyQuadratization; verbose::Bool=true) where {M<:MP.AbstractMonomial}
 	println("RUNNING GREEDY QUADRATIZATION")
     vars = MP.variables(monos)
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
@@ -74,7 +69,11 @@ function decompose(monos::AbstractVector{M}, ::GreedyQuadratization) where {M<:M
 end
 
 
-function kac_phase(monos::AbstractVector{M}; greed::Bool, multilinear::Bool) where {M<:MP.AbstractMonomial}
+# This function exists because smart decomposition into balanced decomposition
+# used to be one method, so the code evolved into having this function, and when
+# the method was split this function was kept but parametrized to avoid breaking anything,
+# it probably could do with a refactor at some point
+function kac_phase(monos::AbstractVector{M}; variable_reuse::Bool, multilinear::Bool, verbose::Bool=true) where {M<:MP.AbstractMonomial}
     vars = MP.variables(monos)
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}()
 
@@ -94,7 +93,7 @@ function kac_phase(monos::AbstractVector{M}; greed::Bool, multilinear::Bool) whe
 			continue
 		end
 
-		if greed
+		if variable_reuse
 			stop = false
 			for a in keys(quad)
 				if a != mono && MP.divides(a, mono)
@@ -150,17 +149,17 @@ function kac_phase(monos::AbstractVector{M}; greed::Bool, multilinear::Bool) whe
 end
 
 
-function smart_decompo_phase(monos::AbstractVector{M}; greed::Bool) where {M<:MP.AbstractMonomial}
-	return kac_phase(monos, greed=greed, multilinear=false)
+function smart_decompo_phase(monos::AbstractVector{M}; variable_reuse::Bool, verbose::Bool=true) where {M<:MP.AbstractMonomial}
+	return kac_phase(monos, variable_reuse=variable_reuse, multilinear=false)
 end
 
 
-function cut_in_half_phase(monos::AbstractVector{M}; greed::Bool) where {M<:MP.AbstractMonomial}
-	return kac_phase(monos, greed=greed, multilinear=true)
+function cut_in_half_phase(monos::AbstractVector{M}; variable_reuse::Bool, verbose::Bool=true) where {M<:MP.AbstractMonomial}
+	return kac_phase(monos, variable_reuse=variable_reuse, multilinear=true)
 end
 
 
-function greedy_phase(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
+function greedy_phase(monos::AbstractVector{M}; verbose::Bool=true) where {M<:MP.AbstractMonomial}
     vars = MP.variables(monos)
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
         var => var for var in vars
@@ -221,7 +220,6 @@ function greedy_phase(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
 						v = v[1]
 						var_to_mono[v] = a
 						mono_to_var[a] = v
-						# println("added $v -> $a")
 					end
 					monos_list[i] = b*v^deg
 					break
@@ -258,8 +256,6 @@ function greedy_phase(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
 		a_mono, b_mono = _evaluate(a), _evaluate(b)
 		mono = a_mono * b_mono
 
-		# println("$a * $b == $a_mono * $b_mono")
-
 		if haskey(quad, mono) && !isnothing(quad[mono])
 			continue
 		end
@@ -280,7 +276,7 @@ function greedy_phase(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
 end
 
 
-function default_phase(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
+function fallback_phase(monos::AbstractVector{M}; verbose::Bool=true) where {M<:MP.AbstractMonomial}
     vars = MP.variables(monos)
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
         var => var for var in vars
@@ -325,55 +321,17 @@ function default_phase(monos::AbstractVector{M}) where {M<:MP.AbstractMonomial}
 end
 
 
-function decompose(monos::AbstractVector{M}, ::BasicQuadratization) where {M<:MP.AbstractMonomial}
-	println("RUNNING BASIC QUADRATIZATION")
-	quad = default_phase(monos)
-	return quad
-end
-
-# Inspired by https://www.sciencedirect.com/science/article/pii/S0098135422002472, by T. Karia, C. S. Adjiman, B. Chachuat => "KAC"
-function decompose(monos::AbstractVector{M}, ::KACQuadratization) where {M<:MP.AbstractMonomial}
-	println("RUNNING KAC QUADRATIZATION")
-	vars = MP.variables(monos)
-
-	quad = smart_decompo_phase(monos, greed=true)
-
-	monos = filter(x -> isnothing(quad[x]), collect(keys(quad)))
-	q = cut_in_half_phase(monos, greed=true)
-	
-	for (k, v) in q
-		if isnothing(get(quad, k, nothing))
-			quad[k] = v
-		end
+function decompose(monos::AbstractVector{M}, method::OptimalQuadratization; verbose::Bool=true) where {M<:MP.AbstractMonomial}
+	if verbose
+		println("Running minimum auxiliary variables quadratization scheme...")
 	end
 
-	for x in vars
-		quad[x] = x
-		for y in vars
-			quad[x*y] = x
-		end
-	end
-
-	return quad
-end
-
-
-function decompose(monos::AbstractVector{M}, ::BasicGreedyQuadratization) where {M<:MP.AbstractMonomial}
-	println("RUNNING BASIC GREEDY QUADRATIZATION")
-	quad = greedy_phase(monos)
-	return quad
-end
-
-
-function decompose(monos::AbstractVector{M}, method::OptimalQuadratization) where {M<:MP.AbstractMonomial}
-	println("RUNNING OPTIMAL QUADRATIZATION")
     vars = MP.variables(monos)
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
         var => var for var in vars
     )
 	deg = maximum(MP.degree.(monos))
 
-	# mono_to_var = Dict{M, MOI.VariableIndex}()
 	var_to_mono = DataStructures.OrderedDict{MOI.VariableIndex, M}()
 	var_divisor = DataStructures.OrderedDict{MOI.VariableIndex, Union{M,MOI.VariableIndex}}()
 
@@ -401,21 +359,14 @@ function decompose(monos::AbstractVector{M}, method::OptimalQuadratization) wher
 	end
 	empty!(tmp)
 
-	println("found all pairs...")
+	if verbose
+		println("found all pairs...")
+	end
 
-	# find all pairs of aux variables (for smalled search space?)
-	# for mono in monos
-	# 	for a in keys(mono_to_var)
-	# 		for b in keys(mono_to_var)
-	# 		end
-	# 	end
-	# end
-	
 	explored_pairs = Set{Tuple{MOI.VariableIndex,Union{MOI.VariableIndex,eltype(vars)}}}()
 	curr_deg = 2
 	while curr_deg < deg-1
-		aux_vars = collect(keys(var_to_mono))  # it is possible to optimize here by creating a vector and pushing to it instead of collecting every time I think
-		# combined_iter = Iterators.flatten((keys(mono_to_var), vars))
+		aux_vars = collect(keys(var_to_mono))
 		for (i, va) in enumerate(aux_vars)
 			a = var_to_mono[va]
 			for vb in aux_vars[i:end]
@@ -477,11 +428,15 @@ function decompose(monos::AbstractVector{M}, method::OptimalQuadratization) wher
 				var_divisor[new_var] = va
 			end
 		end
-		println("iteration deg = $curr_deg out of $deg done...")
+		if verbose
+			println("iteration deg = $curr_deg out of $deg done...")
+		end
 		curr_deg *= 2
 	end
 
-	println("done with variable creation...")
+	if verbose
+		println("done with variable creation...")
+	end
 
 	mono_to_vars = Dict{M, Vector{MOI.VariableIndex}}()
 	for (v, m) in var_to_mono
@@ -491,11 +446,9 @@ function decompose(monos::AbstractVector{M}, method::OptimalQuadratization) wher
 		push!(mono_to_vars[m], v)
 	end
 
-	# mono_pairs = Dict{M, DataStructures.PriorityQueue{M, Bool}}()
 	for mono in monos
 		quad_terms = MOI.ScalarQuadraticTerm{Float64}[]
 		affine_terms = MOI.ScalarAffineTerm{Float64}[]
-		# mono_pairs[mono] = DataStructures.PriorityQueue{MOI.VariableIndex,Bool}()
 		for (a, vs) in mono_to_vars
 			if MP.divides(a, mono)
 				b = MP.div_multiple(mono, a)
@@ -503,23 +456,21 @@ function decompose(monos::AbstractVector{M}, method::OptimalQuadratization) wher
 					for v in vs
 						push!(affine_terms, MOI.ScalarAffineTerm(1.0, v))
 					end
-					# if b == a
-					# 	mono_pairs[mono][a] = true
-					# end
 				elseif MP.degree(b) > 1
 					for va in vs
 						for vb in mono_to_vars[b]
 							push!(quad_terms, MOI.ScalarQuadraticTerm(1.0, va, vb))
 						end
 					end
-					# mono_pairs[mono][a] = false
 				end
 			end
 		end
 		MOI.add_constraint(optimizer, MOI.ScalarQuadraticFunction(quad_terms, affine_terms, 0.0), MOI.GreaterThan(1.0))
 	end
 
-	println("done with constraint creation...")
+	if verbose
+		println("done with constraint creation...")
+	end
 
 	affine_terms = MOI.ScalarAffineTerm{Float64}[]
 	for var in keys(var_to_mono)
@@ -531,15 +482,16 @@ function decompose(monos::AbstractVector{M}, method::OptimalQuadratization) wher
 
 	MOI.optimize!(optimizer)
 
-	# println(optimizer)
-
 	count_new_vars = 0
 	active_vars = MOI.VariableIndex[]
 	for (var, mono) in var_to_mono
 		active = MOI.get(optimizer, MOI.VariablePrimal(), var)
 		if active ≈ 1
-			println("$mono is active")
-			if haskey(quad, mono)
+			if verbose
+				println("$mono is active")
+			end
+			if haskey(quad, mono) && verbose
+				# This should never happen
 				println("[WARNING] quad already has $mono, which means that $mono was activated twice...")
 			end
 			if var_divisor[var] isa M
@@ -551,7 +503,10 @@ function decompose(monos::AbstractVector{M}, method::OptimalQuadratization) wher
 			push!(active_vars, var)
 		end
 	end
-	println("should generate $count_new_vars new variables")
+
+	if verbose
+		println("should generate $count_new_vars new variables")
+	end
 	
 	mono_set = Set{M}(monos)
 	for (i, va) in enumerate(active_vars)
@@ -575,25 +530,6 @@ function decompose(monos::AbstractVector{M}, method::OptimalQuadratization) wher
 			end
 		end
 	end
-	# for mono in monos
-	# 	if !haskey(quad, mono)
-	# 		quad[mono] = nothing
-	# 	end
-	# end
-	# for mono in keys(quad)
-	# 	if quad[mono] !== nothing
-	# 		continue
-	# 	end
-	# 	# for b in mono_pairs[mono]
-	# 	for b in keys(quad)
-	# 		# println("testing $mono decomposed as $b and $mono/$b...")
-	# 		if MP.divides(b, mono) && haskey(quad, MP.div_multiple(mono, b))
-	# 			# println("yay!")
-	# 			quad[mono] = b
-	# 			break
-	# 		end
-	# 	end
-	# end
 
 	for x in vars
 		for y in vars
@@ -602,7 +538,8 @@ function decompose(monos::AbstractVector{M}, method::OptimalQuadratization) wher
 	end
 
 	for mono in keys(quad)
-		if quad[mono] === nothing
+		if quad[mono] === nothing && verbose
+			# This should never happen
 			println("$mono doesn't have a divisor")
 		end
 	end
@@ -613,22 +550,33 @@ function decompose(monos::AbstractVector{M}, method::OptimalQuadratization) wher
 end
 
 
-function decompose(monos::AbstractVector{M}, method::CompositeQuadratization) where {M<:MP.AbstractMonomial}
-	println("RUNNING COMPOSITE QUADRATIZATION")
+function decompose(monos::AbstractVector{M}, method::CompositeQuadratization; verbose::Bool=true) where {M<:MP.AbstractMonomial}
+	if verbose
+		println("Running composite quadratization scheme...")
+		if method.smart
+			print("Smart ")
+		end
+		print(lowercase(string(method.decomposition)))
+		if method.variable_reuse
+			print(" with variable reuse")
+		end
+		print("\n")
+	end
+
     vars = MP.variables(monos)
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}()
 
 	if method.smart
-		quad = smart_decompo_phase(monos, greed=method.greedy)
+		quad = smart_decompo_phase(monos, variable_reuse=method.variable_reuse)
 		monos = filter(x -> isnothing(quad[x]), collect(keys(quad)))
 	end
 
-	if method.main_decomposition == Greedy
+	if method.decomposition == Greedy
 		q = greedy_phase(monos)
-	elseif method.main_decomposition == Balanced && method.smart
-		q = cut_in_half_phase(monos, greed=method.greedy)
+	elseif method.decomposition == Balanced && method.smart
+		q = cut_in_half_phase(monos, variable_reuse=method.variable_reuse)
 	else
-		q = default_phase(monos)
+		q = fallback_phase(monos)
 	end
 
 	for (k, v) in q

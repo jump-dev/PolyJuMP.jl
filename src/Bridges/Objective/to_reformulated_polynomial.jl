@@ -12,7 +12,6 @@ function MOI.Bridges.Objective.bridge_objective(
     F = FuncType{T}
 	nonlin_func = convert(MOI.ScalarNonlinearFunction, func)
 	poly = PolyJuMP.Bridges._to_reformulated_polynomial!(model, T, nonlin_func)
-	# poly_func = convert(FuncType{T}, poly)
 	MOI.set(model, MOI.ObjectiveFunction{F}(), poly)
     return ToReformulatedPolynomialBridge{T}()
 end

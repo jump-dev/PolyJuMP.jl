@@ -11,6 +11,14 @@ import ECOS
 using JuMP
 using PolyJuMP
 
+function test_decomposition(x, y, T, solver)
+    parts = [MP.polynomial(T(2) * x), MP.polynomial(y + T(1))]
+    d = PolyJuMP.SAGE.Decomposition(parts)
+    @test MP.polynomial(d) == T(2) * x + y + T(1)
+    @test MP.coefficient_type(MP.polynomial(d)) == T
+    return
+end
+
 function _test_motzkin(x, y, T, solver, set, feasible, square, neg)
     model = Model(solver)
     a = square ? x^2 : x

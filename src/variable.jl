@@ -1,5 +1,56 @@
 export Poly
 
+for op in (:+, :-)
+    @eval begin
+        function Base.$op(
+            a::JuMP.AbstractJuMPScalar,
+            p::MP.AbstractPolynomialLike,
+        )
+            p = p isa MP.AbstractMonomialLike ? p : MB.implicit(p)
+            return $op(MP.constant_term(a, p), p)
+        end
+
+        function Base.$op(
+            p::MP.AbstractPolynomialLike,
+            a::JuMP.AbstractJuMPScalar,
+        )
+            p = p isa MP.AbstractMonomialLike ? p : MB.implicit(p)
+            return $op(p, MP.constant_term(a, p))
+        end
+    end
+end
+
+# Resolve the overlap with MP's methods for scalars of the coefficient type.
+for Scalar in (JuMP.AbstractJuMPScalar, MOI.AbstractScalarFunction),
+    op in (:+, :-)
+
+    @eval begin
+        function Base.$op(
+            a::T,
+            p::Union{MP.AbstractPolynomial{T},MP.AbstractTerm{T}},
+        ) where {T<:$Scalar}
+            p = MB.implicit(p)
+            return $op(MP.constant_term(a, p), p)
+        end
+
+        function Base.$op(
+            p::Union{MP.AbstractPolynomial{T},MP.AbstractTerm{T}},
+            a::T,
+        ) where {T<:$Scalar}
+            p = MB.implicit(p)
+            return $op(p, MP.constant_term(a, p))
+        end
+    end
+end
+
+function Base.:*(a::JuMP.AbstractJuMPScalar, p::MP.AbstractPolynomialLike)
+    return MP.left_constant_mult(a, p)
+end
+
+function Base.:*(p::MP.AbstractPolynomialLike, a::JuMP.AbstractJuMPScalar)
+    return MP.right_constant_mult(p, a)
+end
+
 function JuMP.value(f::Function, t::MP.AbstractTerm{<:JuMP.AbstractJuMPScalar})
     return JuMP.value(f, MP.coefficient(t)) * MP.monomial(t)
 end
@@ -10,20 +61,9 @@ end
 
 function JuMP.value(
     f::Function,
-    p::MP.AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar},
-)
-    return MP.polynomial(JuMP.value.(f, MP.terms(p)), MP.SortedUniqState())
-end
-
-function JuMP.value(
-    f::Function,
     p::SA.AlgebraElement{<:JuMP.AbstractJuMPScalar},
 )
     return SA.AlgebraElement(JuMP.value.(f, SA.coeffs(p)), parent(p))
-end
-
-function JuMP.value(p::MP.AbstractPolynomialLike{<:JuMP.AbstractJuMPScalar})
-    return JuMP.value(JuMP.value, p)
 end
 
 function JuMP.value(p::SA.AlgebraElement{<:JuMP.AbstractJuMPScalar})

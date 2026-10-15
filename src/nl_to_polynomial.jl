@@ -5,7 +5,7 @@ const VariableOrder =
     DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
 const MonomialOrder = MP.Graded{MP.LexOrder}
 const VarType = DynamicPolynomials.Variable{VariableOrder,MonomialOrder}
-const PolyType{T} = DynamicPolynomials.Polynomial{VariableOrder,MonomialOrder,T}
+const PolyType = DynamicPolynomials.Polynomial
 const FuncType{T} = ScalarPolynomialFunction{T,PolyType{T}}
 
 mutable struct NLToPolynomial{T,M<:MOI.ModelLike} <: MOI.AbstractOptimizer

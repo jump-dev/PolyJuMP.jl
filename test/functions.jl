@@ -1,6 +1,7 @@
 module TestFunctions
 
 using Test
+import MutableArithmetics as MA
 
 using MultivariatePolynomials
 const MP = MultivariatePolynomials
@@ -27,6 +28,39 @@ function test_functions(var)
           AbstractPolynomial{MOI.ScalarAffineFunction{Float64}}
     @test (1.0x + 2.0) * α isa
           AbstractPolynomial{MOI.ScalarAffineFunction{Float64}}
+end
+
+function test_coefficient_products(var)
+    x = MP.similar_variable(var, Val{:x})
+    α, β = MOI.VariableIndex(1), MOI.VariableIndex(2)
+    for a in (α, 2α + 1), b in (1β, 3β + 2), p in (x, x + 1)
+        q = b * p
+        for product in (a * q, q * a)
+            @test MA.isequal_canonical(MP.coefficient(product, x), a * b)
+        end
+    end
+    return
+end
+
+function test_coefficient_sums(var)
+    x = MP.similar_variable(var, Val{:x})
+    α = MOI.VariableIndex(1)
+    for a in (α, 2α + 1),
+        p in (x, 2x, x + 1, (2α + 1) * x, (2α + 1) * x + 1),
+        op in (+, -)
+
+        for value in (0, 2)
+            @test MA.isequal_canonical(
+                op(a, p)(x => value),
+                op(a, p(x => value)),
+            )
+            @test MA.isequal_canonical(
+                op(p, a)(x => value),
+                op(p(x => value), a),
+            )
+        end
+    end
+    return
 end
 
 function test_scalar_polynomial_function(var)

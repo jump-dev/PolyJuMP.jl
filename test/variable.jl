@@ -40,7 +40,7 @@ end
 function _algebra_element_type(B, mono)
     return MB.algebra_element_type(
         Vector{JuMP.VariableRef},
-        MB.explicit_basis_type(MB.full_basis_type(B, typeof(mono))),
+        MB.explicit_basis_type(typeof(MB.FullBasis{B}(variables(mono)))),
     )
 end
 
@@ -50,16 +50,9 @@ function _test_variable(
     monos,
     binary = false,
     integer = false,
-    use_y = true,
     B = MB.Monomial,
 )
-    @test isa(
-        p,
-        _algebra_element_type(
-            B,
-            use_y ? first(monos) : first(variables(first(monos))),
-        ),
-    )
+    @test p isa _algebra_element_type(B, monos)
     @test MB.keys_as_monomials(SA.basis(p)) == monomial_vector(monos)
     coeffs = SA.coeffs(p, MB.explicit_basis(p))
     @test all(α -> JuMP.is_binary(α) == binary, coeffs)
@@ -101,7 +94,6 @@ function test_ScaledMonomialBasis(var)
         monomial_vector([1, x, x^2]),
         false,
         true,
-        false,
         MB.ScaledMonomial,
     )
 end
@@ -177,10 +169,48 @@ function test_value_function(var)
     expected = 2x * y + 3x^2
     @test_broken JuMP.value(p) == expected
     @test JuMP.value(fix_value, p) == expected
+    @test parent(JuMP.value(fix_value, p)) === parent(p)
     a = MB.algebra_element(p)
     exp_a = MB.algebra_element(expected)
     @test_broken JuMP.value(a) == exp_a
     @test JuMP.value(fix_value, a) == exp_a
+end
+
+function test_coefficient_products(var)
+    x = MP.similar_variable(var, Val{:x})
+    model = Model()
+    @variable(model, α)
+    @variable(model, β)
+    for a in (α, 2α + 1), b in (β, 3β + 2), p in (x, x + 1)
+        q = b * p
+        for product in (a * q, q * a)
+            @test JuMP.isequal_canonical(MP.coefficient(product, x), a * b)
+        end
+    end
+    return
+end
+
+function test_coefficient_sums(var)
+    x = MP.similar_variable(var, Val{:x})
+    model = Model()
+    @variable(model, α)
+    @variable(model, q, Poly([x, x^2]))
+    for a in (α, 2α + 1),
+        p in (x, 2x, x + 1, (2α + 1) * x, (2α + 1) * x + 1, q),
+        op in (+, -)
+
+        for value in (0, 2)
+            @test JuMP.isequal_canonical(
+                op(a, p)(x => value),
+                op(a, p(x => value)),
+            )
+            @test JuMP.isequal_canonical(
+                op(p, a)(x => value),
+                op(p(x => value), a),
+            )
+        end
+    end
+    return
 end
 
 function runtests(var)

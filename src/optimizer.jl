@@ -247,7 +247,7 @@ _inequalities(set::SS.BasicSemialgebraicSet) = SS.inequalities(set)
 function _multiplier(relaxation::JuMP.GenericModel, x, degree)
     basis = MB.SubBasis{MB.Monomial}(MP.monomials(x, 0:degree))
     poly = JuMP.@variable(relaxation, variable_type = Poly(basis))
-    return MP.polynomial(poly)
+    return MB.implicit(poly)
 end
 
 function _optimize!(model::AbstractRelaxationOptimizer{T}) where {T}

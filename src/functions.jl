@@ -1,3 +1,34 @@
+# Give MOI.VariableIndex a coefficient type before scalar subtraction.
+for op in (:+, :-)
+    @eval begin
+        function Base.$op(
+            f::MOI.AbstractScalarFunction,
+            p::MP.AbstractPolynomialLike,
+        )
+            p = p isa MP.AbstractMonomialLike ? p : MB.implicit(p)
+            T = MA.promote_operation($op, typeof(f), MP.coefficient_type(p))
+            return $op(MP.constant_term(convert(T, f), p), p)
+        end
+
+        function Base.$op(
+            p::MP.AbstractPolynomialLike,
+            f::MOI.AbstractScalarFunction,
+        )
+            p = p isa MP.AbstractMonomialLike ? p : MB.implicit(p)
+            T = MA.promote_operation($op, MP.coefficient_type(p), typeof(f))
+            return $op(p, MP.constant_term(convert(T, f), p))
+        end
+    end
+end
+
+function Base.:*(f::MOI.AbstractScalarFunction, p::MP.AbstractPolynomialLike)
+    return MP.left_constant_mult(f, p)
+end
+
+function Base.:*(p::MP.AbstractPolynomialLike, f::MOI.AbstractScalarFunction)
+    return MP.right_constant_mult(p, f)
+end
+
 """
     struct ScalarPolynomialFunction{T,P<:MP.AbstractPolynomial{T}} <: MOI.AbstractScalarFunction
         polynomial::P

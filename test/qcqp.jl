@@ -36,15 +36,40 @@ function _test_decompose(monos, args...)
 end
 
 function test_decompose(x, y, _)
+    monos = [x^2, y^3, x^2 * y^3]
+
     _test_decompose(
-        [x^2, y^3, x^2 * y^3],
+        monos,
 		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=false, variable_reuse=false) =>
-			[x^2 => x, y^2 => y, x^2 * y^3 => y^3, y^3 => y^2],
-		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=true, variable_reuse=false) =>
-			[x^2 => x, y^2 => y, x^2 * y^3 => y^3, y^3 => y^2],
-		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=false, variable_reuse=false) =>
-			[x^2 => x, y^2 => y, x^2 * y^3 => y^3, y^3 => y^2],
+			[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x^2],
     )
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=true, variable_reuse=false) =>
+			[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x * y],
+    )
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=false, variable_reuse=true) =>
+			[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x^2],
+    )
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=true, variable_reuse=true) =>
+			[y^3 => y, x^2 * y^3 => x^2],
+    )
+    for decompo in (PolyJuMP.QCQP.Greedy, PolyJuMP.QCQP.Balanced)
+        _test_decompose(
+            monos,
+			PolyJuMP.QCQP.CompositeQuadratization(decompo=decompo, smart=true, variable_reuse=false) =>
+				[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x * y],
+        )
+        _test_decompose(
+            monos,
+			PolyJuMP.QCQP.CompositeQuadratization(decompo=decompo, smart=true, variable_reuse=true) =>
+				[y^3 => y, x^2 * y^3 => x^2],
+        )
+    end
 end
 
 MOI.Utilities.@model(

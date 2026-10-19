@@ -81,6 +81,33 @@ function MOI.supports_constraint(
     return MOI.supports_constraint(model.model, F, S)
 end
 
+# The matrix inequalities stored in the `Model` are only supported by the
+# optimizers implementing `matrix_nonnegativity_cone`.
+function MOI.supports_constraint(
+    model::AbstractPolynomialOptimizer,
+    ::Type{F},
+    ::Type{S},
+) where {
+    F<:MOI.AbstractVectorFunction,
+    S<:MOI.AbstractSymmetricMatrixSetTriangle,
+}
+    return !isnothing(matrix_nonnegativity_cone(model)) &&
+           MOI.supports_constraint(model.model, F, S)
+end
+
+# The bridging costs are forwarded to `model.model` with the other model
+# attributes but they should be consistent with the constraints supported by
+# `model`.
+function MOI.get(
+    model::AbstractPolynomialOptimizer,
+    ::MOI.ConstraintBridgingCost{F,S},
+) where {
+    F<:MOI.AbstractVectorFunction,
+    S<:MOI.AbstractSymmetricMatrixSetTriangle,
+}
+    return MOI.supports_constraint(model, F, S) ? 0.0 : Inf
+end
+
 function MOI.add_constraint(
     model::AbstractPolynomialOptimizer,
     func::MOI.AbstractFunction,
@@ -135,19 +162,26 @@ optimization problem
 min  f(x)
 s.t. g_i(x) ≥ 0
      h_j(x) = 0
+     G_k(x) ⪰ 0
 ```
 by solving the relaxation
 ```
 max  t
-s.t. f - t - Σ_i σ_i * g_i - Σ_j μ_j * h_j ∈ C
+s.t. f - t - Σ_i σ_i * g_i - Σ_j μ_j * h_j - Σ_k ⟨Σ_k, G_k⟩ ∈ C
      σ_i ∈ C
+     Σ_k ∈ M
 ```
-where `μ_j` are free polynomials and `C` is the cone of certified nonnegative
-polynomials returned by [`nonnegativity_cone`](@ref)
+where `μ_j` are free polynomials, `C` is the cone of certified nonnegative
+polynomials returned by [`nonnegativity_cone`](@ref) and `M` is the cone of
+certified positive semidefinite polynomial matrices returned by
+[`matrix_nonnegativity_cone`](@ref)
 (and conversely for a `max` problem). The bound is the objective value of this
 relaxation and is returned as the `MOI.ObjectiveBound`. The degrees of the
-multipliers `σ_i` and `μ_j` are given by the [`MultiplierMaxdegree`](@ref)
-constraint attribute. Candidate primal solutions may in addition be recovered
+multipliers `σ_i`, `μ_j` and of the entries of `Σ_k` are given by the
+[`MultiplierMaxdegree`](@ref) constraint attribute.
+The polynomial matrix inequalities `G_k(x) ⪰ 0` are only supported if
+[`matrix_nonnegativity_cone`](@ref) is implemented, see [HL06] for the
+Sum-of-Squares case. Candidate primal solutions may in addition be recovered
 from the solution of the relaxation by implementing
 [`recover_solutions`](@ref); the `MOI.ResultCount` is the number of
 recovered candidates.
@@ -163,6 +197,11 @@ feasibility_tolerance::T
 solve_time::Float64
 ```
 and implement [`nonnegativity_cone`](@ref) and [`recover_solutions`](@ref).
+
+[HL06] Henrion, Didier and Lasserre, Jean-Bernard.
+*Convergent relaxations of polynomial matrix inequalities and static output
+feedback.*
+IEEE Transactions on Automatic Control 51.2 (2006): 192-202.
 """
 abstract type AbstractRelaxationOptimizer{T} <: AbstractPolynomialOptimizer{T} end
 
@@ -174,6 +213,16 @@ Return the set (e.g., `PolyJuMP.SAGE.Polynomials()` or
 sufficient condition for its nonnegativity.
 """
 function nonnegativity_cone end
+
+"""
+    matrix_nonnegativity_cone(model::AbstractPolynomialOptimizer)
+
+Return the set (e.g., `SumOfSquares.SOSMatrixCone()`) in which a symmetric
+matrix of polynomials is constrained to belong as a sufficient condition for
+its positive semidefiniteness, or `nothing` (the default) if polynomial matrix
+inequalities are not supported by `model`.
+"""
+matrix_nonnegativity_cone(::AbstractPolynomialOptimizer) = nothing
 
 function _invalidate!(model::AbstractRelaxationOptimizer)
     model.relaxation = nothing
@@ -210,10 +259,18 @@ function MOI.empty!(model::AbstractRelaxationOptimizer)
     return
 end
 
+const _MatrixIndex = MOI.ConstraintIndex{
+    <:MOI.AbstractVectorFunction,
+    <:MOI.AbstractSymmetricMatrixSetTriangle,
+}
+
+const _MultiplierIndex{T} =
+    Union{MOI.ConstraintIndex{<:ScalarPolynomialFunction{T}},_MatrixIndex}
+
 function MOI.supports(
     ::AbstractRelaxationOptimizer{T},
     ::MultiplierMaxdegree,
-    ::Type{<:MOI.ConstraintIndex{<:ScalarPolynomialFunction{T}}},
+    ::Type{<:_MultiplierIndex{T}},
 ) where {T}
     return true
 end
@@ -221,7 +278,7 @@ end
 function MOI.set(
     model::AbstractRelaxationOptimizer{T},
     ::MultiplierMaxdegree,
-    ci::MOI.ConstraintIndex{<:ScalarPolynomialFunction{T}},
+    ci::_MultiplierIndex{T},
     degree::Integer,
 ) where {T}
     MOI.throw_if_not_valid(model, ci)
@@ -233,9 +290,37 @@ end
 function MOI.get(
     model::AbstractRelaxationOptimizer{T},
     ::MultiplierMaxdegree,
-    ci::MOI.ConstraintIndex{<:ScalarPolynomialFunction{T}},
+    ci::_MultiplierIndex{T},
 ) where {T}
     return get(model.multiplier_maxdegree, ci, nothing)
+end
+
+# The matrix inequalities in a square set are bridged into a triangle set so
+# their multiplier is the multiplier of the triangle constraint.
+function MOI.supports(
+    model::MOI.ModelLike,
+    attr::MultiplierMaxdegree,
+    ::Type{<:MOI.Bridges.Constraint.SquareBridge{T,F,G,TT}},
+) where {T,F,G,TT}
+    return MOI.supports(model, attr, MOI.ConstraintIndex{F,TT})
+end
+
+function MOI.set(
+    model::MOI.ModelLike,
+    attr::MultiplierMaxdegree,
+    bridge::MOI.Bridges.Constraint.SquareBridge,
+    degree,
+)
+    MOI.set(model, attr, bridge.triangle, degree)
+    return
+end
+
+function MOI.get(
+    model::MOI.ModelLike,
+    attr::MultiplierMaxdegree,
+    bridge::MOI.Bridges.Constraint.SquareBridge,
+)
+    return MOI.get(model, attr, bridge.triangle)
 end
 
 _equalities(::SS.FullSpace) = []
@@ -250,6 +335,16 @@ function _multiplier(relaxation::JuMP.GenericModel, x, degree)
     return MP.polynomial(poly)
 end
 
+_maxdegree(G::Matrix) = maximum(MP.maxdegree, G)
+
+function _matrix_multiplier(relaxation::JuMP.GenericModel, x, n, degree)
+    Σ = Matrix{MP.polynomial_type(VarType, JuMP.AffExpr)}(undef, n, n)
+    for j in 1:n, i in 1:j
+        Σ[i, j] = Σ[j, i] = _multiplier(relaxation, x, degree)
+    end
+    return Σ
+end
+
 function _optimize!(model::AbstractRelaxationOptimizer{T}) where {T}
     pop = model.model
     x = MP.variables(pop)
@@ -261,16 +356,21 @@ function _optimize!(model::AbstractRelaxationOptimizer{T}) where {T}
     end
     eqs = _equalities(pop.set)
     ineqs = _inequalities(pop.set)
+    mats = pop.matrix_inequalities
     maxdeg = max(
         MP.maxdegree(f),
         maximum(MP.maxdegree, eqs; init = 0),
         maximum(MP.maxdegree, ineqs; init = 0),
+        maximum(_maxdegree, mats; init = 0),
     )
     maxdeg += isodd(maxdeg)
     eq_degrees = Dict{Int,Int}()
     ineq_degrees = Dict{Int,Int}()
+    mat_degrees = Dict{Int,Int}()
     for (ci, d) in model.multiplier_maxdegree
-        if ci isa MOI.ConstraintIndex{<:Any,<:MOI.EqualTo}
+        if ci isa _MatrixIndex
+            mat_degrees[ci.value] = d
+        elseif ci isa MOI.ConstraintIndex{<:Any,<:MOI.EqualTo}
             eq_degrees[ci.value] = d
         else
             ineq_degrees[ci.value] = d
@@ -292,6 +392,12 @@ function _optimize!(model::AbstractRelaxationOptimizer{T}) where {T}
         σ = _multiplier(relaxation, x, d)
         JuMP.@constraint(relaxation, σ in cone)
         lagrangian -= σ * g
+    end
+    for (i, G) in enumerate(mats)
+        d = get(mat_degrees, i, maxdeg - _maxdegree(G))
+        Σ = _matrix_multiplier(relaxation, x, size(G, 1), d)
+        JuMP.@constraint(relaxation, Σ in matrix_nonnegativity_cone(model))
+        lagrangian -= sum(G .* Σ)
     end
     cref = JuMP.@constraint(relaxation, lagrangian in cone)
     sense = pop.objective_sense == MOI.MAX_SENSE ? MOI.MIN_SENSE : MOI.MAX_SENSE

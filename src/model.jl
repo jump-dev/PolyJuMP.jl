@@ -12,18 +12,28 @@ for a feasibility problem) whose optimization sense is given by the field
 starting from `SemialgebraicSets.FullSpace()` and intersected with each added
 polynomial constraint. The field `variables` maps each `MOI.VariableIndex` to
 the corresponding polynomial variable.
+
+The set `S` is moreover restricted by the *polynomial matrix inequalities*
+`G_k(x) ⪰ 0` of the field `matrix_inequalities`, where the entries of the
+symmetric matrix `G_k` are polynomials in `x`. They are added by constraining
+a vector of functions to a `MOI.AbstractSymmetricMatrixSetTriangle` such as
+`MOI.PositiveSemidefiniteConeTriangle`. The square sets such as
+`MOI.PositiveSemidefiniteConeSquare` are reformulated into them by
+`MOI.Bridges.Constraint.SquareBridge`.
 """
 mutable struct Model{T} <: MOI.ModelLike
     variables::Dict{MOI.VariableIndex,VarType}
     objective_sense::MOI.OptimizationSense
     objective_function::Union{Nothing,PolyType{T}}
     set::Any
+    matrix_inequalities::Vector{Matrix{PolyType{T}}}
     function Model{T}() where {T}
         return new{T}(
             Dict{MOI.VariableIndex,VarType}(),
             MOI.FEASIBILITY_SENSE,
             nothing,
             SS.FullSpace(),
+            Matrix{PolyType{T}}[],
         )
     end
 end
@@ -67,8 +77,11 @@ function Solution(
     model::Model{T},
     feasibility_tolerance::T,
 ) where {T}
-    ε = _max_constraint_violation(model.set, MP.variables(model), values)
     x = MP.variables(model)
+    ε = max(
+        _max_constraint_violation(model.set, x, values),
+        _max_constraint_violation(model.matrix_inequalities, x, values),
+    )
     obj = if isnothing(model.objective_function)
         zero(T)
     else
@@ -101,6 +114,17 @@ function _max_constraint_violation(set::SS.BasicSemialgebraicSet, x, sol)
         _max_constraint_violation(set.V, x, sol),
         maximum(p -> -p(x => sol), SS.inequalities(set)),
     )
+end
+
+function _max_constraint_violation(
+    matrices::Vector{<:Matrix},
+    x,
+    sol::AbstractVector{T},
+) where {T}
+    return maximum(matrices; init = zero(T)) do G
+        M = map(g -> convert(T, g(x => sol)), G)
+        return -LinearAlgebra.eigmin(LinearAlgebra.Symmetric(M))
+    end
 end
 
 function _status_priority(r::MOI.ResultStatusCode)
@@ -158,7 +182,8 @@ function MOI.is_empty(model::Model)
     return isempty(model.variables) &&
            model.objective_sense == MOI.FEASIBILITY_SENSE &&
            isnothing(model.objective_function) &&
-           model.set isa SS.FullSpace
+           model.set isa SS.FullSpace &&
+           isempty(model.matrix_inequalities)
 end
 
 function MOI.empty!(model::Model)
@@ -166,6 +191,7 @@ function MOI.empty!(model::Model)
     model.objective_sense = MOI.FEASIBILITY_SENSE
     model.objective_function = nothing
     model.set = SS.FullSpace()
+    empty!(model.matrix_inequalities)
     return
 end
 
@@ -228,6 +254,66 @@ function MOI.add_constraint(
 ) where {T}
     model.set = model.set ∩ _set(_polynomial(model.variables, func), set)
     i = _num(model.set, typeof(set))
+    return MOI.ConstraintIndex{typeof(func),typeof(set)}(i)
+end
+
+const _VectorFunction{T} = Union{
+    MOI.VectorOfVariables,
+    MOI.VectorAffineFunction{T},
+    MOI.VectorQuadraticFunction{T},
+    MOI.VectorNonlinearFunction,
+}
+
+function MOI.supports_constraint(
+    ::Model{T},
+    ::Type{<:_VectorFunction{T}},
+    ::Type{<:MOI.AbstractSymmetricMatrixSetTriangle},
+) where {T}
+    return true
+end
+
+function MOI.is_valid(
+    model::Model,
+    ci::MOI.ConstraintIndex{
+        <:MOI.AbstractVectorFunction,
+        <:MOI.AbstractSymmetricMatrixSetTriangle,
+    },
+)
+    return ci.value in eachindex(model.matrix_inequalities)
+end
+
+_scalarize(func::MOI.VectorNonlinearFunction) = func.rows
+_scalarize(func::MOI.AbstractVectorFunction) = MOI.Utilities.scalarize(func)
+
+function _entry(model::Model{T}, func) where {T}
+    return _polynomial(model.variables, _to_polynomial(func, T))
+end
+
+# The entries of a triangle set are given column by column so
+# `(1, 1), (1, 2), (2, 2), (1, 3), ...`
+function _matrix(
+    model::Model{T},
+    func,
+    set::MOI.AbstractSymmetricMatrixSetTriangle,
+) where {T}
+    scalars = _scalarize(func)
+    n = MOI.side_dimension(set)
+    G = Matrix{PolyType{T}}(undef, n, n)
+    k = 0
+    for j in 1:n, i in 1:j
+        k += 1
+        G[i, j] = G[j, i] = _entry(model, scalars[k])
+    end
+    return G
+end
+
+function MOI.add_constraint(
+    model::Model,
+    func::MOI.AbstractVectorFunction,
+    set::MOI.AbstractSymmetricMatrixSetTriangle,
+)
+    push!(model.matrix_inequalities, _matrix(model, func, set))
+    i = length(model.matrix_inequalities)
     return MOI.ConstraintIndex{typeof(func),typeof(set)}(i)
 end
 

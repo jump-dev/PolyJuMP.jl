@@ -1,5 +1,6 @@
 module PolyJuMP
 
+import LinearAlgebra
 import MutableArithmetics as MA
 import StarAlgebras as SA
 

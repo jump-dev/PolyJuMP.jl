@@ -78,6 +78,18 @@ struct OptimalQuadratization <: AbstractQuadratizationMethod
 end
 
 
+# Maps the variables to themselves and decomposes the monomials of degree 2
+# of `monos` and of the decompositions of `quad` into their variables.
+function _decompose_quadratic!(quad, vars, monos)
+    for x in vars
+        quad[x] = x
+	for y in vars
+	    quad[x*y] = x
+	end
+    end
+    return quad
+end
+
 # TODO special case for squares ?
 function decompose(monos::AbstractVector{M}, ::GreedyQuadratization; verbose::Bool=true) where {M<:MP.AbstractMonomial}
     if verbose
@@ -250,11 +262,6 @@ function greedy_phase(monos::AbstractVector{M}; verbose::Bool=true) where {M<:DP
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
         var => var for var in vars
     )
-    for x in vars
-        for y in vars
-            quad[x*y] = x
-        end
-    end
 
     var_to_mono = Dict{M, M}(var => var for var in vars)
     mono_to_var = Dict{M, M}()
@@ -367,11 +374,6 @@ function fallback_phase(monos::AbstractVector{M}; verbose::Bool=true) where {M<:
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
         var => var for var in vars
     )
-    for x in vars
-        for y in vars
-            quad[x*y] = x
-        end
-    end
 
     for mono in monos
         deg = MP.degree(mono)
@@ -392,7 +394,7 @@ function fallback_phase(monos::AbstractVector{M}; verbose::Bool=true) where {M<:
         
         terms2 = terms[1:2*a]
         ep = prod(terms2)
-        while MP.degree(ep) >= 2
+        while MP.degree(ep) > 2
             if haskey(quad, ep)
                 break
             end
@@ -422,6 +424,7 @@ function decompose(monos::AbstractVector{M}, method::OptimalQuadratization; verb
     var_divisor = DataStructures.OrderedDict{MOI.VariableIndex, Union{M,MOI.VariableIndex}}()
 
     optimizer = method.optimizer
+    all_monos = monos
     monos = filter(x -> MP.degree(x) >= 3, monos)
     tmp = Set{M}()
     # find all pairs of variables
@@ -621,12 +624,8 @@ function decompose(monos::AbstractVector{M}, method::OptimalQuadratization; verb
         end
     end
 
-    for x in vars
-        for y in vars
-            quad[x*y] = x
-        end
-    end
 
+    _decompose_quadratic!(quad, vars, all_monos)
     for mono in keys(quad)
         if quad[mono] === nothing
             error("OptimalQuadratization: no decomposition was selected for $mono.")
@@ -674,14 +673,7 @@ function decompose(monos::AbstractVector{M}, method::CompositeQuadratization; ve
         end
     end
 
-    for x in vars
-        quad[x] = x
-        for y in vars
-            quad[x*y] = x
-        end
-    end
-
-    return quad
+    return _decompose_quadratic!(quad, vars, monos)
 end
 
 

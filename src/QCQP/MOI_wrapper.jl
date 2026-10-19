@@ -215,6 +215,17 @@ function MOI.get(model::Optimizer, attr::MOI.AbstractModelAttribute)
     return MOI.get(model.model, attr)
 end
 
+function MOI.supports(model::Optimizer, attr::MOI.AbstractOptimizerAttribute)
+    return MOI.supports(model.model, attr)
+end
+
+function MOI.supports(
+    ::Optimizer,
+    ::Union{QuadratizationMethod,EnforceConsistencyConstraints},
+)
+    return true
+end
+
 function MOI.set(model::Optimizer, attr::MOI.AbstractOptimizerAttribute, value)
     return MOI.set(model.model, attr, value)
 end
@@ -608,11 +619,9 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
     end
     if !isnothing(monos)
         max_deg = maximum(MP.degree.(monos))
-        verbose = if MOI.supports(model, MOI.Silent())
-            !MOI.get(model, MOI.Silent())
-        else
-            true
-        end
+        verbose =
+            MOI.supports(model, MOI.Silent()) &&
+            MOI.get(model, MOI.Silent()) === false
         div = decompose(monos, model.quadratization_type, verbose=verbose)
         for mono in sort(collect(keys(div)))
             if haskey(vars, mono)

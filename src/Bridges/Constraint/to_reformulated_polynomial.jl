@@ -1,27 +1,46 @@
-import MultivariatePolynomials as MP
-import DynamicPolynomials
+"""
+    ToReformulatedPolynomialBridge{T,S} <: Bridges.Constraint.AbstractBridge
 
+`ToReformulatedPolynomialBridge` implements a sparsity-preserving
+reformulation of `f(x) in S` into `g(x, y) in S` where `f` is a
+`MOI.ScalarNonlinearFunction`: products and powers of sums are replaced by
+auxiliary variables `y`, so that converting `g` into a polynomial does not
+expand them.
 
-# struct ToReformulatedPolynomialBridge{T,S} <:
-#        MOI.Bridges.Constraint.AbstractFunctionConversionBridge{FuncType{T},S}
-#     constraint::MOI.ConstraintIndex{FuncType{T},S}
-# end
+Since source and target are both `MOI.ScalarNonlinearFunction`, this bridge
+must not be added to a `MOI.Bridges.LazyBridgeOptimizer` (it would bridge
+its own output); use it in a `MOI.Bridges.Constraint.SingleBridgeOptimizer`
+on top of an optimizer converting `MOI.ScalarNonlinearFunction` into
+polynomials, e.g., [`PolyJuMP.QCQP.Optimizer`](@ref).
+
+## Source node
+
+`ToReformulatedPolynomialBridge` supports:
+
+  * `MOI.ScalarNonlinearFunction` in `S`
+
+## Target nodes
+
+`ToReformulatedPolynomialBridge` creates:
+
+  * `MOI.ScalarNonlinearFunction` in `S`
+  * `MOI.ScalarNonlinearFunction` in `MOI.EqualTo{T}`, defining the
+    auxiliary variables
+  * `MOI.VariableIndex` in `MOI.Interval{T}`, the auxiliary variables
+"""
 struct ToReformulatedPolynomialBridge{T,S} <:
        MOI.Bridges.Constraint.AbstractFunctionConversionBridge{MOI.ScalarNonlinearFunction,S}
     constraint::MOI.ConstraintIndex{MOI.ScalarNonlinearFunction,S}
 end
 
 function MOI.Bridges.Constraint.bridge_constraint(
-    ::Type{ToReformulatedPolynomialBridge{T}},
+    ::Type{ToReformulatedPolynomialBridge{T,S}},
     model::MOI.ModelLike,
     func::MOI.ScalarNonlinearFunction,
-	s::S,
+    set::S,
 ) where {T,S}
-	nonlin_func = convert(MOI.ScalarNonlinearFunction, func)
-	poly = PolyJuMP.Bridges._to_reformulated_polynomial!(model, T, nonlin_func)
-	# poly_func = convert(F, poly)
-	# constraint = MOI.add_constraint(model, poly_func, s)
-	constraint = MOI.add_constraint(model, poly, s)
+    reformulated = PolyJuMP.Bridges._to_reformulated_polynomial!(model, T, func)
+    constraint = MOI.add_constraint(model, reformulated, set)
     return ToReformulatedPolynomialBridge{T,S}(constraint)
 end
 

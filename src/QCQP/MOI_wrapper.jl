@@ -3,7 +3,22 @@ import MathOptInterface as MOI
 const _Model{F,S} =
     MOI.Utilities.UniversalFallback{MOI.Utilities.VectorOfConstraints{F,S}}
 
+"""
+    QuadratizationMethod() <: MOI.AbstractOptimizerAttribute
+
+Quadratization method used by the optimizer, an
+[`AbstractQuadratizationMethod`](@ref); [`CompositeQuadratization()`](@ref)
+by default.
+"""
 struct QuadratizationMethod <: MOI.AbstractOptimizerAttribute end
+
+"""
+    EnforceConsistencyConstraints() <: MOI.AbstractOptimizerAttribute
+
+If `true`, adds the redundant constraints `v1 * v2 == v3 * v4` for every
+pair of products of variables representing the same monomial.
+`false` by default since it can create many constraints.
+"""
 struct EnforceConsistencyConstraints <: MOI.AbstractOptimizerAttribute end
 
 mutable struct Optimizer{T,O<:MOI.ModelLike} <: MOI.AbstractOptimizer
@@ -11,8 +26,8 @@ mutable struct Optimizer{T,O<:MOI.ModelLike} <: MOI.AbstractOptimizer
     objective::Union{Nothing,PolyJuMP.ScalarPolynomialFunction{T}}
     constraints::DataStructures.OrderedDict{Type,Tuple{Type,_Model}}
     index_map::Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}
-	quadratization_type::AbstractQuadratizationMethod
-	consistency_constraints::Bool
+    quadratization_type::AbstractQuadratizationMethod
+    consistency_constraints::Bool
 end
 
 function Optimizer{T}(optimizer::MOI.ModelLike) where {T}
@@ -28,8 +43,8 @@ function Optimizer{T}(optimizer::MOI.ModelLike) where {T}
         nothing,
         DataStructures.OrderedDict{Type,MOI.Utilities.VectorOfConstraints}(),
         Dict{MOI.ConstraintIndex,MOI.ConstraintIndex}(),
-		CompositeQuadratization(),
-		false
+        CompositeQuadratization(),
+        false
     )
 end
 
@@ -168,12 +183,20 @@ function MOI.supports(
     return true
 end
 
-# function MOI.supports(
-#     ::Optimizer,
-#     ::MOI.ObjectiveFunction{<:MOI.ScalarNonlinearFunction},
-# )
-#     return false
-# end
+function MOI.supports(
+    ::Optimizer,
+    ::MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction},
+)
+    return false
+end
+
+function MOI.supports_constraint(
+    ::Optimizer,
+    ::Type{MOI.ScalarNonlinearFunction},
+    ::Type{<:MOI.AbstractScalarSet},
+)
+    return false
+end
 
 function MOI.set(
     model::Optimizer{T},
@@ -193,11 +216,11 @@ function MOI.get(model::Optimizer, attr::MOI.AbstractModelAttribute)
 end
 
 function MOI.set(model::Optimizer, attr::MOI.AbstractOptimizerAttribute, value)
-	return MOI.set(model.model, attr, value)
+    return MOI.set(model.model, attr, value)
 end
 
 function MOI.get(model::Optimizer, attr::MOI.AbstractOptimizerAttribute)
-	return MOI.get(model.model, attr)
+    return MOI.get(model.model, attr)
 end
 
 function MOI.supports_constraint(
@@ -283,33 +306,33 @@ MOI.optimize!(model::Optimizer) = MOI.optimize!(model.model)
 MOI.Utilities.map_indices(::Any, ::QuadratizationMethod, x) = x
 
 function MOI.set(
-	model::Optimizer{T},
-	::QuadratizationMethod,
-	value::AbstractQuadratizationMethod
+    model::Optimizer{T},
+    ::QuadratizationMethod,
+    value::AbstractQuadratizationMethod
 ) where {T}
-	model.quadratization_type = value
+    model.quadratization_type = value
 end
 
 function MOI.get(
-	model::Optimizer{T},
-	::QuadratizationMethod,
+    model::Optimizer{T},
+    ::QuadratizationMethod,
 ) where {T}
-	return model.quadratization_type
+    return model.quadratization_type
 end
 
 function MOI.set(
-	model::Optimizer{T},
-	::EnforceConsistencyConstraints,
-	value::Bool
+    model::Optimizer{T},
+    ::EnforceConsistencyConstraints,
+    value::Bool
 ) where {T}
-	model.consistency_constraints = value
+    model.consistency_constraints = value
 end
 
 function MOI.get(
-	model::Optimizer{T},
-	::EnforceConsistencyConstraints,
+    model::Optimizer{T},
+    ::EnforceConsistencyConstraints,
 ) where {T}
-	return model.consistency_constraints
+    return model.consistency_constraints
 end
 
 function _quad_convert(p::MP.AbstractPolynomialLike{T}, index, div) where {T}
@@ -427,7 +450,6 @@ function monomial_variable_index(
             end
             vi = monomial_variable_index(model, d, div, var)
             lb_var, ub_var = MOI.Utilities.get_bounds(model, T, vi)
-			# println("got [$lb_var, $ub_var] for $vi")
             F = float(T)
             var_bounds = IntervalArithmetic.interval(
                 lb_var == typemin(lb_var) ? typemin(F) : float(lb_var),
@@ -508,57 +530,62 @@ function _add_constraints(
     return
 end
 
-function _add_consistency_constraints!(
-	model::Optimizer{T},
-	vars::Dict,
-	monos::Vector{Vector},
-	cache::Set,
-	mono::MP.AbstractMonomialLike
-) where {T}
-	max_deg = length(monos)
-	v = vars[mono]
-	for a in keys(vars)
-		if MP.degree(a) <= 1
-			continue
-		end
-		va = vars[a]
-		key = convert(MOI.ScalarNonlinearFunction, one(T)*va*v)
-		if key in cache
-			println("pruned branch")
-			continue
-		end
-		push!(cache, key)
+# Keys of the products `v1 * v2` and of the pairs of products `v1*v2, v3*v4`
+# already considered, independent of the order of the factors.
+_product_key(a::MOI.VariableIndex, b::MOI.VariableIndex) = minmax(a.value, b.value)
+_products_key(p, q) = minmax(p, q)
 
-		deg = MP.degree(a)+MP.degree(mono)
-		for b in reduce(vcat, monos[max(1, deg-max_deg):min(deg-1,max_deg)])
-			if b == a
-				continue
-			end
-			vb = vars[b]
-			for c in monos[deg-MP.degree(b)]
-				if c == a
-					continue
-				end
-				vc = vars[c]
-				key = convert(MOI.ScalarNonlinearFunction, one(T)*va*v + one(T)*vb*vc)
-				if key in cache
-					continue
-				end
-				# This could be nice but memory-wise it doesn't seem very smart
-				push!(cache, key)
-				if mono*a == b*c
-					println("added $mono * $a == $b * $c")
-					# push!(cache, key)
-					MOI.Utilities.normalize_and_add_constraint(
-						model,
-						MA.@rewrite(one(T)*v*va - one(T)*vb*vc),
-						MOI.EqualTo(zero(T));
-						allow_modify_function = true,
-					)
-				end
-			end
-		end
-	end
+function _add_consistency_constraints!(
+    model::Optimizer{T},
+    vars::Dict,
+    monos::Vector{Vector},
+    cache::Set,
+    mono::MP.AbstractMonomialLike;
+    verbose::Bool,
+) where {T}
+    max_deg = length(monos)
+    v = vars[mono]
+    for a in keys(vars)
+        if MP.degree(a) <= 1
+            continue
+        end
+        va = vars[a]
+        key = _product_key(va, v)
+        if key in cache
+            continue
+        end
+        push!(cache, key)
+
+        deg = MP.degree(a)+MP.degree(mono)
+        for b in reduce(vcat, monos[max(1, deg-max_deg):min(deg-1,max_deg)])
+            if b == a
+                continue
+            end
+            vb = vars[b]
+            for c in monos[deg-MP.degree(b)]
+                if c == a
+                    continue
+                end
+                vc = vars[c]
+                key = _products_key(_product_key(va, v), _product_key(vb, vc))
+                if key in cache
+                    continue
+                end
+                push!(cache, key)
+                if mono*a == b*c
+                    if verbose
+                        println("Consistency constraint: $mono * $a == $b * $c")
+                    end
+                    MOI.Utilities.normalize_and_add_constraint(
+                        model,
+                        MA.@rewrite(one(T)*v*va - one(T)*vb*vc),
+                        MOI.EqualTo(zero(T));
+                        allow_modify_function = true,
+                    )
+                end
+            end
+        end
+    end
 end
 
 function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
@@ -580,13 +607,13 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
         end
     end
     if !isnothing(monos)
-		max_deg = maximum(MP.degree.(monos))
-		verbose = if MOI.supports(model, MOI.Silent())
-			!MOI.get(model, MOI.Silent())
-		else
-			true
-		end
-		div = decompose(monos, model.quadratization_type, verbose=verbose)
+        max_deg = maximum(MP.degree.(monos))
+        verbose = if MOI.supports(model, MOI.Silent())
+            !MOI.get(model, MOI.Silent())
+        else
+            true
+        end
+        div = decompose(monos, model.quadratization_type, verbose=verbose)
         for mono in sort(collect(keys(div)))
             if haskey(vars, mono)
                 continue
@@ -596,26 +623,28 @@ function MOI.Utilities.final_touch(model::Optimizer{T}, _) where {T}
             b = MP.div_multiple(mono, a)
             monomial_variable_index(model, vars, div, b)
         end
-		if verbose
-			println("Done with quadratization!")
-		end
-		if model.consistency_constraints
-			cache = Set{MOI.ScalarNonlinearFunction}()
-			sorted_monos = Vector[[] for _ in 1:max_deg]
-			for mono in keys(vars)
-				deg = MP.degree(mono)
-				push!(sorted_monos[deg], mono)
-			end
-			i = 1
-			l = length(keys(vars))
-			for mono in keys(vars)
-				if MP.degree(mono) > 1
-					_add_consistency_constraints!(model, vars, sorted_monos, cache, mono)
-				end
-				println("finished mono $i/$l")
-				i += 1
-			end
-		end
+        if verbose
+            println("Done with quadratization!")
+        end
+        if model.consistency_constraints
+            cache = Set{Any}()
+            sorted_monos = Vector[[] for _ in 1:max_deg]
+            for mono in keys(vars)
+                deg = MP.degree(mono)
+                push!(sorted_monos[deg], mono)
+            end
+            i = 1
+            l = length(keys(vars))
+            for mono in keys(vars)
+                if MP.degree(mono) > 1
+                    _add_consistency_constraints!(model, vars, sorted_monos, cache, mono; verbose)
+                end
+                if verbose
+                    println("Consistency constraints: finished monomial $i/$l")
+                end
+                i += 1
+            end
+        end
         if !isnothing(model.objective)
             func, index_to_var = _subs!(model.objective, index_to_var)
             obj = _quad_convert(func.polynomial, vars, div)

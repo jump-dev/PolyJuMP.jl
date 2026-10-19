@@ -88,7 +88,7 @@ function _to_polynomial!(
         return a - b
     elseif _is_operator(expr, :^) && length(operands) == 2
         a, b = _to_polynomial!.(Ref(d), T, operands)
-		b_int = convert(Int, b)
+        b_int = convert(Int, b)
         if !(b isa Integer && b_int == b)
             b = b_int
         end

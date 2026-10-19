@@ -1,7 +1,33 @@
-import MultivariatePolynomials as MP
-import DynamicPolynomials
+"""
+    ToReformulatedPolynomialBridge{T} <: Bridges.Objective.AbstractBridge
 
+`ToReformulatedPolynomialBridge` implements a sparsity-preserving
+reformulation of the objective `f(x)` into `g(x, y)` where `f` is a
+`MOI.ScalarNonlinearFunction`: products and powers of sums are replaced by
+auxiliary variables `y`, so that converting `g` into a polynomial does not
+expand them.
 
+Since source and target are both `MOI.ScalarNonlinearFunction`, this bridge
+must not be added to a `MOI.Bridges.LazyBridgeOptimizer` (it would bridge
+its own output); use it in a `MOI.Bridges.Objective.SingleBridgeOptimizer`
+on top of an optimizer converting `MOI.ScalarNonlinearFunction` into
+polynomials, e.g., [`PolyJuMP.QCQP.Optimizer`](@ref).
+
+## Source node
+
+`ToReformulatedPolynomialBridge` supports:
+
+ * `MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction}`
+
+## Target nodes
+
+`ToReformulatedPolynomialBridge` creates:
+
+ * `MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction}`
+ * `MOI.ScalarNonlinearFunction` in `MOI.EqualTo{T}`, defining the auxiliary
+   variables
+ * `MOI.VariableIndex` in `MOI.Interval{T}`, the auxiliary variables
+"""
 struct ToReformulatedPolynomialBridge{T} <: MOI.Bridges.Objective.AbstractBridge end
 
 function MOI.Bridges.Objective.bridge_objective(
@@ -9,10 +35,9 @@ function MOI.Bridges.Objective.bridge_objective(
     model::MOI.ModelLike,
     func::MOI.ScalarNonlinearFunction,
 ) where {T}
-    F = FuncType{T}
-	nonlin_func = convert(MOI.ScalarNonlinearFunction, func)
-	poly = PolyJuMP.Bridges._to_reformulated_polynomial!(model, T, nonlin_func)
-	MOI.set(model, MOI.ObjectiveFunction{F}(), poly)
+    reformulated = PolyJuMP.Bridges._to_reformulated_polynomial!(model, T, func)
+    F = MOI.ScalarNonlinearFunction
+    MOI.set(model, MOI.ObjectiveFunction{F}(), reformulated)
     return ToReformulatedPolynomialBridge{T}()
 end
 

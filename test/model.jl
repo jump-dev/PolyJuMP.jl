@@ -2,6 +2,7 @@ module TestModel
 
 using Test
 
+import LinearAlgebra
 import MultivariatePolynomials as MP
 import ECOS
 using JuMP
@@ -44,8 +45,28 @@ function test_matrix_inequality_triangle()
     return
 end
 
-# Relaxation optimizer supporting matrix inequalities, only used to test the
-# attributes, not to solve the relaxation
+function test_matrix_inequality_nonlinear()
+    model = PolyJuMP.Model{Float64}()
+    vi = MOI.add_variable(model)
+    func = MOI.VectorNonlinearFunction([
+        MOI.ScalarNonlinearFunction(:+, Any[1.0]),
+        MOI.ScalarNonlinearFunction(:^, Any[vi, 2]),
+        MOI.ScalarNonlinearFunction(:+, Any[1.0]),
+    ])
+    set = MOI.PositiveSemidefiniteConeTriangle(2)
+    @test MOI.supports_constraint(model, typeof(func), typeof(set))
+    ci = MOI.add_constraint(model, func, set)
+    @test MOI.is_valid(model, ci)
+    x = only(MP.variables(model))
+    @test only(model.matrix_inequalities) == [1 x^2; x^2 1]
+    return
+end
+
+include("testpolymodule.jl")
+
+# Relaxation optimizer supporting matrix inequalities with the cones of
+# `DummyPolyModule`. As these cones are not supported by any solver, the
+# relaxation can only be solved by a `MOI.Utilities.MockOptimizer`.
 mutable struct MatrixOptimizer{T} <: PolyJuMP.AbstractRelaxationOptimizer{T}
     model::PolyJuMP.Model{T}
     multiplier_maxdegree::Dict{MOI.ConstraintIndex,Int}
@@ -56,11 +77,11 @@ mutable struct MatrixOptimizer{T} <: PolyJuMP.AbstractRelaxationOptimizer{T}
     solve_time::Float64
 end
 
-function MatrixOptimizer{T}() where {T}
+function MatrixOptimizer{T}(solver = nothing) where {T}
     return MatrixOptimizer{T}(
         PolyJuMP.Model{T}(),
         Dict{MOI.ConstraintIndex,Int}(),
-        nothing,
+        solver,
         nothing,
         PolyJuMP.Solution{T}[],
         sqrt(eps(T)),
@@ -68,7 +89,50 @@ function MatrixOptimizer{T}() where {T}
     )
 end
 
-PolyJuMP.matrix_nonnegativity_cone(::MatrixOptimizer) = MOI.Nonnegatives(1)
+PolyJuMP.nonnegativity_cone(::MatrixOptimizer) = DummyPolyModule.DummyNonNeg()
+
+function PolyJuMP.matrix_nonnegativity_cone(::MatrixOptimizer)
+    return DummyPolyModule.DummyPosDefMatrix()
+end
+
+function PolyJuMP.recover_solutions(
+    ::MatrixOptimizer{T},
+    relaxation,
+    cref,
+    lagrangian,
+) where {T}
+    return PolyJuMP.Solution{T}[]
+end
+
+function _mock_solver()
+    return MOI.Utilities.MockOptimizer(
+        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}()),
+    )
+end
+
+function test_matrix_inequality_relaxation()
+    model = JuMP.Model(() -> MatrixOptimizer{Float64}(_mock_solver))
+    JuMP.@variable(model, x)
+    matrix = JuMP.@constraint(
+        model,
+        LinearAlgebra.Symmetric([1 x; x 1]) in JuMP.PSDCone(),
+    )
+    JuMP.@objective(model, Min, x)
+    MOI.set(model, PolyJuMP.MultiplierMaxdegree(), matrix, 2)
+    @test MOI.get(model, PolyJuMP.MultiplierMaxdegree(), matrix) == 2
+    JuMP.optimize!(model)
+    relaxation = JuMP.unsafe_backend(model).relaxation
+    F, S = only(filter(JuMP.list_of_constraint_types(relaxation)) do (_, S)
+        return S <: DummyPolyModule.PosDefMatrix
+    end)
+    cons = JuMP.all_constraints(relaxation, F, S)
+    # The multiplier of the matrix inequality is a `2 × 2` matrix of
+    # polynomials of degree `2`
+    set = JuMP.constraint_object(only(cons)).set
+    @test size(set.monomials) == (2, 2)
+    @test all(m -> MP.maxdegree(m) == 2, set.monomials)
+    return
+end
 
 function test_multiplier_maxdegree_square_bridge()
     optimizer = MatrixOptimizer{Float64}()

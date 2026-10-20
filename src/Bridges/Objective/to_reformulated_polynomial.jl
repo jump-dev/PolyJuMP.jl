@@ -8,10 +8,9 @@ auxiliary variables `y`, so that converting `g` into a polynomial does not
 expand them.
 
 Since source and target are both `MOI.ScalarNonlinearFunction`, this bridge
-must not be added to a `MOI.Bridges.LazyBridgeOptimizer` (it would bridge
-its own output); use it in a `MOI.Bridges.Objective.SingleBridgeOptimizer`
-on top of an optimizer converting `MOI.ScalarNonlinearFunction` into
-polynomials, e.g., [`PolyJuMP.QCQP.Optimizer`](@ref).
+doesn't have any effect when added to a `MOI.Bridges.LazyBridgeOptimizer`; use it in a
+`MOI.Bridges.Objective.SingleBridgeOptimizer` on top of an optimizer converting
+`MOI.ScalarNonlinearFunction` into polynomials, e.g., [`PolyJuMP.QCQP.Optimizer`](@ref).
 
 ## Source node
 

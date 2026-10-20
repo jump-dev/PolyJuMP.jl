@@ -50,6 +50,22 @@ end
 
 Optimizer(model::MOI.ModelLike) = Optimizer{Float64}(model)
 
+function optimizer(model::MOI.ModelLike; preprocessing=false)
+	optimizer = Optimizer(model)
+	if preprocessing
+		bridge = PolyJuMP.Bridges.Constraint.ToPolynomialBridge{Float64}
+		optimizer = MOI.Bridges.Constraint.SingleBridgeOptimizer{bridge}(optimizer)
+		bridge = PolyJuMP.Bridges.Objective.ToPolynomialBridge{Float64}
+		optimizer = MOI.Bridges.Objective.SingleBridgeOptimizer{bridge}(optimizer)
+
+		bridge = PolyJuMP.Bridges.Constraint.ToReformulatedPolynomialBridge{Float64}
+		optimizer = MOI.Bridges.Constraint.SingleBridgeOptimizer{bridge}(optimizer)
+		bridge = PolyJuMP.Bridges.Objective.ToReformulatedPolynomialBridge{Float64}
+		optimizer = MOI.Bridges.Objective.SingleBridgeOptimizer{bridge}(optimizer)
+	end
+	return optimizer
+end
+
 function MOI.get(
     model::Optimizer{T},
     attr::MOI.Bridges.ListOfNonstandardBridges,

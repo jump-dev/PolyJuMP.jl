@@ -241,23 +241,23 @@ end
 # monomial order (and thus the tie-breaking) is the same, and the result is
 # mapped back. DynamicPolynomials monomials, used by `QCQP.Optimizer`, take
 # the direct path below, unchanged.
-function greedy_phase(monos::AbstractVector{M}; verbose::Bool=true) where {M<:MP.AbstractMonomial}
-    vars = MP.variables(monos)
-    if isempty(vars)
-        return DataStructures.OrderedDict{M,Union{Nothing,M}}()
-    end
-    DP.@polyvar dvars[1:length(vars)]
-    to_dynamic(m) = prod(dvars[i]^MP.degree(m, vars[i]) for i in eachindex(vars); init = MP.constant_monomial(dvars[1]))
-    from_dynamic(m) = convert(M, prod(vars[i]^MP.degree(m, dvars[i]) for i in eachindex(vars); init = MP.constant_monomial(vars[1])))
-    dquad = greedy_phase(map(to_dynamic, monos); verbose = verbose)
-    quad = DataStructures.OrderedDict{M,Union{Nothing,M}}()
-    for (k, v) in dquad
-        quad[from_dynamic(k)] = v === nothing ? nothing : from_dynamic(v)
-    end
-    return quad
-end
+# function greedy_phase(monos::AbstractVector{M}; verbose::Bool=true) where {M<:MP.AbstractMonomial}
+#     vars = MP.variables(monos)
+#     if isempty(vars)
+#         return DataStructures.OrderedDict{M,Union{Nothing,M}}()
+#     end
+#     DP.@polyvar dvars[1:length(vars)]
+#     to_dynamic(m) = prod(dvars[i]^MP.degree(m, vars[i]) for i in eachindex(vars); init = MP.constant_monomial(dvars[1]))
+#     from_dynamic(m) = convert(M, prod(vars[i]^MP.degree(m, dvars[i]) for i in eachindex(vars); init = MP.constant_monomial(vars[1])))
+#     dquad = greedy_phase(map(to_dynamic, monos); verbose = verbose)
+#     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}()
+#     for (k, v) in dquad
+#         quad[from_dynamic(k)] = v === nothing ? nothing : from_dynamic(v)
+#     end
+#     return quad
+# end
 
-function greedy_phase(monos::AbstractVector{M}; verbose::Bool=true) where {M<:DP.Monomial}
+function greedy_phase(monos::AbstractVector{M}; verbose::Bool=true) where {M<:MP.AbstractMonomial}
     vars = MP.variables(monos)
     quad = DataStructures.OrderedDict{M,Union{Nothing,M}}(
         var => var for var in vars
@@ -268,7 +268,6 @@ function greedy_phase(monos::AbstractVector{M}; verbose::Bool=true) where {M<:DP
 
     occurrence = DataStructures.PriorityQueue{M, Tuple{Int, M}}(Base.Order.Reverse)
 
-    aux_var_index = 1
     monos_list = M[mono for mono in monos]
     while any(x -> MP.degree(x) > 2, monos_list)
         empty!(occurrence)
@@ -308,9 +307,7 @@ function greedy_phase(monos::AbstractVector{M}; verbose::Bool=true) where {M<:DP
                     if haskey(mono_to_var, a)
                         v = mono_to_var[a]
                     else
-                        DP.@polyvar v[aux_var_index]
-                        aux_var_index += 1
-                        v = v[1]
+                        v = MP.similar_variable(vars[begin], :v)
                         var_to_mono[v] = a
                         mono_to_var[a] = v
                     end
@@ -334,7 +331,7 @@ function greedy_phase(monos::AbstractVector{M}; verbose::Bool=true) where {M<:DP
             return prod(_evaluate.(nonzero_vars), init=one(M))
         end
     end
-    
+
     stack = DataStructures.Stack{M}()
     for mono in monos_list
         if MP.degree(mono) > 1

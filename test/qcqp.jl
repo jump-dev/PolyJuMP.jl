@@ -58,6 +58,12 @@ function test_decompose(x, y, _)
 		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Sequential, smart=true, variable_reuse=true) =>
 			[y^3 => y, x^2 * y^3 => x^2],
     )
+    # Without the smart phase, the greedy phase has to create new variables
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Greedy, smart=false, variable_reuse=false) =>
+			[y^3 => y, x^2 * y^3 => x * y, x * y^2 => y],
+    )
     for decompo in (PolyJuMP.QCQP.Greedy, PolyJuMP.QCQP.Balanced)
         _test_decompose(
             monos,
@@ -458,6 +464,63 @@ function test_reformulated_polynomial_bridge(_, _, T)
     # The same sum appearing twice in a function reuses its auxiliary variable
     add = MOI.ScalarNonlinearFunction(:+, Any[pow(sum_ab, 4), pow(sum_ab, 5)])
     @test num_aux(add) == 1
+    return
+end
+
+function _test_optimizer_preprocessing(T, obj::Bool)
+    inner = Model{T}()
+    optimizer = MOI.Utilities.MockOptimizer(inner)
+    model = JuMP.GenericModel{T}() do
+        return PolyJuMP.QCQP.optimizer(optimizer; preprocessing = true)
+    end
+    PolyJuMP.@variable(model, 0 <= a <= 1)
+    PolyJuMP.@variable(model, 0 <= b <= 1)
+    if obj
+        PolyJuMP.@objective(model, Min, (a + b)^4)
+    else
+        PolyJuMP.@constraint(model, (a + b)^4 <= 1)
+    end
+    PolyJuMP.optimize!(model)
+    # `a + b` is replaced by `y` and `y^4` is quadratized with `y2 = y^2`
+    vis = MOI.get(inner, MOI.ListOfVariableIndices())
+    @test length(vis) == 4
+    a, b, y, y2 = vis
+    @test MOI.Utilities.get_bounds(inner, T, a) == (0, 1)
+    @test MOI.Utilities.get_bounds(inner, T, b) == (0, 1)
+    if !obj
+        @test MOI.Utilities.get_bounds(inner, T, y) == (0, 2)
+        @test MOI.Utilities.get_bounds(inner, T, y2) == (0, 4)
+    end
+    o = one(T)
+    F = MOI.ScalarQuadraticFunction{T}
+    S = MOI.EqualTo{T}
+    cis = MOI.get(inner, MOI.ListOfConstraintIndices{F,S}())
+    @test length(cis) == 2
+    @test MOI.get(inner, MOI.ConstraintFunction(), cis[1]) ≈ y2 - o * y * y
+    @test MOI.get(inner, MOI.ConstraintFunction(), cis[2]) ≈
+          convert(F, o * a + o * b - o * y)
+    for ci in cis
+        @test MOI.get(inner, MOI.ConstraintSet(), ci) == MOI.EqualTo(zero(T))
+    end
+    if obj
+        @test MOI.get(inner, MOI.ObjectiveFunction{F}()) ≈ o * y2 * y2
+    else
+        S = MOI.LessThan{T}
+        cis = MOI.get(inner, MOI.ListOfConstraintIndices{F,S}())
+        @test length(cis) == 1
+        @test MOI.get(inner, MOI.ConstraintFunction(), cis[1]) ≈ o * y2 * y2
+        @test MOI.get(inner, MOI.ConstraintSet(), cis[1]) == MOI.LessThan(o)
+    end
+    return
+end
+
+function test_optimizer_preprocessing(_, _, T)
+    # `QCQP.optimizer` only supports `Float64`
+    T == Float64 || return
+    inner = MOI.Utilities.MockOptimizer(Model{T}())
+    @test PolyJuMP.QCQP.optimizer(inner) isa PolyJuMP.QCQP.Optimizer{T}
+    _test_optimizer_preprocessing(T, false)
+    _test_optimizer_preprocessing(T, true)
     return
 end
 

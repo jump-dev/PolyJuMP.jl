@@ -54,7 +54,7 @@ end
 
 function MOI.supports_constraint(
     ::Type{ToReformulatedPolynomialBridge{T}},
-    ::Type{<:MOI.ScalarNonlinearFunction},
+    ::Type{MOI.ScalarNonlinearFunction},
     ::Type{<:MOI.AbstractScalarSet},
 ) where {T}
     return true
@@ -62,7 +62,7 @@ end
 
 function MOI.Bridges.Constraint.concrete_bridge_type(
     ::Type{<:ToReformulatedPolynomialBridge{T}},
-    ::Type{<:MOI.ScalarNonlinearFunction},
+    ::Type{MOI.ScalarNonlinearFunction},
     ::Type{S},
 ) where {T,S<:MOI.AbstractScalarSet}
     return ToReformulatedPolynomialBridge{T,S}

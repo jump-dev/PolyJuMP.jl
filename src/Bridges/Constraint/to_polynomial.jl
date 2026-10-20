@@ -19,7 +19,7 @@ const FuncType{T} = PolyJuMP.ScalarPolynomialFunction{T,PolyType{T}}
 
 `ToPolynomialBridge` supports:
 
-  * `F` in `S` where `F` is a `MOI.AbstractScalarFunction` for which
+  * `F` in `S` where `F` is a `MOI.ScalarNonlinearFunction` for which
    `convert(::Type{PolyJuMP.ScalarPolynomialFunction}, ::Type{F})`. That is for
    instance the case for `MOI.VariableIndex`, `MOI.ScalarAffineFunction` and
     `MOI.ScalarQuadraticFunction`.
@@ -38,7 +38,7 @@ end
 function MOI.Bridges.Constraint.bridge_constraint(
     ::Type{ToPolynomialBridge{T,S}},
     model,
-    f::MOI.AbstractScalarFunction,
+    f::MOI.ScalarNonlinearFunction,
     s::S,
 ) where {T,S}
     constraint = MOI.add_constraint(model, convert(FuncType{T}, f), s)
@@ -47,7 +47,7 @@ end
 
 function MOI.supports_constraint(
     ::Type{ToPolynomialBridge{T}},
-    ::Type{<:MOI.AbstractScalarFunction},
+    ::Type{<:MOI.ScalarNonlinearFunction},
     ::Type{<:MOI.AbstractScalarSet},
 ) where {T}
     return true
@@ -67,7 +67,7 @@ end
 
 function MOI.Bridges.Constraint.concrete_bridge_type(
     ::Type{<:ToPolynomialBridge{T}},
-    ::Type{<:MOI.AbstractScalarFunction},
+    ::Type{<:MOI.ScalarNonlinearFunction},
     ::Type{S},
 ) where {T,S<:MOI.AbstractScalarSet}
     return ToPolynomialBridge{T,S}

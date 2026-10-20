@@ -22,7 +22,7 @@ where ``f(x)`` is a scalar function and ``p(x)`` is a polynomial.
 
 `ToPolynomialBridge` supports:
 
- * `MOI.ObjectiveFunction{F}` where `F` is a `MOI.AbstractScalarFunction` for
+ * `MOI.ObjectiveFunction{F}` where `F` is a `MOI.ScalarNonlinearFunction` for
    which `convert(::Type{PolyJuMP.ScalarPolynomialFunction}, ::Type{F})`. That
    is for instance the case for `MOI.VariableIndex`, `MOI.ScalarAffineFunction`
    and `MOI.ScalarQuadraticFunction`.
@@ -38,7 +38,7 @@ struct ToPolynomialBridge{T} <: MOI.Bridges.Objective.AbstractBridge end
 function MOI.Bridges.Objective.bridge_objective(
     ::Type{ToPolynomialBridge{T}},
     model::MOI.ModelLike,
-    func::MOI.AbstractScalarFunction,
+    func::MOI.ScalarNonlinearFunction,
 ) where {T}
     F = FuncType{T}
     MOI.set(model, MOI.ObjectiveFunction{F}(), convert(F, func))
@@ -48,7 +48,7 @@ end
 function MOI.Bridges.Objective.supports_objective_function(
     ::Type{ToPolynomialBridge{T}},
     ::Type{F},
-) where {T,F<:MOI.AbstractScalarFunction}
+) where {T,F<:MOI.ScalarNonlinearFunction}
     return MOI.Utilities.is_coefficient_type(F, T)
 end
 

@@ -210,6 +210,12 @@ function test_coefficient_sums(var)
             )
         end
     end
+    for a in (α, 2α + 1)
+        result = MA.@rewrite((2x + 3) + a * (x + 1))
+        @test JuMP.isequal_canonical(MP.coefficient(result, x), 2 + a)
+        @test JuMP.isequal_canonical(MP.coefficient(result, one(x)), 3 + a)
+        @test typeof(a + q) === MA.promote_operation(+, typeof(a), typeof(q))
+    end
     return
 end
 

@@ -1,54 +1,33 @@
 export Poly
 
-for op in (:+, :-)
+# Bare monomials are MP objects; terms and algebra elements use SA's extensions.
+for Scalar in (JuMP.AbstractJuMPScalar, MOI.AbstractScalarFunction)
     @eval begin
-        function Base.$op(
-            a::JuMP.AbstractJuMPScalar,
-            p::MP.AbstractPolynomialLike,
-        )
-            p = p isa MP.AbstractMonomialLike ? p : MB.implicit(p)
-            return $op(MP.constant_term(a, p), p)
+        Base.:*(a::$Scalar, m::MP.AbstractMonomialLike) = MP.term(a, m)
+        Base.:*(m::MP.AbstractMonomialLike, a::$Scalar) = MP.term(a, m)
+        function MA.promote_operation(
+            ::typeof(*),
+            ::Type{T},
+            ::Type{M},
+        ) where {T<:$Scalar,M<:MP.AbstractMonomialLike}
+            return MP.term_type(M, T)
         end
-
-        function Base.$op(
-            p::MP.AbstractPolynomialLike,
-            a::JuMP.AbstractJuMPScalar,
-        )
-            p = p isa MP.AbstractMonomialLike ? p : MB.implicit(p)
-            return $op(p, MP.constant_term(a, p))
+        function MA.promote_operation(
+            ::typeof(*),
+            ::Type{M},
+            ::Type{T},
+        ) where {M<:MP.AbstractMonomialLike,T<:$Scalar}
+            return MP.term_type(M, T)
         end
     end
-end
-
-# Resolve the overlap with MP's methods for scalars of the coefficient type.
-for Scalar in (JuMP.AbstractJuMPScalar, MOI.AbstractScalarFunction),
-    op in (:+, :-)
-
-    @eval begin
-        function Base.$op(
-            a::T,
-            p::Union{MP.AbstractPolynomial{T},MP.AbstractTerm{T}},
-        ) where {T<:$Scalar}
-            p = MB.implicit(p)
-            return $op(MP.constant_term(a, p), p)
-        end
-
-        function Base.$op(
-            p::Union{MP.AbstractPolynomial{T},MP.AbstractTerm{T}},
-            a::T,
-        ) where {T<:$Scalar}
-            p = MB.implicit(p)
-            return $op(p, MP.constant_term(a, p))
+    for op in (:+, :-)
+        @eval begin
+            Base.$op(a::$Scalar, m::MP.AbstractMonomialLike) =
+                $op(a, MP.term(m))
+            Base.$op(m::MP.AbstractMonomialLike, a::$Scalar) =
+                $op(MP.term(m), a)
         end
     end
-end
-
-function Base.:*(a::JuMP.AbstractJuMPScalar, p::MP.AbstractPolynomialLike)
-    return MP.left_constant_mult(a, p)
-end
-
-function Base.:*(p::MP.AbstractPolynomialLike, a::JuMP.AbstractJuMPScalar)
-    return MP.right_constant_mult(p, a)
 end
 
 function JuMP.value(f::Function, t::MP.AbstractTerm{<:JuMP.AbstractJuMPScalar})

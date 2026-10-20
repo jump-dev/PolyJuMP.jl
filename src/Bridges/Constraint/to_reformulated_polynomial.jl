@@ -60,6 +60,14 @@ function MOI.supports_constraint(
     return true
 end
 
+function MOI.Bridges.Constraint.concrete_bridge_type(
+    ::Type{<:ToReformulatedPolynomialBridge{T}},
+    ::Type{<:MOI.ScalarNonlinearFunction},
+    ::Type{S},
+) where {T,S<:MOI.AbstractScalarSet}
+    return ToReformulatedPolynomialBridge{T,S}
+end
+
 
 function MOI.get(
     model::MOI.ModelLike,

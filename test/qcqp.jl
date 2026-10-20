@@ -40,22 +40,22 @@ function test_decompose(x, y, _)
 
     _test_decompose(
         monos,
-		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=false, variable_reuse=false) =>
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Sequential, smart=false, variable_reuse=false) =>
 			[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x^2],
     )
     _test_decompose(
         monos,
-		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=true, variable_reuse=false) =>
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Sequential, smart=true, variable_reuse=false) =>
 			[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x * y],
     )
     _test_decompose(
         monos,
-		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=false, variable_reuse=true) =>
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Sequential, smart=false, variable_reuse=true) =>
 			[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x^2],
     )
     _test_decompose(
         monos,
-		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Basic, smart=true, variable_reuse=true) =>
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Sequential, smart=true, variable_reuse=true) =>
 			[y^3 => y, x^2 * y^3 => x^2],
     )
     for decompo in (PolyJuMP.QCQP.Greedy, PolyJuMP.QCQP.Balanced)
@@ -172,7 +172,7 @@ function test_objective_and_constraint(x, y, T)
     PolyJuMP.optimize!(model)
     vis = MOI.get(inner, MOI.ListOfVariableIndices())
     @test length(vis) == 7
-    a, b, b2, a2, a3, b3, a6 = vis
+    a, b, b2, a2, b3, a3, a6 = vis
     @test MOI.Utilities.get_bounds(inner, T, a) == (-2, 3)
     @test MOI.Utilities.get_bounds(inner, T, b) == (5, 7)
     @test MOI.Utilities.get_bounds(inner, T, b2) == (25, 49)
@@ -188,8 +188,8 @@ function test_objective_and_constraint(x, y, T)
     z = zero(T)
     @test MOI.get(inner, MOI.ConstraintFunction(), cis[1]) ≈ b2 - o * b * b
     @test MOI.get(inner, MOI.ConstraintFunction(), cis[2]) ≈ a2 - o * a * a
-    @test MOI.get(inner, MOI.ConstraintFunction(), cis[3]) ≈ a3 - o * a2 * a
-    @test MOI.get(inner, MOI.ConstraintFunction(), cis[4]) ≈ b3 - o * b2 * b
+    @test MOI.get(inner, MOI.ConstraintFunction(), cis[3]) ≈ b3 - o * b2 * b
+    @test MOI.get(inner, MOI.ConstraintFunction(), cis[4]) ≈ a3 - o * a2 * a
     @test MOI.get(inner, MOI.ConstraintFunction(), cis[5]) ≈ a6 - o * a3 * a3
     for ci in cis
         @test MOI.get(inner, MOI.ConstraintSet(), ci) == MOI.EqualTo(zero(T))
@@ -425,6 +425,39 @@ function test_constraint_bridging_cost_polynomial(x, y, T)
             MOI.ConstraintBridgingCost{MOI.ScalarQuadraticFunction{T},S}(),
         )
     end
+    return
+end
+
+function test_reformulated_polynomial_bridge(_, _, T)
+    # The bounds of the auxiliary variables are floating point
+    T <: AbstractFloat || return
+    inner = MOI.Utilities.Model{T}()
+    B = PolyJuMP.Bridges.Constraint.ToReformulatedPolynomialBridge{T}
+    model = MOI.Bridges.Constraint.SingleBridgeOptimizer{B}(inner)
+    a, _ = MOI.add_constrained_variable(model, MOI.Interval{T}(0, 1))
+    b, _ = MOI.add_constrained_variable(model, MOI.Interval{T}(0, 1))
+    sum_ab = MOI.ScalarNonlinearFunction(:+, Any[a, b])
+    pow(f, n) = MOI.ScalarNonlinearFunction(:^, Any[f, n])
+    # Number of auxiliary variables created when bridging `f`
+    function num_aux(f)
+        n = MOI.get(inner, MOI.NumberOfVariables())
+        MOI.add_constraint(model, f, MOI.LessThan(one(T)))
+        return MOI.get(inner, MOI.NumberOfVariables()) - n
+    end
+    # Degree 3 with 2 variables: expanding is cheap, nothing is substituted
+    @test num_aux(pow(sum_ab, 3)) == 0
+    # Degree 4: the base is replaced by `y ∈ [0, 2]` with `a + b - y = 0`
+    @test num_aux(pow(sum_ab, 4)) == 1
+    y = last(MOI.get(inner, MOI.ListOfVariableIndices()))
+    @test MOI.Utilities.get_bounds(inner, T, y) == (0, 2)
+    F = MOI.ScalarNonlinearFunction
+    @test MOI.get(inner, MOI.NumberOfConstraints{F,MOI.EqualTo{T}}()) == 1
+    # Product of two sums: only one of them is substituted
+    mul = MOI.ScalarNonlinearFunction(:*, Any[sum_ab, sum_ab, a])
+    @test num_aux(mul) == 1
+    # The same sum appearing twice in a function reuses its auxiliary variable
+    add = MOI.ScalarNonlinearFunction(:+, Any[pow(sum_ab, 4), pow(sum_ab, 5)])
+    @test num_aux(add) == 1
     return
 end
 

@@ -24,18 +24,18 @@ Monomials are decomposed by repeatedly adding the most frequent missing factor.
 struct GreedyQuadratization <: AbstractQuadratizationMethod end
 
 """
-    @enum Decomposition Greedy Balanced Basic
+    @enum Decomposition Greedy Balanced Sequential
 
 Third phase of [`CompositeQuadratization`](@ref):
 
 * `Greedy`: substitutes the most frequent pair of variables first;
 * `Balanced`: splits multilinear monomials into two halves, requires the smart decomposition;
-* `Basic`: sequential decomposition, separating the first two variables from the rest.
+* `Sequential`: sequential decomposition, separating the first two variables from the rest.
 """
 @enum Decomposition begin
     Greedy
     Balanced
-    Basic
+    Sequential
 end
 
 """

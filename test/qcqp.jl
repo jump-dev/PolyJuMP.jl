@@ -393,6 +393,39 @@ function test_constraint_bridging_cost_polynomial(x, y, T)
     return
 end
 
+function test_reformulated_polynomial_bridge(_, _, T)
+    # The bounds of the auxiliary variables are floating point
+    T <: AbstractFloat || return
+    inner = MOI.Utilities.Model{T}()
+    B = PolyJuMP.Bridges.Constraint.ToReformulatedPolynomialBridge{T}
+    model = MOI.Bridges.Constraint.SingleBridgeOptimizer{B}(inner)
+    a, _ = MOI.add_constrained_variable(model, MOI.Interval{T}(0, 1))
+    b, _ = MOI.add_constrained_variable(model, MOI.Interval{T}(0, 1))
+    sum_ab = MOI.ScalarNonlinearFunction(:+, Any[a, b])
+    pow(f, n) = MOI.ScalarNonlinearFunction(:^, Any[f, n])
+    # Number of auxiliary variables created when bridging `f`
+    function num_aux(f)
+        n = MOI.get(inner, MOI.NumberOfVariables())
+        MOI.add_constraint(model, f, MOI.LessThan(one(T)))
+        return MOI.get(inner, MOI.NumberOfVariables()) - n
+    end
+    # Degree 3 with 2 variables: expanding is cheap, nothing is substituted
+    @test num_aux(pow(sum_ab, 3)) == 0
+    # Degree 4: the base is replaced by `y ∈ [0, 2]` with `a + b - y = 0`
+    @test num_aux(pow(sum_ab, 4)) == 1
+    y = last(MOI.get(inner, MOI.ListOfVariableIndices()))
+    @test MOI.Utilities.get_bounds(inner, T, y) == (0, 2)
+    F = MOI.ScalarNonlinearFunction
+    @test MOI.get(inner, MOI.NumberOfConstraints{F,MOI.EqualTo{T}}()) == 1
+    # Product of two sums: only one of them is substituted
+    mul = MOI.ScalarNonlinearFunction(:*, Any[sum_ab, sum_ab, a])
+    @test num_aux(mul) == 1
+    # The same sum appearing twice in a function reuses its auxiliary variable
+    add = MOI.ScalarNonlinearFunction(:+, Any[pow(sum_ab, 4), pow(sum_ab, 5)])
+    @test num_aux(add) == 1
+    return
+end
+
 function runtests(x, y)
     for name in names(@__MODULE__; all = true)
         if startswith("$name", "test_")

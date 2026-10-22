@@ -60,9 +60,13 @@ function test_coefficient_sums(var)
             )
         end
     end
-    result = MA.@rewrite((2x + 3) + α * (x + 1))
-    @test MA.isequal_canonical(MP.coefficient(result, x), 2 + α)
-    @test MA.isequal_canonical(MP.coefficient(result, one(x)), 3 + α)
+    for (result, op) in (
+        (MA.@rewrite((2x + 3) + α * (x + 1)), +),
+        (MA.@rewrite((2x + 3) - (x + 1) * α), -),
+    )
+        @test MA.isequal_canonical(MP.coefficient(result, x), op(2, α))
+        @test MA.isequal_canonical(MP.coefficient(result, one(x)), op(3, α))
+    end
     return
 end
 

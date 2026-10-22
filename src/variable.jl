@@ -1,35 +1,5 @@
 export Poly
 
-# Bare monomials are MP objects; terms and algebra elements use SA's extensions.
-for Scalar in (JuMP.AbstractJuMPScalar, MOI.AbstractScalarFunction)
-    @eval begin
-        Base.:*(a::$Scalar, m::MP.AbstractMonomialLike) = MP.term(a, m)
-        Base.:*(m::MP.AbstractMonomialLike, a::$Scalar) = MP.term(a, m)
-        function MA.promote_operation(
-            ::typeof(*),
-            ::Type{T},
-            ::Type{M},
-        ) where {T<:$Scalar,M<:MP.AbstractMonomialLike}
-            return MP.term_type(M, T)
-        end
-        function MA.promote_operation(
-            ::typeof(*),
-            ::Type{M},
-            ::Type{T},
-        ) where {M<:MP.AbstractMonomialLike,T<:$Scalar}
-            return MP.term_type(M, T)
-        end
-    end
-    for op in (:+, :-)
-        @eval begin
-            Base.$op(a::$Scalar, m::MP.AbstractMonomialLike) =
-                $op(a, MP.term(m))
-            Base.$op(m::MP.AbstractMonomialLike, a::$Scalar) =
-                $op(MP.term(m), a)
-        end
-    end
-end
-
 function JuMP.value(f::Function, t::MP.AbstractTerm{<:JuMP.AbstractJuMPScalar})
     return JuMP.value(f, MP.coefficient(t)) * MP.monomial(t)
 end

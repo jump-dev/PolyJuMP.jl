@@ -26,5 +26,5 @@ MultivariateMoments = {url = "https://github.com/JuliaAlgebra/MultivariateMoment
 MultivariatePolynomials = {url = "https://github.com/JuliaAlgebra/MultivariatePolynomials.jl", rev = "bl/sa_poly"}
 PolyJuMP = {path = ".."}
 SemialgebraicSets = {url = "https://github.com/JuliaAlgebra/SemialgebraicSets.jl", rev = "bl/sa_refactor"}
-StarAlgebras = {url = "https://github.com/JuliaAlgebra/StarAlgebras.jl", rev = "bl/term"}
+StarAlgebras = {url = "https://github.com/JuliaAlgebra/StarAlgebras.jl", rev = "bl/scalar_interop"}
 TypedPolynomials = {url = "https://github.com/JuliaAlgebra/TypedPolynomials.jl", rev = "bl/sa_poly"}

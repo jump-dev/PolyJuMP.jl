@@ -166,6 +166,10 @@ function test_value_function(var)
     p = α * x * y + β * x^2
     JuMP.fix(α, 2)
     JuMP.fix(β, 3)
+    t = α * x * y
+    value_t = JuMP.value(fix_value, t)
+    @test value_t == 2x * y
+    @test parent(value_t) === parent(t)
     expected = 2x * y + 3x^2
     @test_broken JuMP.value(p) == expected
     @test JuMP.value(fix_value, p) == expected

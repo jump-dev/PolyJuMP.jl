@@ -45,24 +45,3 @@ function MOI.Bridges.Constraint.invariant_under_function_conversion(
 )
     return true
 end
-
-# This is type piracy but we tolerate it.
-const ObjectWithoutIndex = Union{
-    MP.AbstractMonomial,
-    MP.AbstractTerm{<:MOI.Utilities.ObjectWithoutIndex},
-    MP.AbstractPolynomial{<:MOI.Utilities.ObjectWithoutIndex},
-    SA.AbstractBasis,
-    MM.AbstractMomentMatrix{<:MOI.Utilities.ObjectWithoutIndex},
-    MM.AbstractMeasure{<:MOI.Utilities.ObjectWithoutIndex},
-}
-const ObjectOrTupleWithoutIndex =
-    Union{ObjectWithoutIndex,Tuple{Vararg{ObjectWithoutIndex}}}
-const ObjectOrTupleOrArrayWithoutIndex =
-    Union{ObjectOrTupleWithoutIndex,AbstractArray{<:ObjectOrTupleWithoutIndex}}
-MOI.Utilities.map_indices(::Function, x::ObjectOrTupleOrArrayWithoutIndex) = x
-function MOI.Utilities.substitute_variables(
-    ::Function,
-    x::ObjectOrTupleOrArrayWithoutIndex,
-)
-    return x
-end

@@ -158,6 +158,8 @@ function test_printing(var)
           "(α) \\cdot xy + (β) \\cdot x^{2}"
 
     in_sym = Sys.iswindows() ? "in" : "∈"
+    @test JuMP.function_string(MIME"text/plain"(), α * x^2) == "(α)x²"
+    @test JuMP.function_string(MIME"text/latex"(), α * x^2) == "(α)x^{2}"
     eqref = @constraint(m, p == q)
     @test sprint(show, MIME"text/plain"(), eqref) ==
           "(-α)y² + (α - β)xy + (-α + β)x² $in_sym PolyJuMP.ZeroPoly()"

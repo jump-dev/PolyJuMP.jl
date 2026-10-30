@@ -15,10 +15,13 @@ struct ZeroPoly <: PolynomialSet end
 struct NonNegPoly <: PolynomialSet end
 struct PosDefPolyMatrix <: PolynomialSet end
 
-function JuMP.function_string(::MIME"text/plain", p::_AE_APL)
+function JuMP.function_string(::MIME"text/plain", p::MP.AbstractPolynomialLike)
     return sprint(show, MIME"text/plain"(), p)
 end
-function JuMP.function_string(mime::MIME"text/latex", p::_AE_APL)
+function JuMP.function_string(
+    mime::MIME"text/latex",
+    p::MP.AbstractPolynomialLike,
+)
     return SA.trim_LaTeX(mime, sprint(show, MIME"text/latex"(), p))
 end
 

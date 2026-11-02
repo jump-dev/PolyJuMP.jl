@@ -46,19 +46,21 @@ function test_matrix_inequality_triangle()
 end
 
 function test_matrix_inequality_nonlinear()
-    model = PolyJuMP.Model{Float64}()
-    vi = MOI.add_variable(model)
-    func = MOI.VectorNonlinearFunction([
-        MOI.ScalarNonlinearFunction(:+, Any[1.0]),
-        MOI.ScalarNonlinearFunction(:^, Any[vi, 2]),
-        MOI.ScalarNonlinearFunction(:+, Any[1.0]),
-    ])
-    set = MOI.PositiveSemidefiniteConeTriangle(2)
-    @test MOI.supports_constraint(model, typeof(func), typeof(set))
-    ci = MOI.add_constraint(model, func, set)
-    @test MOI.is_valid(model, ci)
-    x = only(MP.variables(model))
-    @test only(model.matrix_inequalities) == [1 x^2; x^2 1]
+    for c in (0.0, 1.0)
+        model = PolyJuMP.Model{Float64}()
+        vi = MOI.add_variable(model)
+        func = MOI.VectorNonlinearFunction([
+            MOI.ScalarNonlinearFunction(:+, Any[c]),
+            MOI.ScalarNonlinearFunction(:^, Any[vi, 2]),
+            MOI.ScalarNonlinearFunction(:+, Any[c]),
+        ])
+        set = MOI.PositiveSemidefiniteConeTriangle(2)
+        @test MOI.supports_constraint(model, typeof(func), typeof(set))
+        ci = MOI.add_constraint(model, func, set)
+        @test MOI.is_valid(model, ci)
+        x = only(MP.variables(model))
+        @test only(model.matrix_inequalities) == [c x^2; x^2 c]
+    end
     return
 end
 

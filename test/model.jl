@@ -64,6 +64,32 @@ function test_matrix_inequality_nonlinear()
     return
 end
 
+function test_solution_with_multipliers()
+    model = PolyJuMP.Model{Float64}()
+    vi = MOI.add_variable(model)
+    x = only(MP.variables(model))
+    func = PolyJuMP.ScalarPolynomialFunction(MP.polynomial(1.0x), [vi])
+    MOI.add_constraint(model, func, MOI.EqualTo(1.0))
+    MOI.add_constraint(model, func, MOI.GreaterThan(0.0))
+    MOI.add_constraint(
+        model,
+        _quadratic_matrix(),
+        MOI.PositiveSemidefiniteConeTriangle(2),
+    )
+    obj = PolyJuMP.ScalarPolynomialFunction(MP.polynomial(2.0x), [vi])
+    MOI.set(model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
+    for (value, violation, status) in
+        ((1.0, 0.0, MOI.FEASIBLE_POINT), (2.0, 3.0, MOI.INFEASIBLE_POINT))
+        values = [value, 7.0, -3.0]
+        sol = PolyJuMP.Solution(values, model, 1e-6)
+        @test sol.values == values
+        @test sol.objective_value == 2value
+        @test sol.max_constraint_violation ≈ violation
+        @test sol.status == status
+    end
+    return
+end
+
 include("testpolymodule.jl")
 
 # Relaxation optimizer supporting matrix inequalities with the cones of

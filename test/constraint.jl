@@ -153,9 +153,8 @@ function test_printing(var)
     @test JuMP.function_string(MIME"text/plain"(), p) == "(α)xy + (β)x²"
     @test JuMP.function_string(MIME"text/latex"(), p) == "(α)xy + (β)x^{2}"
     a = MB.algebra_element(p)
-    @test JuMP.function_string(MIME"text/plain"(), a) == "(α)·xy + (β)·x²"
-    @test JuMP.function_string(MIME"text/latex"(), a) ==
-          "(α) \\cdot xy + (β) \\cdot x^{2}"
+    @test JuMP.function_string(MIME"text/plain"(), a) == "(α)xy + (β)x²"
+    @test JuMP.function_string(MIME"text/latex"(), a) == "(α)xy + (β)x^{2}"
 
     in_sym = Sys.iswindows() ? "in" : "∈"
     @test JuMP.function_string(MIME"text/plain"(), α * x^2) == "(α)x²"

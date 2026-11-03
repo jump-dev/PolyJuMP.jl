@@ -150,12 +150,20 @@ function test_printing(var)
     p = α * x * y + β * x^2
     q = α * x^2 + β * x * y + α * y^2
 
+    @test JuMP.function_string(MIME"text/plain"(), p) == "(α)xy + (β)x²"
+    @test JuMP.function_string(MIME"text/latex"(), p) == "(α)xy + (β)x^{2}"
+    a = MB.algebra_element(p)
+    @test JuMP.function_string(MIME"text/plain"(), a) == "(α)xy + (β)x²"
+    @test JuMP.function_string(MIME"text/latex"(), a) == "(α)xy + (β)x^{2}"
+
     in_sym = Sys.iswindows() ? "in" : "∈"
+    @test JuMP.function_string(MIME"text/plain"(), α * x^2) == "(α)x²"
+    @test JuMP.function_string(MIME"text/latex"(), α * x^2) == "(α)x^{2}"
     eqref = @constraint(m, p == q)
     @test sprint(show, MIME"text/plain"(), eqref) ==
-          "(-α)·y² + (α - β)·xy + (-α + β)·x² $in_sym PolyJuMP.ZeroPoly()"
+          "(-α)y² + (α - β)xy + (-α + β)x² $in_sym PolyJuMP.ZeroPoly()"
     @test sprint(show, MIME"text/latex"(), eqref) ==
-          "\$\$ (-α) \\cdot y^{2} + (α - β) \\cdot xy + (-α + β) \\cdot x^{2} \\in PolyJuMP.ZeroPoly() \$\$"
+          "\$\$ (-α)y^{2} + (α - β)xy + (-α + β)x^{2} \\in PolyJuMP.ZeroPoly() \$\$"
     sdref = @constraint(m, [p q; q p] in PSDCone())
     @test sprint(show, MIME"text/plain"(), sdref) ==
           "[(α)xy + (β)x²          (α)y² + (β)xy + (α)x²;\n (α)y² + (β)xy + (α)x²  (α)xy + (β)x²] $in_sym $DummyPolyModule.DummyPosDefMatrix()"

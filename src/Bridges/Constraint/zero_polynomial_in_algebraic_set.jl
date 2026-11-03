@@ -21,13 +21,13 @@ function MOI.Bridges.Constraint.bridge_constraint(
     f::MOI.AbstractVectorFunction,
     s::PolyJuMP.ZeroPolynomialSet{<:SS.AbstractAlgebraicSet,Z,B},
 ) where {T,F,Z,DT,B}
-    p = MP.polynomial(MB.algebra_element(MOI.Utilities.scalarize(f), s.basis))
+    p = MB.algebra_element(MOI.Utilities.scalarize(f), s.basis)
+    p = MB.convert_basis(MB.FullBasis{MB.Monomial}(MP.variables(p)), p)
     # As `*(::MOI.ScalarAffineFunction{T}, ::S)` is only defined if `S == T`, we
     # need to call `similar`. This is critical since `T` is
     # `Float64` when used with JuMP and the coefficient type is often `Int` with
     # `FixedVariablesSet`.
-    # FIXME convert needed because the coefficient type of `r` is `Any` otherwise if `domain` is `AlgebraicSet`
-    r = convert(typeof(p), rem(p, SS.ideal(similar(s.domain, T))))
+    r = rem(p, SS.ideal(similar(s.domain, T)))
     zero_constraint = MOI.add_constraint(
         model,
         MOI.Utilities.vectorize(MP.coefficients(r)),

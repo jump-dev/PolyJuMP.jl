@@ -93,18 +93,13 @@ function JuMP.build_constraint(
     )
 end
 
-const APL{T} = MP.AbstractPolynomialLike{T}
-
 """
-    struct Decomposition{T, PT}
+    struct Decomposition{P}
 
 Represents a SAGE decomposition.
 """
-struct Decomposition{T,P<:APL{T}} <: APL{T}
+struct Decomposition{P<:MP.AbstractPolynomialLike}
     polynomials::Vector{P}
-    function Decomposition(ps::Vector{P}) where {T,P<:APL{T}}
-        return new{T,P}(ps)
-    end
 end
 
 function Base.show(io::IO, p::Decomposition)

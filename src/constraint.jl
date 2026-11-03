@@ -15,13 +15,6 @@ struct ZeroPoly <: PolynomialSet end
 struct NonNegPoly <: PolynomialSet end
 struct PosDefPolyMatrix <: PolynomialSet end
 
-function JuMP.function_string(::MIME"text/plain", p::_AE_APL)
-    return sprint(show, MIME"text/plain"(), p)
-end
-function JuMP.function_string(mime::MIME"text/latex", p::_AE_APL)
-    return SA.trim_LaTeX(mime, sprint(show, MIME"text/latex"(), p))
-end
-
 ### Shapes for polynomial/moments primal-dual pair ###
 
 # Inspired from `JuMP.dual_shape` docstring example
@@ -238,6 +231,9 @@ function JuMP.build_constraint(
         )
     end
 end
+# Type piracy: neither JuMP.build_constraint nor these argument types belong to
+# PolyJuMP. Keep this polynomial constraint syntax here for now; revisit ownership
+# separately from the algebra refactor.
 function JuMP.build_constraint(
     error_fn::Function,
     p::_AE_APL,
@@ -304,6 +300,7 @@ function JuMP.add_constraint(
 end
 
 # `NonNegPoly`
+# Type piracy, retained for polynomial constraint syntax as above.
 function JuMP.build_constraint(
     error_fn::Function,
     p::_AE_APL,
@@ -322,6 +319,7 @@ function JuMP.build_constraint(
 end
 
 # `PosDefPolyMatrix`
+# Type piracy, retained for polynomial constraint syntax as above.
 # There is already a method for `AbstractMatrix` in `PSDCone` in `JuMP` so we
 # need a more specific here to avoid ambiguity
 function JuMP.build_constraint(

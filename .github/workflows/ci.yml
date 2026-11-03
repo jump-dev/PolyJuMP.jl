@@ -33,7 +33,6 @@ jobs:
           Pkg.add([
               PackageSpec(url="https://github.com/blegat/MixedSubdivisions.jl", rev="bl/mp_v0.6"),
               PackageSpec(url="https://github.com/blegat/HomotopyContinuation.jl", rev="sa_refactor"),
-              PackageSpec(url="https://github.com/JuliaAlgebra/MultivariatePolynomials.jl", rev="bl/constant-substitution"),
           ])
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1

@@ -52,9 +52,11 @@ end
 
 Candidate solution of the polynomial optimization problem stored in a
 [`Model`](@ref), where `values` are the values of the variables sorted as
-`MP.variables(model)`, `objective_value` is the value of the objective
-function at `values`, `max_constraint_violation` is the maximum violation of
-the constraints at `values` and `status` is `MOI.FEASIBLE_POINT`,
+`MP.variables(model)`, optionally followed by KKT multipliers. The multipliers
+are retained but excluded from polynomial evaluation.
+`objective_value` is the value of the objective function at the primal values,
+`max_constraint_violation` is the maximum violation of the constraints, and
+`status` is `MOI.FEASIBLE_POINT`,
 `MOI.NEARLY_FEASIBLE_POINT` or `MOI.INFEASIBLE_POINT` depending on
 `max_constraint_violation`.
 
@@ -78,14 +80,15 @@ function Solution(
     feasibility_tolerance::T,
 ) where {T}
     x = MP.variables(model)
+    primal_values = values[eachindex(x)]
     ε = max(
-        _max_constraint_violation(model.set, x, values),
-        _max_constraint_violation(model.matrix_inequalities, x, values),
+        _max_constraint_violation(model.set, x, primal_values),
+        _max_constraint_violation(model.matrix_inequalities, x, primal_values),
     )
     obj = if isnothing(model.objective_function)
         zero(T)
     else
-        model.objective_function(x => values[eachindex(x)])
+        model.objective_function(x => primal_values)
     end
     status = if ε < feasibility_tolerance
         MOI.FEASIBLE_POINT

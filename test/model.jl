@@ -46,19 +46,47 @@ function test_matrix_inequality_triangle()
 end
 
 function test_matrix_inequality_nonlinear()
+    for c in (0.0, 1.0)
+        model = PolyJuMP.Model{Float64}()
+        vi = MOI.add_variable(model)
+        func = MOI.VectorNonlinearFunction([
+            MOI.ScalarNonlinearFunction(:+, Any[c]),
+            MOI.ScalarNonlinearFunction(:^, Any[vi, 2]),
+            MOI.ScalarNonlinearFunction(:+, Any[c]),
+        ])
+        set = MOI.PositiveSemidefiniteConeTriangle(2)
+        @test MOI.supports_constraint(model, typeof(func), typeof(set))
+        ci = MOI.add_constraint(model, func, set)
+        @test MOI.is_valid(model, ci)
+        x = only(MP.variables(model))
+        @test only(model.matrix_inequalities) == [c x^2; x^2 c]
+    end
+    return
+end
+
+function test_solution_with_multipliers()
     model = PolyJuMP.Model{Float64}()
     vi = MOI.add_variable(model)
-    func = MOI.VectorNonlinearFunction([
-        MOI.ScalarNonlinearFunction(:+, Any[1.0]),
-        MOI.ScalarNonlinearFunction(:^, Any[vi, 2]),
-        MOI.ScalarNonlinearFunction(:+, Any[1.0]),
-    ])
-    set = MOI.PositiveSemidefiniteConeTriangle(2)
-    @test MOI.supports_constraint(model, typeof(func), typeof(set))
-    ci = MOI.add_constraint(model, func, set)
-    @test MOI.is_valid(model, ci)
     x = only(MP.variables(model))
-    @test only(model.matrix_inequalities) == [1 x^2; x^2 1]
+    func = PolyJuMP.ScalarPolynomialFunction(MP.polynomial(1.0x), [vi])
+    MOI.add_constraint(model, func, MOI.EqualTo(1.0))
+    MOI.add_constraint(model, func, MOI.GreaterThan(0.0))
+    MOI.add_constraint(
+        model,
+        _quadratic_matrix(),
+        MOI.PositiveSemidefiniteConeTriangle(2),
+    )
+    obj = PolyJuMP.ScalarPolynomialFunction(MP.polynomial(2.0x), [vi])
+    MOI.set(model, MOI.ObjectiveFunction{typeof(obj)}(), obj)
+    for (value, violation, status) in
+        ((1.0, 0.0, MOI.FEASIBLE_POINT), (2.0, 3.0, MOI.INFEASIBLE_POINT))
+        values = [value, 7.0, -3.0]
+        sol = PolyJuMP.Solution(values, model, 1e-6)
+        @test sol.values == values
+        @test sol.objective_value == 2value
+        @test sol.max_constraint_violation ≈ violation
+        @test sol.status == status
+    end
     return
 end
 

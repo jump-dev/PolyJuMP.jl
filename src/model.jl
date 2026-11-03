@@ -397,7 +397,7 @@ function lagrangian_kkt(
     objective_function::MP.AbstractPolynomialLike{T},
     set;
     solver = nothing,
-    variables = nothing,
+    variables,
 ) where {T}
     if isnothing(solver)
         system = SS.AlgebraicSet{T,PolyJuMP.PolyType{T}}()
@@ -417,7 +417,7 @@ function lagrangian_kkt(
         objective_sense == MOI.MAX_SENSE,
     )
     if !(lagrangian isa MA.Zero)
-        ∇x = MP.differentiate(lagrangian, MP.variables(lagrangian))
+        ∇x = MP.differentiate(lagrangian, variables)
         for p in ∇x
             SS.add_equality!(system, p)
         end
@@ -428,7 +428,7 @@ end
 function lagrangian_kkt(model::Model{T}, solver = nothing) where {T}
     return lagrangian_kkt(
         model.objective_sense,
-        model.objective_function,
+        something(model.objective_function, zero(PolyType{T})),
         model.set;
         solver,
         variables = MP.variables(model),

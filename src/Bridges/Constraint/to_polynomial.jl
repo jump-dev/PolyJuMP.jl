@@ -8,17 +8,15 @@ const FuncType{T} = PolyJuMP.ScalarPolynomialFunction{T,PolyType{T}}
 
 `ToPolynomialBridge` implements the following reformulations:
 
-  * ``f(x) \\in S`` into ``p(x) \\in S`` where ``f(x)`` is a scalar function
-    and ``p(x)`` is a polynomial.
+  * ``f(x) \\in S`` into ``p(x) \\in S`` where ``f(x)`` is a scalar nonlinear
+    function representing a polynomial and ``p(x)`` is a polynomial.
 
 ## Source node
 
 `ToPolynomialBridge` supports:
 
-  * `F` in `S` where `F` is a `MOI.AbstractScalarFunction` for which
-   `convert(::Type{PolyJuMP.ScalarPolynomialFunction}, ::Type{F})`. That is for
-   instance the case for `MOI.VariableIndex`, `MOI.ScalarAffineFunction` and
-    `MOI.ScalarQuadraticFunction`.
+  * `MOI.ScalarNonlinearFunction` in a scalar set `S`, provided the function
+    can be converted to a [`PolyJuMP.ScalarPolynomialFunction`](@ref).
 
 ## Target nodes
 
@@ -34,7 +32,7 @@ end
 function MOI.Bridges.Constraint.bridge_constraint(
     ::Type{ToPolynomialBridge{T,S}},
     model,
-    f::MOI.AbstractScalarFunction,
+    f::MOI.ScalarNonlinearFunction,
     s::S,
 ) where {T,S}
     constraint = MOI.add_constraint(model, convert(FuncType{T}, f), s)
@@ -43,7 +41,7 @@ end
 
 function MOI.supports_constraint(
     ::Type{ToPolynomialBridge{T}},
-    ::Type{<:MOI.AbstractScalarFunction},
+    ::Type{<:MOI.ScalarNonlinearFunction},
     ::Type{<:MOI.AbstractScalarSet},
 ) where {T}
     return true
@@ -63,7 +61,7 @@ end
 
 function MOI.Bridges.Constraint.concrete_bridge_type(
     ::Type{<:ToPolynomialBridge{T}},
-    ::Type{<:MOI.AbstractScalarFunction},
+    ::Type{<:MOI.ScalarNonlinearFunction},
     ::Type{S},
 ) where {T,S<:MOI.AbstractScalarSet}
     return ToPolynomialBridge{T,S}

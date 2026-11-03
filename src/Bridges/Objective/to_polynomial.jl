@@ -11,16 +11,15 @@ const FuncType{T} = PolyJuMP.ScalarPolynomialFunction{T,PolyType{T}}
  * ``\\min \\{f(x)\\}`` into ``\\min\\{p(x)\\}``
  * ``\\max \\{f(x)\\}`` into ``\\max\\{p(x)\\}``
 
-where ``f(x)`` is a scalar function and ``p(x)`` is a polynomial.
+where ``f(x)`` is a scalar nonlinear function representing a polynomial and
+``p(x)`` is a polynomial.
 
 ## Source node
 
 `ToPolynomialBridge` supports:
 
- * `MOI.ObjectiveFunction{F}` where `F` is a `MOI.ScalarNonlinearFunction` for
-   which `convert(::Type{PolyJuMP.ScalarPolynomialFunction}, ::Type{F})`. That
-   is for instance the case for `MOI.VariableIndex`, `MOI.ScalarAffineFunction`
-   and `MOI.ScalarQuadraticFunction`.
+ * `MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction}`, provided the function
+   can be converted to a [`PolyJuMP.ScalarPolynomialFunction`](@ref).
 
 ## Target nodes
 

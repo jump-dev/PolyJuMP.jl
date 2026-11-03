@@ -8,17 +8,15 @@ const FuncType{T} = PolyJuMP.ScalarPolynomialFunction{T,PolyType{T}}
 
 `ToPolynomialBridge` implements the following reformulations:
 
-  * ``f(x) \\in S`` into ``p(x) \\in S`` where ``f(x)`` is a scalar function
-    and ``p(x)`` is a polynomial.
+  * ``f(x) \\in S`` into ``p(x) \\in S`` where ``f(x)`` is a scalar nonlinear
+    function representing a polynomial and ``p(x)`` is a polynomial.
 
 ## Source node
 
 `ToPolynomialBridge` supports:
 
-  * `F` in `S` where `F` is a `MOI.AbstractScalarFunction` for which
-   `convert(::Type{PolyJuMP.ScalarPolynomialFunction}, ::Type{F})`. That is for
-   instance the case for `MOI.VariableIndex`, `MOI.ScalarAffineFunction` and
-    `MOI.ScalarQuadraticFunction`.
+  * `MOI.ScalarNonlinearFunction` in a scalar set `S`, provided the function
+    can be converted to a [`PolyJuMP.ScalarPolynomialFunction`](@ref).
 
 ## Target nodes
 

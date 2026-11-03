@@ -1,6 +1,7 @@
 include("polymodule.jl")
 include("variable.jl")
 include("constraint.jl")
+include("bridgeable.jl")
 include("functions.jl")
 
 include("Mock/mock_tests.jl")

@@ -24,7 +24,7 @@ struct InvalidNLExpression <: Exception
 end
 
 function _to_polynomial!(d, ::Type, expr)
-    throw(
+    return throw(
         InvalidNLExpression(
             "Unexpected expression type `$(typeof(expr))` of `$expr`",
         ),
@@ -230,7 +230,7 @@ function _invalid_value(
     ::NLToPolynomial,
     attr::Union{MOI.VariablePrimal,MOI.ConstraintDual,MOI.ConstraintPrimal},
 )
-    throw(MOI.ResultIndexBoundsError(attr, 0))
+    return throw(MOI.ResultIndexBoundsError(attr, 0))
 end
 
 function MOI.get(model::NLToPolynomial, attr::MOI.AbstractModelAttribute)

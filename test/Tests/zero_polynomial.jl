@@ -1,3 +1,9 @@
+if !@isdefined(linear_tests)
+    include("utilities.jl")
+    const linear_tests = Dict{String,Function}()
+end
+
+import MultivariateBases as MB
 using Test
 using JuMP
 using MultivariateMoments
@@ -47,7 +53,7 @@ function _zero_polynomial_test(
         @test μ isa AbstractMeasure{Float64}
         @test length(moments(μ)) == 1
         @test moment_value(moments(μ)[1]) ≈ -1.0 atol = atol rtol = rtol
-        @test moments(μ)[1].polynomial == MB.Polynomial{MB.Monomial}(x * y)
+        @test moments(μ)[1].polynomial == MB.BasisElement{MB.Monomial}(x * y)
     end
 
     F = MOI.VectorAffineFunction{Float64}

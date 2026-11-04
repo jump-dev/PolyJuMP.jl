@@ -1,11 +1,6 @@
-import MultivariatePolynomials as MP
 import DynamicPolynomials
 
-const VariableOrder =
-    DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
-const MonomialOrder = DynamicPolynomials.Graded{MP.LexOrder}
-const VarType = DynamicPolynomials.Variable{VariableOrder,MonomialOrder}
-const PolyType{T} = DynamicPolynomials.Polynomial{VariableOrder,MonomialOrder,T}
+const PolyType = DynamicPolynomials.Polynomial
 const FuncType{T} = PolyJuMP.ScalarPolynomialFunction{T,PolyType{T}}
 
 """
@@ -16,16 +11,15 @@ const FuncType{T} = PolyJuMP.ScalarPolynomialFunction{T,PolyType{T}}
  * ``\\min \\{f(x)\\}`` into ``\\min\\{p(x)\\}``
  * ``\\max \\{f(x)\\}`` into ``\\max\\{p(x)\\}``
 
-where ``f(x)`` is a scalar function and ``p(x)`` is a polynomial.
+where ``f(x)`` is a scalar nonlinear function representing a polynomial and
+``p(x)`` is a polynomial.
 
 ## Source node
 
 `ToPolynomialBridge` supports:
 
- * `MOI.ObjectiveFunction{F}` where `F` is a `MOI.AbstractScalarFunction` for
-   which `convert(::Type{PolyJuMP.ScalarPolynomialFunction}, ::Type{F})`. That
-   is for instance the case for `MOI.VariableIndex`, `MOI.ScalarAffineFunction`
-   and `MOI.ScalarQuadraticFunction`.
+ * `MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction}`, provided the function
+   can be converted to a [`PolyJuMP.ScalarPolynomialFunction`](@ref).
 
 ## Target nodes
 
@@ -38,7 +32,7 @@ struct ToPolynomialBridge{T} <: MOI.Bridges.Objective.AbstractBridge end
 function MOI.Bridges.Objective.bridge_objective(
     ::Type{ToPolynomialBridge{T}},
     model::MOI.ModelLike,
-    func::MOI.AbstractScalarFunction,
+    func::MOI.ScalarNonlinearFunction,
 ) where {T}
     F = FuncType{T}
     MOI.set(model, MOI.ObjectiveFunction{F}(), convert(F, func))
@@ -48,7 +42,7 @@ end
 function MOI.Bridges.Objective.supports_objective_function(
     ::Type{ToPolynomialBridge{T}},
     ::Type{F},
-) where {T,F<:MOI.AbstractScalarFunction}
+) where {T,F<:MOI.ScalarNonlinearFunction}
     return MOI.Utilities.is_coefficient_type(F, T)
 end
 

@@ -5,7 +5,7 @@ const VariableOrder =
     DynamicPolynomials.Commutative{DynamicPolynomials.CreationOrder}
 const MonomialOrder = MP.Graded{MP.LexOrder}
 const VarType = DynamicPolynomials.Variable{VariableOrder,MonomialOrder}
-const PolyType{T} = DynamicPolynomials.Polynomial{VariableOrder,MonomialOrder,T}
+const PolyType = DynamicPolynomials.Polynomial
 const FuncType{T} = ScalarPolynomialFunction{T,PolyType{T}}
 
 mutable struct NLToPolynomial{T,M<:MOI.ModelLike} <: MOI.AbstractOptimizer
@@ -72,13 +72,15 @@ function _to_polynomial!(
 ) where {T}
     operands = _operands(expr)
     if _is_operator(expr, :+)
-        return sum(
-            _to_polynomial!.(Ref(d), T, operands),
+        return foldl(
+            +,
+            (_to_polynomial!(d, T, arg) for arg in operands);
             init = zero(PolyType{T}),
         )
     elseif _is_operator(expr, :*)
-        return prod(
-            _to_polynomial!.(Ref(d), T, operands),
+        return foldl(
+            *,
+            (_to_polynomial!(d, T, arg) for arg in operands);
             init = one(PolyType{T}),
         )
     elseif _is_operator(expr, :-) && length(operands) == 1

@@ -1,3 +1,9 @@
+if !@isdefined(linear_tests)
+    include("utilities.jl")
+    const linear_tests = Dict{String,Function}()
+end
+
+import MultivariateBases as MB
 using Test
 using JuMP
 using SemialgebraicSets
@@ -38,15 +44,15 @@ function zero_polynomial_in_algebraic_set_test(
     @test μ isa AbstractMeasure{Float64}
     @test length(moments(μ)) == 2
     @test moment_value(moments(μ)[1]) ≈ -1.0 atol = atol rtol = rtol
-    @test moments(μ)[1].polynomial == MB.Polynomial{MB.Monomial}(x^0 * y)
+    @test moments(μ)[1].polynomial == MB.BasisElement{MB.Monomial}(x^0 * y)
     @test moment_value(moments(μ)[2]) ≈ -1.0 atol = atol rtol = rtol
-    @test moments(μ)[2].polynomial == MB.Polynomial{MB.Monomial}(x * y^0)
+    @test moments(μ)[2].polynomial == MB.BasisElement{MB.Monomial}(x * y^0)
 
     μ = moments(cref)
     @test μ isa AbstractMeasure{Float64}
     @test length(moments(μ)) == 1
     @test moment_value(moments(μ)[1]) ≈ -1.0 atol = atol rtol = rtol
-    @test moments(μ)[1].polynomial == MB.Polynomial{MB.Monomial}(x^0 * y)
+    @test moments(μ)[1].polynomial == MB.BasisElement{MB.Monomial}(x^0 * y)
 
     F = MOI.VectorAffineFunction{Float64}
     full_basis_type = typeof(MB.FullBasis{MB.Monomial}(x))

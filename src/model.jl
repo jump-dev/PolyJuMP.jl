@@ -175,7 +175,7 @@ function MOI.get(
     ::Model{T},
     ::MOI.Bridges.ListOfNonstandardBridges{T},
 ) where {T}
-    return [
+    return Type[
         Bridges.Constraint.ToPolynomialBridge{T},
         Bridges.Objective.ToPolynomialBridge{T},
     ]

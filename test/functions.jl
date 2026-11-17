@@ -104,6 +104,11 @@ function test_scalar_polynomial_function(var)
     γ = MOI.VariableIndex(3)
     poly = x^2 + 2x * y + z^3
     f = PolyJuMP.ScalarPolynomialFunction{Int,typeof(poly)}(poly, [β, γ, α])
+    @test MOI.Utilities.canonicalize!(f) === f
+    canonical = MOI.Utilities.canonical(f)
+    @test canonical isa typeof(f)
+    @test canonical.polynomial == f.polynomial
+    @test canonical.variables == f.variables
     g = MOI.Utilities.substitute_variables(f) do var
         i = var.value
         j = mod1(i + 1, 3)

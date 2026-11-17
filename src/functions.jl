@@ -91,7 +91,9 @@ function Base.copy(func::ScalarPolynomialFunction)
     )
 end
 
-function MOI.Utilities.canonicalize!(::ScalarPolynomialFunction) end
+function MOI.Utilities.canonicalize!(func::ScalarPolynomialFunction)
+    return func
+end
 
 function _variables(aff::MOI.ScalarAffineFunction)
     return MOI.VariableIndex[t.variable for t in aff.terms]

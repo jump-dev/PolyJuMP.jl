@@ -45,7 +45,7 @@ function MOI.Bridges.Constraint.concrete_bridge_type(
             B,
         },
     },
-) where {T,B<:MB.SubBasis{MB.Monomial}}
+) where {T,B<:Union{MB.SubBasis{MB.Monomial},MB.QuotientBasis}}
     return ZeroPolynomialBridge{T,F,B}
 end
 
@@ -76,10 +76,13 @@ function MOI.get(
 )
     return PolyJuMP.ZeroPolynomialSet(
         SS.FullSpace(),
-        parent(bridge.basis),
+        _full_basis(bridge.basis),
         bridge.basis,
     )
 end
+
+_full_basis(basis::SA.SubBasis) = parent(basis)
+_full_basis(basis::MB.QuotientBasis) = _full_basis(basis.basis)
 function MOI.get(
     model::MOI.ModelLike,
     attr::Union{MOI.ConstraintPrimal,MOI.ConstraintDual},

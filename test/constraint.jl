@@ -295,6 +295,17 @@ function test_ZeroPolynomialSet(var)
             [],
             T = ComplexF64,
         )
+        # `FullSpace` is an algebraic set but it is not handled by
+        # `ZeroPolynomialInAlgebraicSetBridge`
+        set = MOI.get(m, MOI.ConstraintSet(), @constraint(m, x == y))
+        @test set isa S
+        @test !MOI.supports_constraint(
+            PolyJuMP.Bridges.Constraint.ZeroPolynomialInAlgebraicSetBridge{
+                Float64,
+            },
+            MOI.VectorAffineFunction{Float64},
+            typeof(set),
+        )
     end
     S = PolyJuMP.ZeroPolynomialSet
     _test_constraint(

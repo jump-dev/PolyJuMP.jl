@@ -8,3 +8,5 @@ function _optimize!(mock)
 end
 mock = bridged_mock(_optimize!)
 Tests.zero_polynomial_in_algebraic_set_test(mock, config)
+mock = bridged_mock(_optimize!)
+Tests.zero_polynomial_in_algebraic_set_macaulay_test(mock, config)

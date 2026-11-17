@@ -4,6 +4,8 @@ if !@isdefined(linear_tests)
 end
 
 import MultivariateBases as MB
+import SparseArrays
+import StarAlgebras as SA
 using Test
 using JuMP
 using SemialgebraicSets
@@ -48,11 +50,15 @@ function zero_polynomial_in_fixed_variables_set_test(
     @test moment_value(moments(μ)[2]) ≈ -1.0 atol = atol rtol = rtol
     @test moments(μ)[2].polynomial == MB.BasisElement{MB.Monomial}(x * y)
 
+    # The moments are given for the monomials of the polynomial and not only
+    # for the standard monomials of the quotient
     μ = moments(cref)
     @test μ isa AbstractMeasure{Float64}
-    @test length(moments(μ)) == 1
+    @test length(moments(μ)) == 2
     @test moment_value(moments(μ)[1]) ≈ -1.0 atol = atol rtol = rtol
     @test moments(μ)[1].polynomial == MB.BasisElement{MB.Monomial}(y)
+    @test moment_value(moments(μ)[2]) ≈ -1.0 atol = atol rtol = rtol
+    @test moments(μ)[2].polynomial == MB.BasisElement{MB.Monomial}(x * y)
 
     F = MOI.VectorAffineFunction{Float64}
     full_basis_type = typeof(MB.FullBasis{MB.Monomial}(x))
@@ -65,8 +71,17 @@ function zero_polynomial_in_fixed_variables_set_test(
     @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
           [(MOI.VariableIndex, MOI.LessThan{Float64}), (F, S)]
     @testset "Delete" begin
-        ST =
-            PolyJuMP.ZeroPolynomialSet{FullSpace,full_basis_type,sub_basis_type}
+        quotient_basis_type = MB.QuotientBasis{
+            eltype(sub_basis_type),
+            SA.key_type(sub_basis_type),
+            sub_basis_type,
+            SparseArrays.SparseMatrixCSC{Float64,Int},
+        }
+        ST = PolyJuMP.ZeroPolynomialSet{
+            FullSpace,
+            full_basis_type,
+            quotient_basis_type,
+        }
         test_delete_bridge(model, cref, 2, ((F, MOI.Zeros, 0), (F, ST, 0)))
     end
 end

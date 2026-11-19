@@ -24,11 +24,11 @@ IntervalArithmetic = "0.20, 0.21, 0.22, 1"
 JuMP = "1"
 LinearAlgebra = "1.10"
 MathOptInterface = "1"
-MultivariateBases = "0.4"
+MultivariateBases = "0.5"
 MultivariateMoments = "0.5"
 MultivariatePolynomials = "0.6"
 MutableArithmetics = "1.9"
-SemialgebraicSets = "0.3"
+SemialgebraicSets = "0.3.7"
 StarAlgebras = "0.4"
 julia = "1.10"
 
@@ -40,3 +40,6 @@ TypedPolynomials = "afbbf031-7a57-5f58-a1b9-b774a0fad08d"
 
 [targets]
 test = ["DynamicPolynomials", "LinearAlgebra", "Test", "TypedPolynomials"]
+
+[sources]
+MultivariateMoments = {url = "https://github.com/JuliaAlgebra/MultivariateMoments.jl", rev = "bl/macaulay"}

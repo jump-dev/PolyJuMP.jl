@@ -16,25 +16,66 @@ function test_solver_name(_, _, _)
     @test MOI.get(optimizer, MOI.SolverName()) == "PolyJuMP.QCQP with Mock"
 end
 
-function _test_decompose(monos, exps)
+function _test_decompose(monos, args...)
     vars = MP.variables(monos)
     M = eltype(monos)
-    expected = PolyJuMP.QCQP.DataStructures.OrderedDict{M,M}(
-        var => var for var in vars
-    )
-    for exp in exps
-        expected[exp[1]] = exp[2]
-    end
-    quad = PolyJuMP.QCQP.decompose(monos)
-    @test quad == expected
+    expected = PolyJuMP.QCQP.DataStructures.OrderedDict{M,M}()
+	for x in vars
+		expected[x] = x
+		for y in vars
+			expected[x*y] = x
+		end
+	end
+	for (quad, exps) in args
+		for exp in exps
+			expected[exp[1]] = exp[2]
+		end
+		quad = PolyJuMP.QCQP.decompose(monos, quad)
+		@test quad == expected
+	end
 end
 
 function test_decompose(x, y, _)
-    _test_decompose([x * y], [x * y => y])
-    return _test_decompose(
-        [x^2, y^3, x^2 * y^3],
-        [x^2 => x, y^2 => y, x^2 * y^3 => y^3, y^3 => y^2],
+    monos = [x^2, y^3, x^2 * y^3]
+
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Sequential, smart=false, variable_reuse=false) =>
+			[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x^2],
     )
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Sequential, smart=true, variable_reuse=false) =>
+			[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x * y],
+    )
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Sequential, smart=false, variable_reuse=true) =>
+			[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x^2],
+    )
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Sequential, smart=true, variable_reuse=true) =>
+			[y^3 => y, x^2 * y^3 => x^2],
+    )
+    # Without the smart phase, the greedy phase has to create new variables
+    _test_decompose(
+        monos,
+		PolyJuMP.QCQP.CompositeQuadratization(decompo=PolyJuMP.QCQP.Greedy, smart=false, variable_reuse=false) =>
+			[y^3 => y, x^2 * y^3 => x * y, x * y^2 => y],
+    )
+    for decompo in (PolyJuMP.QCQP.Greedy, PolyJuMP.QCQP.Balanced)
+        _test_decompose(
+            monos,
+			PolyJuMP.QCQP.CompositeQuadratization(decompo=decompo, smart=true, variable_reuse=false) =>
+				[y^3 => y, x^2 * y^3 => y, x^2 * y^2 => x * y],
+        )
+        _test_decompose(
+            monos,
+			PolyJuMP.QCQP.CompositeQuadratization(decompo=decompo, smart=true, variable_reuse=true) =>
+				[y^3 => y, x^2 * y^3 => x^2],
+        )
+    end
 end
 
 MOI.Utilities.@model(
@@ -137,7 +178,7 @@ function test_objective_and_constraint(x, y, T)
     PolyJuMP.optimize!(model)
     vis = MOI.get(inner, MOI.ListOfVariableIndices())
     @test length(vis) == 7
-    a, b, b2, a2, a3, b3, a6 = vis
+    a, b, b2, a2, b3, a3, a6 = vis
     @test MOI.Utilities.get_bounds(inner, T, a) == (-2, 3)
     @test MOI.Utilities.get_bounds(inner, T, b) == (5, 7)
     @test MOI.Utilities.get_bounds(inner, T, b2) == (25, 49)
@@ -153,8 +194,8 @@ function test_objective_and_constraint(x, y, T)
     z = zero(T)
     @test MOI.get(inner, MOI.ConstraintFunction(), cis[1]) ≈ b2 - o * b * b
     @test MOI.get(inner, MOI.ConstraintFunction(), cis[2]) ≈ a2 - o * a * a
-    @test MOI.get(inner, MOI.ConstraintFunction(), cis[3]) ≈ a3 - o * a2 * a
-    @test MOI.get(inner, MOI.ConstraintFunction(), cis[4]) ≈ b3 - o * b2 * b
+    @test MOI.get(inner, MOI.ConstraintFunction(), cis[3]) ≈ b3 - o * b2 * b
+    @test MOI.get(inner, MOI.ConstraintFunction(), cis[4]) ≈ a3 - o * a2 * a
     @test MOI.get(inner, MOI.ConstraintFunction(), cis[5]) ≈ a6 - o * a3 * a3
     for ci in cis
         @test MOI.get(inner, MOI.ConstraintSet(), ci) == MOI.EqualTo(zero(T))

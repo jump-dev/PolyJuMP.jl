@@ -34,13 +34,71 @@ JuMP.dual_shape(shape::PolynomialShape) = MomentsShape(shape.basis)
 JuMP.dual_shape(shape::MomentsShape) = PolynomialShape(shape.basis)
 
 JuMP.reshape_set(::ZeroPolynomialSet, ::PolynomialShape) = ZeroPoly()
+
+_max_maxdegree(p) = mapreduce(MP.maxdegree, max, p; init = 0)
+
+_maxdegree(domain) = 0
+
+function _maxdegree(domain::Union{SS.AlgebraicSet,SS.TruncatedAlgebraicSet})
+    return _max_maxdegree(SS.equalities(domain))
+end
+
+function _maxdegree(domain::SS.BasicSemialgebraicSet)
+    return max(
+        _max_maxdegree(SS.inequalities(domain)),
+        _maxdegree(SS.algebraic_set(domain)),
+    )
+end
+
+"""
+    default_maxdegree(monos, domain)
+
+Return the default `maxdegree` to use for a constraint on a polynomial with
+monomials `monos` over the domain `domain`. By default, the maximum of the
+maxdegree of `monos` and of the equalities and inequalities of the domain is
+used so that at least constant multipliers can be used for the equalities and,
+with a Putinar certificate, for the inequalities.
+"""
+function default_maxdegree(monos, domain)
+    d = isempty(monos) ? 0 : MP.maxdegree(monos)
+    return max(d, _maxdegree(domain))
+end
+
+"""
+    truncated_domain(domain, maxdegree)
+
+If the Gröbner basis of the equalities of `domain` is not known and they are
+not already truncated with `SemialgebraicSets.truncated`, truncate them at
+degree `maxdegree`. This avoids computing the Gröbner basis, which may be
+expensive. The multipliers `λ_i` of the equalities `h_i` are then such that the
+degree of `λ_i * h_i` is at most `maxdegree`. Otherwise, return `domain`.
+"""
+truncated_domain(domain, _) = domain
+
+function truncated_domain(domain::SS.AlgebraicSet, maxdegree)
+    if SS.is_gröbner_basis(SS.ideal(domain))
+        return domain
+    end
+    return SS.truncated(domain, maxdegree)
+end
+
+function truncated_domain(domain::SS.BasicSemialgebraicSet, maxdegree)
+    V = SS.algebraic_set(domain)
+    W = truncated_domain(V, maxdegree)
+    if W === V
+        return domain
+    end
+    return SS.BasicSemialgebraicSet(W, SS.inequalities(domain))
+end
+
 function JuMP.moi_set(
     ::ZeroPoly,
     b::MB.SubBasis{MB.Monomial,M};
     domain::SS.AbstractSemialgebraicSet = SS.FullSpace(),
     basis = parent(b),
+    maxdegree::Int = default_maxdegree(b, domain),
 ) where {M}
-    return ZeroPolynomialSet(domain, basis, b)
+    return ZeroPolynomialSet(truncated_domain(domain, maxdegree), basis, b)
 end
 
 """

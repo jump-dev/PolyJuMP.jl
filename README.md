@@ -54,12 +54,17 @@ Deciding this requires computing a Gröbner basis of the ideal, which can be ver
 So, unless the equalities are already known to be a Gröbner basis (e.g., for `@set x == 1 && y == 2`),
 the degree of each `λ_i * h_i` is limited to the maximum of the degree of the polynomial and of the equalities, i.e., 2 here,
 and the constraint is encoded with the null space of the Macaulay matrix of the equalities of that degree.
+This default is given by `PolyJuMP.default_maxdegree` and the truncation by `PolyJuMP.truncated_domain`.
 This is consistent with the default `maxdegree` of the nonnegativity constraints of [SumOfSquares.jl](https://github.com/jump-dev/SumOfSquares.jl).
 
 This may be too restrictive.
 In the example above, `x - y = y * (x * y - 1) - x * (y^2 - 1)` vanishes on `V`
 but its terms have degree 3 so the constraint is infeasible.
-The degree can be increased with `SemialgebraicSets.truncated`:
+The degree can be increased with the `maxdegree` keyword:
+```julia
+@constraint(model, a * x == y, domain = V, maxdegree = 3)
+```
+or equivalently with `SemialgebraicSets.truncated`:
 ```julia
 @constraint(model, a * x == y, domain = SemialgebraicSets.truncated(V, 3))
 ```

@@ -16,9 +16,10 @@ end
 
 # The polynomial is zero on the algebraic set if it is in its ideal. The
 # coefficients in the quotient basis are zero if and only if it is the case.
-# If the Gröbner basis of the ideal is not known, it is not computed and the
-# polynomial is instead constrained to be in the ideal truncated at its
-# maximal degree, see `MultivariateMoments.quotient_basis`.
+# If the domain is truncated with `SemialgebraicSets.truncated`, which is done
+# by `PolyJuMP.truncated_domain` if the Gröbner basis is not known, the
+# polynomial is instead constrained to be in the truncated ideal, see
+# `MultivariateMoments.quotient_basis`.
 function MOI.Bridges.Constraint.bridge_constraint(
     ::Type{ZeroPolynomialInAlgebraicSetBridge{T,F,Z,DT,B,Q}},
     model::MOI.ModelLike,

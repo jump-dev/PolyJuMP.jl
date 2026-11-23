@@ -107,8 +107,12 @@ function _test_constraint(
         if isempty(eqs)
             @test isa(set.domain, FullSpace)
         else
-            @test isa(set.domain, AlgebraicSet)
-            @test equalities(set.domain) == eqs
+            domain = set.domain
+            if domain isa SemialgebraicSets.TruncatedAlgebraicSet
+                domain = domain.set
+            end
+            @test isa(domain, AlgebraicSet)
+            @test equalities(domain) == eqs
         end
     else
         @test isa(set.domain, BasicSemialgebraicSet)
@@ -343,6 +347,52 @@ function test_ZeroPolynomialSet(var)
         [x^3 + x * y^2 + y - 1],
         [x^2 + y^2 - 1],
     )
+end
+
+function test_truncated_domain(var)
+    x = MP.similar_variable(var, Val{:x})
+    y = MP.similar_variable(var, Val{:y})
+    m = Model()
+    @variable(m, a)
+    _domain(cref) = JuMP.moi_set(JuMP.constraint_object(cref)).domain
+    # `x - y = y * (x * y - 1) - x * (y^2 - 1)` so it is in the truncation of
+    # the ideal at degree 3
+    V = @set x * y == 1 && y^2 == 1
+    @test !SemialgebraicSets.is_gröbner_basis(ideal(V))
+    # By default, the degree is the maximum of the degree of `a * x - y` and
+    # of the equalities
+    @test PolyJuMP.default_maxdegree(monomials(x - y), V) == 2
+    domain = _domain(@constraint(m, a * x == y, domain = V))
+    @test domain isa SemialgebraicSets.TruncatedAlgebraicSet
+    @test domain.set === V
+    @test domain.maxdegree == 2
+    domain = _domain(@constraint(m, a * x == y, domain = V, maxdegree = 3))
+    @test domain isa SemialgebraicSets.TruncatedAlgebraicSet
+    @test domain.maxdegree == 3
+    # An explicit truncation is kept
+    T = SemialgebraicSets.truncated(V, 4)
+    @test _domain(@constraint(m, a * x == y, domain = T)) === T
+    @test PolyJuMP.truncated_domain(T, 2) === T
+    @test PolyJuMP.default_maxdegree(monomials(x - y), T) == 2
+    # The Gröbner basis of the equalities is not computed
+    @test !SemialgebraicSets.is_gröbner_basis(ideal(V))
+    # The domain is not truncated if its Gröbner basis is known
+    W = @set x^2 == 1
+    @test SemialgebraicSets.is_gröbner_basis(ideal(W))
+    @test _domain(@constraint(m, a * x == y, domain = W)) === W
+    @test PolyJuMP.truncated_domain(FullSpace(), 2) === FullSpace()
+    # Only the equalities of a basic semialgebraic set are truncated
+    K = @set x * y == 1 && y^2 == 1 && x^3 >= 0
+    @test PolyJuMP.default_maxdegree(monomials(x - y), K) == 3
+    L = PolyJuMP.truncated_domain(K, 3)
+    @test L isa BasicSemialgebraicSet
+    @test L.V isa SemialgebraicSets.TruncatedAlgebraicSet
+    @test L.V.maxdegree == 3
+    @test inequalities(L) == inequalities(K)
+    K = @set x^2 == 1 && x^3 >= 0
+    @test PolyJuMP.truncated_domain(K, 3) === K
+    @test PolyJuMP.default_maxdegree(typeof(x)[], FullSpace()) == 0
+    return
 end
 
 function test_PosDefMatrix(var)

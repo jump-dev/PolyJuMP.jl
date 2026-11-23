@@ -19,6 +19,7 @@ function _zero_polynomial_in_algebraic_set_test(
     x,
     y,
     domain,
+    domain_type = typeof(domain),
 )
     atol = config.atol
     rtol = config.rtol
@@ -65,11 +66,7 @@ function _zero_polynomial_in_algebraic_set_test(
     F = MOI.VectorAffineFunction{Float64}
     full_basis_type = typeof(MB.FullBasis{MB.Monomial}(x))
     sub_basis_type = MB.explicit_basis_type(full_basis_type)
-    S = PolyJuMP.ZeroPolynomialSet{
-        typeof(domain),
-        full_basis_type,
-        sub_basis_type,
-    }
+    S = PolyJuMP.ZeroPolynomialSet{domain_type,full_basis_type,sub_basis_type}
     @test MOI.get(model, MOI.ListOfConstraintTypesPresent()) ==
           [(MOI.VariableIndex, MOI.LessThan{Float64}), (F, S)]
     @testset "Delete" begin
@@ -113,7 +110,15 @@ function zero_polynomial_in_algebraic_set_macaulay_test(
 )
     @polyvar x y
     domain = @set x == y && 2x == 2y
-    _zero_polynomial_in_algebraic_set_test(optimizer, config, x, y, domain)
+    # The domain is truncated at the degree of the polynomial and equalities
+    _zero_polynomial_in_algebraic_set_test(
+        optimizer,
+        config,
+        x,
+        y,
+        domain,
+        typeof(SemialgebraicSets.truncated(domain, 1)),
+    )
     @test !SemialgebraicSets.is_gröbner_basis(ideal(domain))
     return
 end
